@@ -1,0 +1,202 @@
+{% extends "_base.html" %}
+
+{% block title %}Para Raporları{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">Para Raporları</h1>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Hesap ve tarih aralığına göre giriş/çıkış/net analizi.</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="{{ url_for('onmuhasebe_mutabakat') }}" class="text-sm font-bold text-primary-600 hover:text-primary-700">Kasa Sayımı</a>
+      <a href="{{ url_for('onmuhasebe_hesaplar') }}" class="text-sm font-bold text-primary-600 hover:text-primary-700">Para Hesapları</a>
+    </div>
+  </div>
+
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
+    <form method="get" class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+      <div class="md:col-span-2">
+        <label class="block text-xs font-bold text-slate-500 mb-1">Hesap</label>
+        <select name="account_id" class="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-950">
+          <option value="">Tümü</option>
+          {% for a in accounts %}
+            <option value="{{ a.id }}" {% if selected_account_id and selected_account_id|int == a.id %}selected{% endif %}>
+              {{ a.name }}{% if a.type %} ({% if a.type == 'cash' %}Kasa{% elif a.type == 'bank' %}Banka{% else %}POS{% endif %}){% endif %}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-500 mb-1">Başlangıç</label>
+        <input type="date" name="from" value="{{ date_from }}" class="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-950">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-500 mb-1">Bitiş</label>
+        <input type="date" name="to" value="{{ date_to }}" class="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-950">
+      </div>
+      <div class="md:col-span-2 flex justify-end gap-2">
+        <a href="{{ url_for('onmuhasebe_raporlar') }}" class="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-800 font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">Sıfırla</a>
+        <button class="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-bold">Raporu Göster</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+      <div class="text-[11px] font-bold text-slate-500 uppercase">Giren Para</div>
+      <div class="text-2xl font-extrabold text-emerald-600 mt-1">{{ (total_giris)|tr_number }}</div>
+    </div>
+    <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+      <div class="text-[11px] font-bold text-slate-500 uppercase">Çıkan Para</div>
+      <div class="text-2xl font-extrabold text-rose-600 mt-1">{{ (total_cikis)|tr_number }}</div>
+    </div>
+    <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+      <div class="text-[11px] font-bold text-slate-500 uppercase">Kalan Para</div>
+      <div class="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">{{ (net)|tr_number }}</div>
+    </div>
+    <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+      <div class="text-[11px] font-bold text-slate-500 uppercase">Kasa Sayım Farkı</div>
+      <div class="text-2xl font-extrabold {% if sayim_farki_total >= 0 %}text-emerald-600{% else %}text-rose-600{% endif %} mt-1">{{ (sayim_farki_total)|tr_number }}</div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+      <div class="p-5">
+        <h2 class="text-sm font-bold text-slate-900 dark:text-white">Ödeme Türüne Göre</h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+          <thead class="bg-slate-50 dark:bg-slate-900/50">
+            <tr>
+              <th class="px-4 py-3 text-left">Ödeme</th>
+              <th class="px-4 py-3 text-right">Giren Para</th>
+              <th class="px-4 py-3 text-right">Çıkan Para</th>
+              <th class="px-4 py-3 text-right">Kalan Para</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-50 dark:divide-slate-800/50">
+            {% for key, v in odeme_breakdown %}
+            {% set n = (v.giris or 0) - (v.cikis or 0) %}
+            <tr class="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+              <td class="px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white">{{ key }}</td>
+              <td class="px-4 py-3 text-right text-sm text-emerald-600 font-bold">{{ (v.giris or 0)|tr_number }}</td>
+              <td class="px-4 py-3 text-right text-sm text-rose-600 font-bold">{{ (v.cikis or 0)|tr_number }}</td>
+              <td class="px-4 py-3 text-right text-sm font-extrabold text-slate-900 dark:text-white">{{ (n)|tr_number }}</td>
+            </tr>
+            {% endfor %}
+            {% if odeme_breakdown|length == 0 %}
+              <tr><td class="px-4 py-8 text-center text-slate-500" colspan="4">Henüz kayıt yok.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+      <div class="p-5">
+        <h2 class="text-sm font-bold text-slate-900 dark:text-white">Kaynağa Göre (Referans)</h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+          <thead class="bg-slate-50 dark:bg-slate-900/50">
+            <tr>
+              <th class="px-4 py-3 text-left">Kaynak</th>
+              <th class="px-4 py-3 text-right">Giren Para</th>
+              <th class="px-4 py-3 text-right">Çıkan Para</th>
+              <th class="px-4 py-3 text-right">Kalan Para</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-50 dark:divide-slate-800/50">
+            {% for key, v in ref_breakdown %}
+            {% set n = (v.giris or 0) - (v.cikis or 0) %}
+            <tr class="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+              <td class="px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white">{{ key }}</td>
+              <td class="px-4 py-3 text-right text-sm text-emerald-600 font-bold">{{ (v.giris or 0)|tr_number }}</td>
+              <td class="px-4 py-3 text-right text-sm text-rose-600 font-bold">{{ (v.cikis or 0)|tr_number }}</td>
+              <td class="px-4 py-3 text-right text-sm font-extrabold text-slate-900 dark:text-white">{{ (n)|tr_number }}</td>
+            </tr>
+            {% endfor %}
+            {% if ref_breakdown|length == 0 %}
+              <tr><td class="px-4 py-8 text-center text-slate-500" colspan="4">Henüz kayıt yok.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+    <div class="p-5 flex items-center justify-between">
+      <h2 class="text-sm font-bold text-slate-900 dark:text-white">En Çok Gider (Açıklama)</h2>
+      <span class="text-xs text-slate-500">İlk 10</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+        <thead class="bg-slate-50 dark:bg-slate-900/50">
+          <tr>
+            <th class="px-4 py-3 text-left">Açıklama</th>
+            <th class="px-4 py-3 text-right">Tutar</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50 dark:divide-slate-800/50">
+          {% for desc, amount in top_expenses %}
+          <tr class="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+            <td class="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">{{ desc }}</td>
+            <td class="px-4 py-3 text-right text-sm font-extrabold text-rose-600">{{ (amount)|tr_number }}</td>
+          </tr>
+          {% endfor %}
+          {% if top_expenses|length == 0 %}
+            <tr><td class="px-4 py-8 text-center text-slate-500" colspan="2">Henüz kayıt yok.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+    <div class="p-5 flex items-center justify-between">
+      <h2 class="text-sm font-bold text-slate-900 dark:text-white">Son Para Hareketleri</h2>
+      <span class="text-xs text-slate-500">Son 200</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+        <thead class="bg-slate-50 dark:bg-slate-900/50">
+          <tr>
+            <th class="px-4 py-3 text-left">Tarih</th>
+            <th class="px-4 py-3 text-left">Hesap</th>
+            <th class="px-4 py-3 text-left">Yön</th>
+            <th class="px-4 py-3 text-left">Ödeme</th>
+            <th class="px-4 py-3 text-left">Açıklama</th>
+            <th class="px-4 py-3 text-right">Tutar</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50 dark:divide-slate-800/50">
+          {% for t in transactions %}
+          <tr class="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+            <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">{{ t.tarih|datetime_tr if t.tarih else '-' }}</td>
+            <td class="px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white">{{ t.account.name if t.account else '-' }}</td>
+            <td class="px-4 py-3 text-sm">
+              {% if t.islem_tipi == 'giris' %}
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300">Para Girişi</span>
+              {% else %}
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-extrabold bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-300">Para Çıkışı</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{{ t.odeme_turu or '-' }}</td>
+            <td class="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">{{ t.aciklama or '-' }}</td>
+            <td class="px-4 py-3 text-right font-bold {% if t.islem_tipi=='giris' %}text-emerald-600{% else %}text-rose-600{% endif %}">{{ (t.tutar or 0)|tr_number }}</td>
+          </tr>
+          {% endfor %}
+          {% if transactions|length == 0 %}
+            <tr><td class="px-4 py-8 text-center text-slate-500" colspan="6">Henüz kayıt yok.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

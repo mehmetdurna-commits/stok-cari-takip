@@ -1,0 +1,463 @@
+{% extends '_base.html' %}
+
+{% set site_name = site_config().get('name', config.get('SITE_NAME', 'StokCari')) %}
+{% block title %}{{ site_name }} - Bulut Tabanlı Stok, Cari ve POS Yönetimi{% endblock %}
+{% block og_description %}Küçük işletmeler için bulut tabanlı POS, stok, cari, personel ve ön muhasebe yönetimi. Satış yapın, stok takip edin, tahsilatları izleyin.{% endblock %}
+
+{% block content %}
+<style>
+    .landing-gradient {
+        background:
+            radial-gradient(circle at 12% 12%, rgba(37, 99, 235, 0.20), transparent 34rem),
+            radial-gradient(circle at 88% 6%, rgba(20, 184, 166, 0.18), transparent 32rem),
+            linear-gradient(135deg, #f8fafc 0%, #eef6ff 42%, #ffffff 100%);
+    }
+
+    .landing-grid {
+        background-image:
+            linear-gradient(to right, rgba(15, 23, 42, 0.055) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(15, 23, 42, 0.055) 1px, transparent 1px);
+        background-size: 42px 42px;
+    }
+
+    .landing-card {
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(226, 232, 240, 0.95);
+        box-shadow: 0 18px 55px rgba(15, 23, 42, 0.08);
+    }
+
+    .landing-blue-card {
+        background: linear-gradient(135deg, #0f3ea8 0%, #2563eb 52%, #15b8c5 100%);
+        color: #ffffff;
+        box-shadow: 0 24px 70px rgba(37, 99, 235, 0.28);
+    }
+
+    .landing-stat {
+        background: rgba(255, 255, 255, 0.86);
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        backdrop-filter: blur(14px);
+    }
+
+    .landing-scroll-top {
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(0.75rem);
+        transition: opacity 180ms ease, transform 180ms ease, background-color 180ms ease;
+    }
+
+    .landing-scroll-top.is-visible {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+    }
+</style>
+
+<div class="min-h-screen bg-white text-slate-950">
+    <div class="landing-gradient landing-grid relative overflow-hidden">
+        <div class="border-b border-slate-200/80 bg-white/80 backdrop-blur">
+            <div class="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-2 text-xs font-bold text-slate-600 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <span class="inline-flex items-center gap-1 text-primary-700">
+                        <span class="material-symbols-outlined text-base">verified</span>
+                        Küçük işletmeler için aktif geliştirilen bulut yönetimi
+                    </span>
+                    <span class="hidden sm:inline">POS · Stok · Cari · Personel</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <a href="#sss" class="hover:text-primary-700">Yardım</a>
+                    <a href="#guven" class="hover:text-primary-700">Güvenlik</a>
+                    <a href="{{ url_for('giris') }}" class="hover:text-primary-700">Panel Girişi</a>
+                </div>
+            </div>
+        </div>
+
+        <header class="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
+            <a href="{{ url_for('index') }}" class="flex items-center gap-3">
+                <div class="flex size-11 items-center justify-center rounded-2xl bg-primary-600 text-white shadow-xl shadow-primary-600/25">
+                    <span class="material-symbols-outlined text-2xl">storefront</span>
+                </div>
+                <div>
+                    <p class="text-lg font-black tracking-tight text-slate-950">{{ site_name }}</p>
+                    <p class="text-xs font-semibold text-slate-500">Bulut POS ve işletme yönetimi</p>
+                </div>
+            </a>
+            <nav class="hidden items-center gap-6 text-sm font-bold text-slate-600 md:flex">
+                <a href="#cozumler" class="hover:text-primary-700">Çözümler</a>
+                <a href="#panel" class="hover:text-primary-700">Panel</a>
+                <a href="#akis" class="hover:text-primary-700">Akış</a>
+                <a href="#guven" class="hover:text-primary-700">Güvenlik</a>
+                <a href="#sss" class="hover:text-primary-700">SSS</a>
+            </nav>
+            <div class="flex items-center gap-2">
+                <a href="{{ url_for('giris') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-sm transition hover:border-primary-200 hover:text-primary-700">Giriş</a>
+                <a href="{{ url_for('kayit') }}" class="rounded-xl bg-primary-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-primary-600/20 transition hover:bg-primary-700">Ücretsiz Dene</a>
+            </div>
+        </header>
+
+        <main class="mx-auto grid max-w-7xl gap-12 px-4 pb-20 pt-8 sm:px-6 lg:grid-cols-12 lg:px-8 lg:pb-28 lg:pt-14">
+            <section class="lg:col-span-6">
+                <div class="inline-flex items-center gap-2 rounded-full border border-primary-100 bg-white/80 px-4 py-2 text-xs font-black uppercase tracking-widest text-primary-700 shadow-sm">
+                    <span class="material-symbols-outlined text-[18px]">bolt</span>
+                    Kasa, stok ve cari tek panelde
+                </div>
+                <h1 class="mt-7 max-w-3xl text-4xl font-black tracking-tight text-slate-950 sm:text-6xl sm:leading-[1.02]">
+                    İşletmeni bulutta daha hızlı ve kontrollü yönet.
+                </h1>
+                <p class="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
+                    {{ site_name }}, küçük işletmeler için POS, stok, cari, personel ve ön muhasebe akışlarını sadeleştirir. Kasiyer satış yapar, işletme sahibi her şeyi anlık izler.
+                </p>
+                <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+                    <a href="{{ url_for('kayit') }}" class="inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl bg-primary-600 px-7 py-4 text-base font-black text-white shadow-2xl shadow-primary-600/25 transition hover:bg-primary-700">
+                        Ücretsiz Dene
+                        <span class="material-symbols-outlined">arrow_forward</span>
+                    </a>
+                    <a href="#cozumler" class="inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-7 py-4 text-base font-black text-slate-800 shadow-sm transition hover:border-primary-200 hover:text-primary-700">
+                        Çözümleri İncele
+                        <span class="material-symbols-outlined">keyboard_arrow_down</span>
+                    </a>
+                </div>
+
+                <div class="mt-10 grid max-w-2xl grid-cols-3 gap-3">
+                    {% set trust_stats = [
+                        ('3 adım', 'Satış akışı'),
+                        ('7/24', 'Bulut erişim'),
+                        ('Tek panel', 'POS + cari')
+                    ] %}
+                    {% for value, label in trust_stats %}
+                    <div class="landing-stat rounded-2xl p-4">
+                        <p class="text-xl font-black text-slate-950">{{ value }}</p>
+                        <p class="mt-1 text-xs font-bold text-slate-500">{{ label }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="lg:col-span-6">
+                <div class="landing-blue-card rounded-[2rem] p-4 sm:p-5">
+                    <div class="rounded-[1.5rem] bg-white p-5 text-slate-950 shadow-2xl">
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-4">
+                            <div>
+                                <p class="text-xs font-black uppercase tracking-widest text-primary-600">Canlı İşletme Paneli</p>
+                                <p class="mt-1 text-xl font-black">Bugünün özeti</p>
+                            </div>
+                            <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">Anlık takip</span>
+                        </div>
+
+                        <div class="mt-5 grid gap-3 sm:grid-cols-3">
+                            {% set dashboard_cards = [
+                                ('Satış', '₺24.850', 'trending_up', 'text-emerald-600'),
+                                ('Tahsilat', '₺12.400', 'payments', 'text-cyan-600'),
+                                ('Kritik stok', '8', 'warning', 'text-amber-600')
+                            ] %}
+                            {% for label, value, icon, color in dashboard_cards %}
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-black uppercase tracking-wide text-slate-500">{{ label }}</span>
+                                    <span class="material-symbols-outlined {{ color }}">{{ icon }}</span>
+                                </div>
+                                <p class="mt-3 text-2xl font-black text-slate-950">{{ value }}</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mt-4 rounded-2xl bg-slate-950 p-5 text-white">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <p class="font-black">Kasada 3 adımda satış</p>
+                                    <p class="mt-1 text-sm leading-6 text-slate-300">Ürünü okut, ödeme al, fişi yazdır. Nakit, kart ve veresiye aynı akıştan ilerler.</p>
+                                </div>
+                                <span class="material-symbols-outlined rounded-xl bg-white/10 p-2 text-cyan-200">receipt_long</span>
+                            </div>
+                            <div class="mt-4 grid grid-cols-3 gap-2 text-xs font-black">
+                                <div class="rounded-xl bg-white px-3 py-2 text-slate-950">1. Ürün</div>
+                                <div class="rounded-xl bg-white px-3 py-2 text-slate-950">2. Ödeme</div>
+                                <div class="rounded-xl bg-white px-3 py-2 text-slate-950">3. Fiş</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                            <div class="rounded-2xl border border-slate-200 p-4">
+                                <p class="text-sm font-black text-slate-950">Cari kontrol</p>
+                                <p class="mt-1 text-sm font-semibold text-slate-600">Müşteri ve tedarikçi bakiyesi anlaşılır kalır.</p>
+                            </div>
+                            <div class="rounded-2xl border border-slate-200 p-4">
+                                <p class="text-sm font-black text-slate-950">Kasa / banka</p>
+                                <p class="mt-1 text-sm font-semibold text-slate-600">Nakit, kart ve banka hareketleri izlenir.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <section class="border-y border-slate-200 bg-white py-8">
+        <div class="mx-auto grid max-w-7xl gap-4 px-4 sm:px-6 md:grid-cols-4 lg:px-8">
+            {% set proof = [
+                ('cloud_done', 'Bulut tabanlı', 'Her yerden erişim'),
+                ('history', 'İşlem geçmişi', 'Kritik hareket takibi'),
+                ('admin_panel_settings', 'Yetki kontrolü', 'Rol bazlı kullanım'),
+                ('support_agent', 'Destek odaklı', 'Sade yardım akışı')
+            ] %}
+            {% for icon, title, desc in proof %}
+            <div class="flex items-center gap-3 rounded-2xl bg-slate-50 p-4">
+                <span class="material-symbols-outlined rounded-xl bg-white p-2 text-primary-700 shadow-sm">{{ icon }}</span>
+                <div>
+                    <p class="font-black text-slate-950">{{ title }}</p>
+                    <p class="text-sm font-semibold text-slate-500">{{ desc }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section id="cozumler" class="bg-slate-50 py-20">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                <div class="max-w-3xl">
+                    <p class="text-xs font-black uppercase tracking-widest text-primary-600">Çözümler</p>
+                    <h2 class="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">İşletmenin günlük akışına göre modüller.</h2>
+                    <p class="mt-4 text-lg leading-8 text-slate-600">PayTR tarzı ürün kategorisi mantığını bizim dünyaya çevirdik: kasa, stok, cari ve personel ayrı ayrı ama aynı panelde.</p>
+                </div>
+                <a href="{{ url_for('kayit') }}" class="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-primary-700">
+                    Hemen Başla
+                    <span class="material-symbols-outlined text-lg">arrow_forward</span>
+                </a>
+            </div>
+
+            <div class="mt-10 grid gap-5 lg:grid-cols-3">
+                {% set categories = [
+                    ('point_of_sale', 'Satış ve POS', 'Barkodlu satış, ödeme alma, fiş yazdırma, iade ve günlük satış takibi.'),
+                    ('inventory_2', 'Stok ve Depo', 'Ürün kartları, kategori, kritik stok, depo ve ileride transfer akışları.'),
+                    ('groups', 'Cari ve Tahsilat', 'Müşteriden tahsilat, tedarikçiye ödeme, bakiye ve ekstre takibi.'),
+                    ('account_balance', 'Kasa / Banka', 'Nakit, banka ve POS hareketlerini ayrı ayrı izleme.'),
+                    ('badge', 'Personel', 'İzin, avans, prim, bordro ve personel detay ekranları.'),
+                    ('request_quote', 'Teklif', 'Teklif oluşturma, yazdırma ve satışa dönüşen akışları takip etme.')
+                ] %}
+                {% for icon, title, desc in categories %}
+                <article class="landing-card rounded-3xl p-6 transition hover:-translate-y-1 hover:shadow-2xl">
+                    <span class="material-symbols-outlined rounded-2xl bg-primary-50 p-3 text-3xl text-primary-700">{{ icon }}</span>
+                    <h3 class="mt-5 text-lg font-black text-slate-950">{{ title }}</h3>
+                    <p class="mt-2 leading-7 text-slate-600">{{ desc }}</p>
+                    <div class="mt-5 inline-flex items-center gap-1 text-sm font-black text-primary-700">
+                        İncele
+                        <span class="material-symbols-outlined text-lg">arrow_forward</span>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section id="panel" class="bg-white py-20">
+        <div class="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-12 lg:px-8">
+            <div class="lg:col-span-5">
+                <p class="text-xs font-black uppercase tracking-widest text-primary-600">Panelden Yönet</p>
+                <h2 class="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Raporlama dahil kritik işler tek yerden görünür.</h2>
+                <p class="mt-4 leading-8 text-slate-600">PayTR’nin mağaza paneli hissini, bizim işletme panelimize uyarladık: satışlar, stok, cari, kasa/banka ve işlem geçmişi aynı çatı altında.</p>
+                <div class="mt-8 grid gap-3">
+                    {% set panel_items = [
+                        ('Grafikler', 'Satış, tahsilat, stok ve kasa hareketleri daha okunur hale gelir.'),
+                        ('İşlemler', 'Satış iptali, iade, tahsilat ve ödeme geçmişi takip edilir.'),
+                        ('Güvenlik', 'Audit kayıtları ve yetki kontrolleri işletme sahibine kontrol verir.')
+                    ] %}
+                    {% for title, desc in panel_items %}
+                    <div class="rounded-2xl border border-slate-200 p-4">
+                        <p class="font-black text-slate-950">{{ title }}</p>
+                        <p class="mt-1 text-sm leading-6 text-slate-600">{{ desc }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="lg:col-span-7">
+                <div class="rounded-[2rem] bg-slate-950 p-4 text-white shadow-2xl shadow-slate-950/20">
+                    <div class="rounded-[1.5rem] bg-white p-5 text-slate-950">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <p class="text-xs font-black uppercase tracking-widest text-slate-500">Yönetim paneli</p>
+                                <p class="text-xl font-black">Bugün neler oldu</p>
+                            </div>
+                            <div class="flex gap-2 text-xs font-black">
+                                <span class="rounded-full bg-primary-50 px-3 py-1 text-primary-700">Satış</span>
+                                <span class="rounded-full bg-slate-100 px-3 py-1 text-slate-600">Stok</span>
+                                <span class="rounded-full bg-slate-100 px-3 py-1 text-slate-600">Cari</span>
+                            </div>
+                        </div>
+                        <div class="mt-6 grid gap-4 md:grid-cols-2">
+                            <div class="rounded-2xl bg-slate-50 p-4">
+                                <p class="text-sm font-black">Satış tutarı</p>
+                                <div class="mt-5 flex h-36 items-end gap-2">
+                                    {% for height in [38, 68, 44, 92, 72, 118, 84] %}
+                                    <div class="flex-1 rounded-t-xl bg-primary-500" style="height: {{ height }}px"></div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="space-y-3">
+                                {% set activity = [
+                                    ('payments', 'Kart tahsilatı alındı', '+₺4.250'),
+                                    ('inventory', 'Kritik stok uyarısı', '8 ürün'),
+                                    ('groups', 'Cari ödeme işlendi', '₺1.800')
+                                ] %}
+                                {% for icon, title, value in activity %}
+                                <div class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4">
+                                    <span class="material-symbols-outlined rounded-xl bg-slate-50 p-2 text-primary-700">{{ icon }}</span>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-black">{{ title }}</p>
+                                        <p class="text-xs text-slate-500">Az önce</p>
+                                    </div>
+                                    <span class="text-sm font-black">{{ value }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="akis" class="bg-slate-50 py-20">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="max-w-3xl">
+                <p class="text-xs font-black uppercase tracking-widest text-primary-600">Kullanım Akışı</p>
+                <h2 class="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Kurcalamadan, hızlıca çalışmaya başla.</h2>
+            </div>
+            <div class="mt-10 grid gap-4 md:grid-cols-3">
+                {% set steps = [
+                    ('01', 'Firma hesabı aç', 'İşletmeye özel veri alanı oluşur.'),
+                    ('02', 'Ürün ve cari ekle', 'Stok ve müşteri/tedarikçi kayıtları hazır olur.'),
+                    ('03', 'Satışa başla', 'POS, cari ve kasa/banka hareketleri birlikte işler.')
+                ] %}
+                {% for no, title, desc in steps %}
+                <div class="landing-card rounded-3xl p-6">
+                    <div class="flex size-12 items-center justify-center rounded-2xl bg-primary-600 text-sm font-black text-white">{{ no }}</div>
+                    <h3 class="mt-5 text-lg font-black text-slate-950">{{ title }}</h3>
+                    <p class="mt-2 leading-7 text-slate-600">{{ desc }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section id="guven" class="bg-white py-20">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="landing-blue-card rounded-[2rem] p-8 lg:p-10">
+                <div class="grid gap-8 lg:grid-cols-12 lg:items-center">
+                    <div class="lg:col-span-7">
+                        <p class="text-xs font-black uppercase tracking-widest text-cyan-100">Güven ve Kontrol</p>
+                        <h2 class="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Canlı kullanım için güven veren temel yapı.</h2>
+                        <p class="mt-4 leading-8 text-blue-50">Firma verileri ayrı tutulur, kullanıcı yetkileri kontrol edilir, kritik işlemler işlem geçmişine düşer. Kullanıcı hem işini yapar hem de ne olduğunu görebilir.</p>
+                    </div>
+                    <div class="grid gap-3 lg:col-span-5">
+                        {% for icon, text in [('lock', 'Firma verileri ayrıdır'), ('admin_panel_settings', 'Yetki kontrolleri bulunur'), ('history', 'İşlem geçmişi izlenebilir')] %}
+                        <div class="flex items-center gap-3 rounded-2xl bg-white p-4 text-slate-950 shadow-sm">
+                            <span class="material-symbols-outlined text-primary-700">{{ icon }}</span>
+                            <span class="font-black">{{ text }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="sss" class="bg-slate-50 py-20">
+        <div class="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-12 lg:px-8">
+            <div class="lg:col-span-4">
+                <p class="text-xs font-black uppercase tracking-widest text-primary-600">Sık Sorulan Sorular</p>
+                <h2 class="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Karar vermeden önce net cevaplar.</h2>
+                <p class="mt-4 leading-8 text-slate-600">Ana sayfa artık daha canlı; ama söz verdiğimiz şeyler gerçek uygulama akışına dayanıyor.</p>
+            </div>
+            <div class="grid gap-4 lg:col-span-8">
+                {% set faqs = [
+                    ('Bulut POS ne demek', 'Satış, stok, cari ve kasa hareketlerini internet üzerinden çalışan tek panelden yönetmek demektir.'),
+                    ('Market veya hırdavatta kullanılır mı', 'Evet. Barkodlu satış, stok takibi, veresiye/cari ve günlük satış takibi bu senaryoya uygundur.'),
+                    ('Verilerim kaybolur mu', 'Firma verileri ayrı tutulur; yedekleme ve işlem geçmişi yaklaşımı canlı kullanım için temel önceliktir.'),
+                    ('Personel ve yetki takibi var mı', 'Personel kayıtları, izin/avans/prim akışları ve rol bazlı kullanım yapısı desteklenir.'),
+                    ('Ücretsiz deneyebilir miyim', 'Evet. Kayıt olup uygulamayı deneyebilir, uygun görürseniz canlı kullanım stratejisini netleştirebilirsiniz.')
+                ] %}
+                {% for question, answer in faqs %}
+                <details class="landing-card group rounded-3xl p-5">
+                    <summary class="flex cursor-pointer list-none items-center justify-between gap-4">
+                        <span class="text-base font-black text-slate-950">{{ question }}</span>
+                        <span class="material-symbols-outlined text-slate-400 transition group-open:rotate-180">expand_more</span>
+                    </summary>
+                    <p class="mt-3 leading-7 text-slate-600">{{ answer }}</p>
+                </details>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="bg-white py-16">
+        <div class="mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">İşletmeni daha düzenli yönetmeye başla.</h2>
+            <p class="mx-auto mt-4 max-w-2xl leading-8 text-slate-600">Ücretsiz dene, satış ve stok akışını gör, sonra gerçek kullanıma birlikte karar verelim.</p>
+            <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+                <a href="{{ url_for('kayit') }}" class="inline-flex min-h-12 items-center justify-center rounded-2xl bg-primary-600 px-7 py-3 font-black text-white shadow-xl shadow-primary-600/20 hover:bg-primary-700">Ücretsiz Dene</a>
+                <a href="{{ url_for('giris') }}" class="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-7 py-3 font-black text-slate-950 hover:bg-slate-100">Giriş Yap</a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="border-t border-slate-200 bg-slate-950 text-white">
+        <div class="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_auto] lg:px-8">
+            <div class="flex items-center gap-3">
+                <div class="flex size-10 items-center justify-center rounded-2xl bg-white text-primary-700">
+                    <span class="material-symbols-outlined text-xl">storefront</span>
+                </div>
+                <div>
+                    <p class="font-black">{{ site_name }}</p>
+                    <p class="text-sm text-slate-400">Küçük işletmeler için bulut tabanlı POS, stok ve cari yönetimi.</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-bold text-slate-300">
+                <a href="{{ url_for('privacy_page') }}" class="hover:text-white">Gizlilik Politikası</a>
+                <a href="{{ url_for('kvkk_page') }}" class="hover:text-white">KVKK</a>
+                <a href="{{ url_for('terms_page') }}" class="hover:text-white">Kullanım Şartları</a>
+            </div>
+        </div>
+    </footer>
+
+    <button type="button" id="landing-scroll-top" class="landing-scroll-top fixed bottom-5 right-5 z-50 flex size-12 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-2xl shadow-slate-950/30 ring-1 ring-white/10 hover:bg-primary-600" aria-label="Sayfanın en üstüne çık">
+        <span class="material-symbols-outlined">keyboard_arrow_up</span>
+    </button>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const scrollTopButton = document.getElementById('landing-scroll-top');
+    if (!scrollTopButton) return;
+    if (scrollTopButton.parentElement !== document.body) {
+        document.body.appendChild(scrollTopButton);
+    }
+    const scrollContainer = document.querySelector('.app-content') || document.scrollingElement || document.documentElement;
+
+    const currentScrollTop = () => {
+        if (scrollContainer === document.scrollingElement || scrollContainer === document.documentElement) {
+            return window.scrollY || document.documentElement.scrollTop || 0;
+        }
+        return scrollContainer.scrollTop || 0;
+    };
+
+    const toggleScrollTopButton = () => {
+        scrollTopButton.classList.toggle('is-visible', currentScrollTop() > 420);
+    };
+
+    scrollTopButton.addEventListener('click', () => {
+        if (scrollContainer === document.scrollingElement || scrollContainer === document.documentElement) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+            scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    });
+
+    toggleScrollTopButton();
+    window.addEventListener('scroll', toggleScrollTopButton, { passive: true });
+    if (scrollContainer && scrollContainer !== document.scrollingElement && scrollContainer !== document.documentElement) {
+        scrollContainer.addEventListener('scroll', toggleScrollTopButton, { passive: true });
+    }
+});
+</script>
+{% endblock %}

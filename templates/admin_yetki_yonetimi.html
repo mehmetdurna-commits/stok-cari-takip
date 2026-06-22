@@ -1,0 +1,417 @@
+{% extends '_base.html' %}
+
+{% block title %}Yetkilendirme Paneli - Perakende Yönetim Sistemi{% endblock %}
+
+{% block head %}
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #0440ae;
+        }
+        .toggle-checkbox:checked + .toggle-label::after {
+            transform: translateX(1.25rem);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="flex h-screen overflow-hidden">
+    <!-- Sidebar Navigation -->
+    <aside class="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0">
+        <div class="p-6 flex items-center gap-3">
+            <div class="bg-primary size-10 rounded-lg flex items-center justify-center text-white">
+                <span class="material-symbols-outlined">inventory_2</span>
+            </div>
+            <div>
+                <h1 class="text-sm font-bold leading-tight">Stok Takip</h1>
+                <p class="text-[10px] text-slate-500 uppercase tracking-widest">Yönetim Paneli</p>
+            </div>
+        </div>
+        <nav class="flex-1 px-3 space-y-1 mt-4">
+            <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" href="{{ url_for('dashboard') }}">
+                <span class="material-symbols-outlined">dashboard</span>
+                Ana Panel
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" href="{{ url_for('urunler') }}">
+                <span class="material-symbols-outlined">warehouse</span>
+                Ürünler (Stok)
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" href="{{ url_for('cariler') }}">
+                <span class="material-symbols-outlined">group</span>
+                Cariler
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" href="{{ url_for('pos') }}">
+                <span class="material-symbols-outlined">shopping_cart</span>
+                POS (Satış)
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" href="{{ url_for('gunluk_satislar') }}">
+                <span class="material-symbols-outlined">receipt_long</span>
+                Günlük Satışlar
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" href="{{ url_for('teklif_yonetimi') }}">
+                <span class="material-symbols-outlined">description</span>
+                Teklifler
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" href="{{ url_for('raporlar') }}">
+                <span class="material-symbols-outlined">bar_chart</span>
+                    Raporlar
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg active-nav bg-primary/10 text-primary border-r-4 border-primary" href="{{ url_for('settings') }}">
+                    <span class="material-symbols-outlined">settings</span>
+                    Ayarlar
+                </a>
+            </nav>
+            <div class="p-4 border-t border-slate-100 dark:border-slate-800">
+                <div class="flex items-center gap-3 p-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                    <div class="size-10 rounded-full bg-slate-200 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-slate-600">person</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-semibold truncate">{{ current_user.yetkili_adi or 'Kullanıcı' }}</p>
+                        <p class="text-[10px] text-slate-500">Yönetici</p>
+                    </div>
+                    <form method="POST" action="{{ url_for('cikis') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="material-symbols-outlined text-slate-400 text-lg hover:text-slate-600">logout</button>
+                    </form>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <!-- Top Bar -->
+            <header class="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 shrink-0">
+                <div class="flex items-center gap-4 w-1/3">
+                    <div class="relative w-full max-w-sm">
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
+                        <input class="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm focus:ring-2 focus:ring-primary/20" placeholder="Sistemde ara..." type="text"/>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                        <div class="text-right hidden sm:block">
+                            <p class="text-sm font-bold">{{ current_user.yetkili_adi or 'Kullanıcı' }}</p>
+                            <p class="text-xs text-slate-500">Yönetici</p>
+                        </div>
+                        <div class="size-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border border-primary/10">
+                            <span class="material-symbols-outlined text-primary">person</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <div class="flex-1 overflow-y-auto p-8 scroll-smooth">
+                <div class="max-w-7xl mx-auto">
+<div class="flex flex-col gap-6">
+<!-- Page Header -->
+<div class="flex flex-wrap justify-between items-end gap-4">
+<div class="flex flex-col gap-1">
+<h1 class="text-3xl font-black text-[#111318] tracking-tight">Yetkilendirme Paneli</h1>
+<p class="text-[#5f6f8c] text-base">Kullanıcı rollerini ve modül bazlı erişim izinlerini detaylı olarak yapılandırın.</p>
+</div>
+<button class="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-lg font-bold text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                            Yeni Rol Ekle
+                        </button>
+</div>
+<div class="flex flex-col lg:flex-row gap-6 items-start">
+<!-- Left Sidebar: Role Selection -->
+<aside class="w-full lg:w-72 flex flex-col gap-4 bg-white p-5 rounded-xl border border-primary/10 shadow-sm shrink-0">
+<div class="flex items-center justify-between mb-2">
+<h3 class="text-sm font-bold uppercase tracking-wider text-[#5f6f8c]">Rol Seçimi</h3>
+<span class="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full">4 Aktif</span>
+</div>
+<div class="flex flex-col gap-2">
+<button class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-primary/5 transition-all text-left bg-primary text-white shadow-md shadow-primary/20">
+<span class="material-symbols-outlined">shield_person</span>
+<span class="text-sm font-semibold">Admin</span>
+</button>
+<button class="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary text-white shadow-md shadow-primary/20 transition-all text-left hover:bg-primary/5">
+<span class="material-symbols-outlined text-[#5f6f8c]">badge</span>
+<span class="text-sm font-semibold">Mağaza Müdürü</span>
+</button>
+<button class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-primary/5 transition-all text-left">
+<span class="material-symbols-outlined text-[#5f6f8c]">point_of_sale</span>
+<span class="text-sm font-semibold">Kasiyer</span>
+</button>
+<button class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-primary/5 transition-all text-left">
+<span class="material-symbols-outlined text-[#5f6f8c]">inventory_2</span>
+<span class="text-sm font-semibold">Envanter Sorumlusu</span>
+</button>
+</div>
+<div class="mt-4 pt-4 border-t border-primary/5">
+<p class="text-xs text-[#5f6f8c] italic leading-relaxed">Seçili rolün izinlerini sağdaki panelden değiştirebilirsiniz.</p>
+</div>
+</aside>
+<!-- Main Content: Permissions & Users -->
+<div class="flex-1 flex flex-col gap-6 w-full">
+<!-- Permissions Table Card -->
+<div class="bg-white rounded-xl border border-primary/10 shadow-sm overflow-hidden">
+<div class="px-6 py-5 border-b border-primary/5 flex items-center justify-between bg-primary/[0.02]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">key</span>
+<h2 class="text-lg font-bold">Modül İzinleri: Mağaza Müdürü</h2>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 text-xs font-medium text-[#5f6f8c]">
+<span class="w-3 h-3 rounded-full bg-primary"></span> Aktif
+                                        </div>
+<div class="flex items-center gap-2 text-xs font-medium text-[#5f6f8c]">
+<span class="w-3 h-3 rounded-full bg-primary/20"></span> Pasif
+                                        </div>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full border-collapse">
+<thead>
+<tr class="text-left border-b border-primary/5 bg-primary/[0.01]">
+<th class="px-6 py-4 text-xs font-bold text-[#5f6f8c] uppercase tracking-wider w-1/4">Modül</th>
+<th class="px-4 py-4 text-xs font-bold text-[#5f6f8c] uppercase tracking-wider text-center">Görüntüle</th>
+<th class="px-4 py-4 text-xs font-bold text-[#5f6f8c] uppercase tracking-wider text-center">Oluştur</th>
+<th class="px-4 py-4 text-xs font-bold text-[#5f6f8c] uppercase tracking-wider text-center">Düzenle</th>
+<th class="px-4 py-4 text-xs font-bold text-[#5f6f8c] uppercase tracking-wider text-center">Sil</th>
+<th class="px-4 py-4 text-xs font-bold text-[#5f6f8c] uppercase tracking-wider text-center">Dışa Aktar</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-primary/5">
+<!-- Rows -->
+<tr class="hover:bg-primary/[0.01] transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary/60 text-[20px]">dashboard</span>
+<span class="text-sm font-semibold">Dashboard (Panel)</span>
+</div>
+</td>
+<td class="px-4 py-4 text-center">
+<div class="inline-flex items-center cursor-pointer">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+</div>
+</td>
+<td class="px-4 py-4 text-center"><div class="inline-flex items-center cursor-pointer"><input checked="" class="sr-only toggle-checkbox" type="checkbox"/><div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div></div></td>
+<td class="px-4 py-4 text-center"><div class="inline-flex items-center cursor-pointer"><input checked="" class="sr-only toggle-checkbox" type="checkbox"/><div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div></div></td>
+<td class="px-4 py-4 text-center"><div class="inline-flex items-center cursor-pointer"><input checked="" class="sr-only toggle-checkbox" type="checkbox"/><div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div></div></td>
+<td class="px-4 py-4 text-center">
+<div class="inline-flex items-center cursor-pointer">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+</div>
+</td>
+</tr>
+<!-- Products -->
+<tr class="hover:bg-primary/[0.01] transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary/60 text-[20px]">inventory</span>
+<span class="text-sm font-semibold">Ürünler</span>
+</div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+</tr>
+<!-- POS -->
+<tr class="hover:bg-primary/[0.01] transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary/60 text-[20px]">shopping_cart</span>
+<span class="text-sm font-semibold">POS (Satış)</span>
+</div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+</tr>
+<!-- Customers -->
+<tr class="hover:bg-primary/[0.01] transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary/60 text-[20px]">groups</span>
+<span class="text-sm font-semibold">Müşteriler</span>
+</div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+</tr>
+<!-- Reports -->
+<tr class="hover:bg-primary/[0.01] transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary/60 text-[20px]">monitoring</span>
+<span class="text-sm font-semibold">Raporlar</span>
+</div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+<td class="px-4 py-4 text-center"><div class="inline-flex items-center cursor-pointer"><input checked="" class="sr-only toggle-checkbox" type="checkbox"/><div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div></div></td>
+<td class="px-4 py-4 text-center"><div class="inline-flex items-center cursor-pointer"><input checked="" class="sr-only toggle-checkbox" type="checkbox"/><div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div></div></td>
+<td class="px-4 py-4 text-center"><div class="inline-flex items-center cursor-pointer"><input checked="" class="sr-only toggle-checkbox" type="checkbox"/><div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div></div></td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+</tr>
+<!-- Settings -->
+<tr class="hover:bg-primary/[0.01] transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary/60 text-[20px]">settings</span>
+<span class="text-sm font-semibold">Ayarlar</span>
+</div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="checked" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label relative w-10 h-5 bg-primary/20 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4"></div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Assigned Users Section -->
+<div class="bg-white rounded-xl border border-primary/10 shadow-sm overflow-hidden">
+<div class="px-6 py-5 border-b border-primary/5 flex items-center justify-between bg-primary/[0.02]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">person_check</span>
+<h2 class="text-lg font-bold">Mağaza Müdürü Rolündeki Kullanıcılar</h2>
+</div>
+<span class="bg-primary/10 text-primary text-xs font-bold px-3 py-1 rounded-full">3 Kullanıcı</span>
+</div>
+<div class="p-6">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+<!-- User 1 -->
+<div class="flex items-center gap-4 p-4 border border-primary/5 rounded-lg hover:border-primary/20 transition-all">
+<img class="size-12 rounded-full object-cover" data-alt="Mağaza Müdürü Ayşe Demir Avatarı" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMHOWELvd7kt7Cr9CO15zd-DcLx_i1XPI77PIFuSHNM1M4kXeZRM86ed49vJm_0hnVea7-gMDpgTn6r7XSZymdmbLbJxtlS41mPJO2UlvvxVcYpF66Mmn6JSfSjgRegW129mcL3L-umNZ-KsxBEKYvBXA5BpHNwLly-1MgjRW1ZzLLLifvENEtIHt2WV72hGMDffyBz1-DmA010RBZOrvq7jVyBSNs0Ww3H3QOcWt9BNPtBKGFyKo0osmWCfDjODNCSaH37VnLFHg"/>
+<div class="flex flex-col">
+<span class="text-sm font-bold">Ayşe Demir</span>
+<span class="text-xs text-[#5f6f8c]">ayse.demir@retail.com</span>
+</div>
+<button class="ml-auto text-primary hover:text-primary/70">
+<span class="material-symbols-outlined">edit_square</span>
+</button>
+</div>
+<!-- User 2 -->
+<div class="flex items-center gap-4 p-4 border border-primary/5 rounded-lg hover:border-primary/20 transition-all">
+<img class="size-12 rounded-full object-cover" data-alt="Mağaza Müdürü Mehmet Can Avatarı" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0mtjf4WcicREos-CgS5pplyXeEAwVKqlY1gZQBn4TUdjXsg-yLqK0CKoIggw4DE9uAlrdotUTx5S7WS-DBKn6AyMas4Sl8mqzzLpdXD5lDHzADKxFTIg_u2D12erjU9ieARL-Vs2lUqf2SH0QnDFHt3BIDHw7QKPeFa9rRHCBqGEEYim2g2Sa135uYi4_4NVTw2r5iipBgjLWegEPmHAwVEqIHxcJJ1nud8t06phg_1Qc0FgZUEQKMBQNmp0qYdoObH0LaIfOrII"/>
+<div class="flex flex-col">
+<span class="text-sm font-bold">Mehmet Can</span>
+<span class="text-xs text-[#5f6f8c]">mehmet.can@retail.com</span>
+</div>
+<button class="ml-auto text-primary hover:text-primary/70">
+<span class="material-symbols-outlined">edit_square</span>
+</button>
+</div>
+<!-- User 3 -->
+<div class="flex items-center gap-4 p-4 border border-primary/5 rounded-lg hover:border-primary/20 transition-all">
+<img class="size-12 rounded-full object-cover" data-alt="Mağaza Müdürü Selin Kaya Avatarı" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCNs7I6Ve1n5o-sBo2j31xdxeogEsogBcr7k3Q89FMs7w5ih3iksUkCdm5-ZY4G17i-3bCbFfCySvWeZZR-wPMoQHS1l69Jx5lHg56SEPBojeTzHUI2X9hezK4ZY9kz5tKHHBOdtt1wjl_vPfweNh2pmv9P5HBv8Ra69Jrumb-2RfqsDyD5-IbiVXQwVCs2F2bqEclPGU-c47QyVaE6Sax-EUd9dwAVpujt5gOoOgwD5NlKgAOHEAeJAtJ8wtEi-Px3PDfu6Zhvu-A"/>
+<div class="flex flex-col">
+<span class="text-sm font-bold">Selin Kaya</span>
+<span class="text-xs text-[#5f6f8c]">selin.kaya@retail.com</span>
+</div>
+<button class="ml-auto text-primary hover:text-primary/70">
+<span class="material-symbols-outlined">edit_square</span>
+</button>
+</div>
+</div>
+<button class="mt-6 w-full py-3 border-2 border-dashed border-primary/20 rounded-xl text-primary text-sm font-bold hover:bg-primary/5 transition-all">
+                                        + Yeni Kullanıcı Ata
+                                    </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Action Bar -->
+<div class="fixed bottom-0 left-0 right-0 bg-white border-t border-primary/10 px-10 py-4 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)] z-20">
+<div class="max-w-[1440px] mx-auto flex items-center justify-between">
+<p class="text-sm text-[#5f6f8c] hidden sm:block"><span class="font-bold text-primary">Admin</span> rolü için toplam <span class="font-bold">30</span> aktif izin tanımlandı.</p>
+<div class="flex items-center gap-4 w-full sm:w-auto">
+<button class="flex-1 sm:flex-none px-6 py-2.5 rounded-lg border border-primary/20 text-primary font-bold text-sm hover:bg-primary/5">
+                                    Vazgeç
+                                </button>
+<button class="flex-1 sm:flex-none px-8 py-2.5 rounded-lg bg-primary text-white font-bold text-sm shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform">
+                                    Değişiklikleri Kaydet
+                                </button>
+</div>
+</div>
+</div>
+<!-- Bottom Spacer for Fixed Footer -->
+<div class="h-24"></div>
+</div>
+</main>
+</div>
+</div>
+</div>
+{% endblock %}

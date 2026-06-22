@@ -1,0 +1,154 @@
+{% extends '_base.html' %}
+
+{% block title %}Departmanlar{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-4">
+    <span class="material-symbols-outlined text-primary-600 font-bold">domain</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Departmanlar</h1>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<div class="hidden sm:flex items-center gap-2">
+    <a href="{{ url_for('departman_ekle') }}" class="btn-primary">
+        <span class="material-symbols-outlined text-lg">add</span>
+        Departman Ekle
+    </a>
+    <a href="{{ url_for('personel_yonetimi') }}" class="btn-secondary">
+        <span class="material-symbols-outlined text-lg">people</span>
+        Personeller
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+    <!-- İstatistik Kartları -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="size-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400">
+                    <span class="material-symbols-outlined text-2xl">domain</span>
+                </div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Toplam Departman</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-3xl font-bold text-slate-900 dark:text-white">{{ departmanlar|length }}</h3>
+                <span class="text-slate-500 text-sm font-medium">Departman</span>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="size-12 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center text-green-600 dark:text-green-400">
+                    <span class="material-symbols-outlined text-2xl">groups</span>
+                </div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Toplam Personel</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-3xl font-bold text-slate-900 dark:text-white">{{ departmanlar|map(attribute='personeller')|map('length')|sum or 0 }}</h3>
+                <span class="text-slate-500 text-sm font-medium">Kişi</span>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="size-12 bg-amber-50 dark:bg-amber-900/20 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400">
+                    <span class="material-symbols-outlined text-2xl">trending_up</span>
+                </div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Ortalama Personel</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-3xl font-bold text-slate-900 dark:text-white">
+                    {% if departmanlar|length > 0 %}
+                    {{ "%.1f"|format((departmanlar|map(attribute='personeller')|map('length')|sum or 0) / departmanlar|length) }}
+                    {% else %}
+                    0
+                    {% endif %}
+                </h3>
+                <span class="text-slate-500 text-sm font-medium">Kişi/Departman</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Departman Listesi -->
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+        <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">Departman Listesi</h2>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Şirketinizdeki departmanları buradan yönetebilirsiniz.</p>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-slate-50 dark:bg-slate-800">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Departman Adı</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Personel Sayısı</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Açıklama</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                    {% for departman in departmanlar %}
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="size-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
+                                    {{ departman.ad[0]|upper if departman.ad else 'D' }}
+                                </div>
+                                <div>
+                                    <div class="font-medium text-slate-900 dark:text-white">{{ departman.ad }}</div>
+                                    <div class="text-xs text-slate-500 dark:text-slate-400">ID: {{ departman.id }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                                    {{ departman.personeller|length }} Personel
+                                </span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-slate-900 dark:text-white">
+                                {{ departman.aciklama or '-' }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-2">
+                                <a href="{{ url_for('departman_duzenle', id=departman.id) }}" 
+                                   class="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 font-medium">
+                                    <span class="material-symbols-outlined text-lg">edit</span>
+                                </a>
+                                <form method="POST" action="{{ url_for('departman_sil', id=departman.id) }}" 
+                                      data-confirm="Bu departmanı silmek istediğinizden emin misiniz" data-confirm-title="Departmanı sil" data-confirm-ok="Sil" 
+                                      class="inline">
+                                    <button type="submit" class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 font-medium">
+                                        <span class="material-symbols-outlined text-lg">delete</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                            <div class="flex flex-col items-center gap-4">
+                                <span class="material-symbols-outlined text-4xl text-slate-300">domain</span>
+                                <span class="text-lg font-medium">Henüz departman bulunmuyor</span>
+                                <a href="{{ url_for('departman_ekle') }}" 
+                                   class="mt-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors inline-flex items-center gap-2">
+                                    <span class="material-symbols-outlined">add</span>
+                                    İlk Departmanı Ekle
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

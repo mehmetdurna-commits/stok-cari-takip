@@ -1,0 +1,60 @@
+{% extends '_base.html' %}
+
+{% block title %}Uygulama Başlatıcı - StokCari{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-3">
+    <span class="material-symbols-outlined text-primary-600">apps</span>
+    <div>
+        <h1 class="text-xl font-bold text-slate-900 dark:text-white">Uygulama Başlatıcı</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400">Modüllere hızlı erişim</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+    <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+            <div>
+                <p class="text-sm font-bold uppercase tracking-widest text-primary-600">StokCari Workspace</p>
+                <h2 class="mt-2 text-3xl font-black text-slate-900 dark:text-white">Bugün hangi işle başlayalım</h2>
+                <p class="mt-2 text-slate-500 dark:text-slate-400 max-w-2xl">Stok, cari, POS, teklif ve rapor modüllerine tek merkezden geçin.</p>
+            </div>
+            <div class="flex gap-2">
+                <a href="{{ url_for('pos') }}" class="px-4 py-2.5 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined">point_of_sale</span>
+                    POS
+                </a>
+                <a href="{{ url_for('urun_ekle') }}" class="px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined">add_box</span>
+                    Ürün
+                </a>
+            </div>
+        </div>
+    </section>
+
+    {% set modules = [
+        ('dashboard', 'dashboard', 'Dashboard', 'İşletmenizin genel durumunu, satış trendlerini ve kritik aksiyonları görün.'),
+        ('urunler', 'inventory_2', 'Ürünler ve Stok', 'Ürün kartları, stok miktarları, kritik stoklar ve depo hareketleri.'),
+        ('cariler', 'group', 'Cariler', 'Müşteri ve tedarikçi bakiyelerini, tahsilat ve ödeme akışlarını yönetin.'),
+        ('pos', 'point_of_sale', 'Hızlı Satış', 'POS sepeti, ödeme alma ve stok düşme akışını başlatın.'),
+        ('teklif_yonetimi', 'description', 'Teklifler', 'Teklif hazırlama, düzenleme, yazdırma ve durum takibi.'),
+        ('gunluk_satislar', 'receipt_long', 'Günlük Satışlar', 'Günlük satış kayıtları ve iptal operasyonları.'),
+        ('iade', 'assignment_return', 'İade İşlemleri', 'Ürün veya para iadesi süreçlerini takip edin.'),
+        ('raporlar', 'bar_chart', 'Raporlar', 'Satış, stok ve finansal analiz ekranlarına ulaşın.')
+    ] %}
+
+    <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        {% for endpoint, icon, title, description in modules %}
+        <a href="{{ url_for(endpoint) }}" class="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 hover:border-primary-400 hover:shadow-sm transition-all">
+            <div class="size-11 rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-600 flex items-center justify-center group-hover:bg-primary-600 group-hover:text-white transition-colors">
+                <span class="material-symbols-outlined">{{ icon }}</span>
+            </div>
+            <h3 class="mt-4 font-black text-slate-900 dark:text-white">{{ title }}</h3>
+            <p class="mt-2 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{{ description }}</p>
+        </a>
+        {% endfor %}
+    </section>
+</div>
+{% endblock %}

@@ -1,0 +1,319 @@
+{% extends '_base.html' %}
+
+{% block title %}Ürün Listesi ve Stok Yönetimi - Stok ve Cari Takip{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-4">
+    <span class="material-symbols-outlined text-primary-600 font-bold">inventory_2</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Ürün Listesi</h1>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('urun_ekle') }}" class="btn-primary" onclick="handleNewProductClick(event, this)">
+    <span class="material-symbols-outlined">add</span>
+    Yeni Ürün
+</a>
+<a href="{{ url_for('stok_giris') }}" class="btn-secondary text-green-700 dark:text-green-300" title="Stok Girişi">
+    <span class="material-symbols-outlined">move_to_inbox</span>
+    Stok Girişi
+</a>
+<a href="{{ url_for('stok_cikis') }}" class="btn-secondary text-red-700 dark:text-red-300" title="Stok Çıkışı">
+    <span class="material-symbols-outlined">outbox</span>
+    Stok Çıkışı
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6 pb-20">
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h2 class="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Ürün Listesi</h2>
+            <p class="text-slate-500 dark:text-slate-400 font-medium mt-1">Envanterinizdeki tüm ürünleri görüntüleyin ve yönetin.</p>
+        </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="card p-5 border-l-4 border-l-primary-500">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Toplam Ürün</p>
+            <div class="flex items-baseline gap-2 mt-1">
+                <span class="text-2xl font-black text-slate-900 dark:text-white">{{ toplam_urun or 0 }}</span>
+                <span class="text-xs font-bold text-slate-500">Kalem</span>
+            </div>
+        </div>
+        <div class="card p-5 border-l-4 border-l-blue-500">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Toplam Stok</p>
+            <div class="flex items-baseline gap-2 mt-1">
+                <span class="text-2xl font-black text-slate-900 dark:text-white">{{ (toplam_stok or 0)|int }}</span>
+                <span class="text-xs font-bold text-slate-500">Birim</span>
+            </div>
+        </div>
+        <div class="card p-5 border-l-4 border-l-red-500">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kritik Stok</p>
+            <div class="flex items-baseline gap-2 mt-1">
+                <span class="text-2xl font-black text-red-600">{{ kritik_stok or 0 }}</span>
+                <span class="text-xs font-bold text-red-500/70">Ürün</span>
+            </div>
+        </div>
+        <div class="card p-5 border-l-4 border-l-green-500">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Toplam Değer</p>
+            <div class="flex items-baseline gap-1 mt-1">
+                <span class="text-sm font-bold text-slate-400">₺</span>
+                <span class="text-2xl font-black text-slate-900 dark:text-white">{{ (toplam_deger or 0)|tr_number }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Table Card -->
+    <div class="card overflow-hidden">
+        <!-- Table Toolbar -->
+        <form method="GET" id="productFilters" class="app-filter-bar">
+            <div class="app-filter-search">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+                <input id="productSearchInput" name="search" type="search" value="{{ search_query or '' }}" placeholder="Urun, barkod veya kategori ara..." class="form-input pl-9 text-xs py-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+            </div>
+            <div class="app-filter-controls">
+                <select id="productCategoryFilter" name="category" class="form-input text-xs py-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 w-full sm:w-40">
+                    <option value="all" {% if selected_category == 'all' %}selected{% endif %}>Tum Kategoriler</option>
+                    {% for kategori in kategoriler or [] %}
+                    <option value="{{ kategori }}" {% if selected_category == kategori %}selected{% endif %}>{{ kategori }}</option>
+                    {% endfor %}
+                </select>
+                <select id="productStockFilter" name="stock_status" class="form-input text-xs py-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 w-full sm:w-40">
+                    <option value="all" {% if selected_stock_status == 'all' %}selected{% endif %}>Tum Stoklar</option>
+                    <option value="available" {% if selected_stock_status == 'available' %}selected{% endif %}>Satilabilir</option>
+                    <option value="critical" {% if selected_stock_status == 'critical' %}selected{% endif %}>Kritik Stok</option>
+                    <option value="out" {% if selected_stock_status == 'out' %}selected{% endif %}>Stok Yok</option>
+                </select>
+                <button type="submit" class="btn-secondary text-xs py-2">
+                    <span class="material-symbols-outlined text-sm">filter_alt</span>
+                    Uygula
+                </button>
+            </div>
+        </form>
+
+        {% if urunler %}
+        <div class="md:hidden p-4 space-y-3">
+            {% for urun in urunler %}
+            {% set stock_status = 'out' if (urun.stok_miktari or 0) <= 0 else ('critical' if (urun.stok_miktari or 0) <= (urun.kritik_stok or 0) else 'available') %}
+            <article class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <h3 class="font-black text-slate-900 dark:text-white truncate">{{ urun.urun_adi }}</h3>
+                        <p class="mt-1 text-xs text-slate-500">{{ urun.kategori or 'Genel' }} · {{ urun.barkod or 'Barkod yok' }}</p>
+                    </div>
+                    <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-bold {{ 'bg-red-100 text-red-700' if stock_status in ['out','critical'] else 'bg-emerald-100 text-emerald-700' }}">
+                        {{ urun.stok_miktari|int }} stok
+                    </span>
+                </div>
+                <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-3">
+                        <p class="text-[11px] font-bold uppercase text-slate-400">Alış</p>
+                        <p class="mt-1 font-bold text-slate-700 dark:text-slate-200">₺{{ (urun.alis_fiyati or 0)|tr_number }}</p>
+                    </div>
+                    <div class="rounded-lg bg-primary-50 dark:bg-primary-900/20 p-3">
+                        <p class="text-[11px] font-bold uppercase text-primary-500">Satış</p>
+                        <p class="mt-1 font-black text-primary-700 dark:text-primary-300">₺{{ (urun.satis_fiyati or 0)|tr_number }}</p>
+                    </div>
+                </div>
+                <div class="mt-4 grid grid-cols-3 gap-2">
+                    <a href="{{ url_for('urun_detay', id=urun.id) }}" class="rounded-lg border border-slate-200 dark:border-slate-700 py-2 text-center text-xs font-bold text-slate-600 dark:text-slate-300">Detay</a>
+                    <a href="{{ url_for('urun_duzenle', id=urun.id) }}" class="rounded-lg border border-blue-200 bg-blue-50 py-2 text-center text-xs font-bold text-blue-700">Düzenle</a>
+                    <form method="POST" action="{{ url_for('urun_sil', id=urun.id) }}" data-confirm="Bu ürünü silmek istediğinize emin misiniz" data-confirm-title="Ürünü sil" data-confirm-ok="Sil">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="w-full rounded-lg border border-rose-200 bg-rose-50 py-2 text-xs font-bold text-rose-700">Sil</button>
+                    </form>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <p class="hidden md:block px-4 pt-3 text-xs text-slate-500">Tüm sütunları görmek için tabloyu yana kaydırın.</p>
+        <div class="hidden md:block overflow-x-auto" id="urunler-table-container">
+            {% if urunler %}
+            <table class="w-full min-w-[860px]">
+                <thead>
+                    <tr class="border-b border-slate-200 dark:border-slate-700">
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Ürün Bilgisi</th>
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Kategori</th>
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Barkod</th>
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300 text-center">Stok</th>
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300 text-right">Alış Fiyatı</th>
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300 text-right">Satış Fiyatı</th>
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300 text-center">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                    {% for urun in urunler %}
+                    <tr class="product-row hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                        data-name="{{ urun.urun_adi|lower }}"
+                        data-barcode="{{ (urun.barkod or '')|lower }}"
+                        data-category="{{ urun.kategori or '' }}"
+                        data-stock-status="{% if (urun.stok_miktari or 0) <= 0 %}out{% elif (urun.stok_miktari or 0) <= (urun.kritik_stok or 0) %}critical{% else %}available{% endif %}">
+                        <td class="py-3 px-4">
+                            <div class="flex items-center gap-3">
+                                <div class="size-10 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center shrink-0">
+                                    <span class="material-symbols-outlined text-slate-400 text-sm">inventory_2</span>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-slate-800 dark:text-slate-200 text-sm">{{ urun.urun_adi }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs rounded-full">{{ urun.kategori or 'Genel' }}</span>
+                        </td>
+                        <td class="py-3 px-4 text-sm text-slate-500">{{ urun.barkod or '-' }}</td>
+                        <td class="py-3 px-4 text-center">
+                            {% if urun.stok_miktari <= urun.kritik_stok %}
+                                <span class="px-2 py-1 bg-red-100 text-red-600 text-xs font-bold rounded-full">{{ urun.stok_miktari|int }}</span>
+                            {% elif urun.stok_miktari <= 5 %}
+                                <span class="px-2 py-1 bg-orange-100 text-orange-600 text-xs font-bold rounded-full">{{ urun.stok_miktari|int }}</span>
+                            {% else %}
+                                <span class="px-2 py-1 bg-green-100 text-green-600 text-xs font-medium rounded-full">{{ urun.stok_miktari|int }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4 text-right">
+                            <span class="font-medium text-slate-600 dark:text-slate-400">₺{{ (urun.alis_fiyati or 0)|tr_number }}</span>
+                        </td>
+                        <td class="py-3 px-4 text-right">
+                            <span class="font-bold text-primary-600">₺{{ (urun.satis_fiyati or 0)|tr_number }}</span>
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <div class="flex items-center justify-center gap-1">
+                                <a href="{{ url_for('urun_detay', id=urun.id) }}" aria-label="{{ urun.urun_adi }} detayını görüntüle" class="p-2 text-slate-400 hover:text-primary-600 transition-colors" title="Detay">
+                                    <span class="material-symbols-outlined text-lg">visibility</span>
+                                </a>
+                                <a href="{{ url_for('urun_duzenle', id=urun.id) }}" aria-label="{{ urun.urun_adi }} ürününü düzenle" class="p-2 text-slate-400 hover:text-blue-600 transition-colors" title="Düzenle">
+                                    <span class="material-symbols-outlined text-lg">edit</span>
+                                </a>
+                                <form method="POST" action="{{ url_for('urun_sil', id=urun.id) }}" data-confirm="Bu ürünü silmek istediğinize emin misiniz" data-confirm-title="Ürünü sil" data-confirm-ok="Sil">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" aria-label="{{ urun.urun_adi }} ürününü sil" class="p-2 text-slate-400 hover:text-red-600 transition-colors" title="Sil">
+                                        <span class="material-symbols-outlined text-lg">delete</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                        </tr>
+                        {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="app-empty-state">
+                <span class="material-symbols-outlined app-empty-icon">inventory_2</span>
+                <h3 class="app-empty-title">İlk ürününü ekleyerek satışa hazır hale gel</h3>
+                <p class="app-empty-description">Stok takibi ve POS satışı ürün kartlarıyla başlar. Barkod, fiyat ve kritik stok bilgilerini gir; sonra hızlı satış ekranından işlem yapabilirsin.</p>
+                <div class="app-empty-steps">
+                    <span class="app-empty-step"><span class="material-symbols-outlined text-sm">looks_one</span>Ürün ekle</span>
+                    <span class="app-empty-step"><span class="material-symbols-outlined text-sm">looks_two</span>Stok miktarını gir</span>
+                    <span class="app-empty-step"><span class="material-symbols-outlined text-sm">looks_3</span>POS'tan satış yap</span>
+                </div>
+                <div class="app-empty-actions">
+                    <a href="{{ url_for('urun_ekle') }}" class="btn-primary">
+                        <span class="material-symbols-outlined">add</span>
+                        İlk Ürünü Ekle
+                    </a>
+                    <a href="{{ url_for('stok_giris') }}" class="btn-secondary">
+                        <span class="material-symbols-outlined">move_to_inbox</span>
+                        Stok Girişi Yap
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% include '_pagination.html' %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function handleNewProductClick(event, button) {
+        // Prevent default navigation
+        event.preventDefault();
+        
+        // Show loading state
+        setButtonLoading(button, true);
+        
+        // Simulate loading and then navigate
+        setTimeout(() => {
+            window.location.href = button.href;
+        }, 500);
+    }
+
+    // Initialize skeleton loading if no products
+    document.addEventListener('DOMContentLoaded', () => {
+        const container = document.getElementById('urunler-table-container');
+        if (!container.querySelector('table') && !container.querySelector('.text-center')) {
+            // Show skeleton loading initially
+            showSkeletonLoading(container, 'table', 5);
+            
+            // Simulate data loading
+            setTimeout(() => {
+                container.innerHTML = `
+                    <div class="text-center py-12">
+                        <div class="loading-spinner mx-auto mb-4"></div>
+                        <p class="text-slate-600 dark:text-slate-400">Ürünler yükleniyor...</p>
+                    </div>
+                `;
+            }, 1000);
+        }
+
+        // Search functionality with loading state
+        const searchInput = document.querySelector('input[placeholder="Tabloda ara..."]');
+        if (searchInput) {
+            let searchTimeout;
+            
+            searchInput.addEventListener('input', (e) => {
+                const value = e.target.value.trim();
+                
+                // Clear previous timeout
+                clearTimeout(searchTimeout);
+                
+                if (value.length > 0) {
+                    // Show loading state
+                    if (container && !container.querySelector('.skeleton')) {
+                        showSkeletonLoading(container, 'table', 3);
+                    }
+                    
+                    // Debounce search request
+                    searchTimeout = setTimeout(() => {
+                        // Trigger actual search via page reload with search parameter
+                        const url = new URL(window.location);
+                        url.searchParams.set('search', value);
+                        window.location.href = url.toString();
+                    }, 500);
+                } else if (value.length === 0) {
+                    // Clear search - reload page without search parameter
+                    const url = new URL(window.location);
+                    url.searchParams.delete('search');
+                    window.location.href = url.toString();
+                }
+            });
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('#productFilters option:not([value])').forEach(option => option.remove());
+
+        const form = document.getElementById('productFilters');
+        const searchInput = document.getElementById('productSearchInput');
+        const categoryFilter = document.getElementById('productCategoryFilter');
+        const stockFilter = document.getElementById('productStockFilter');
+        let submitTimer;
+
+        function submitFiltersSoon() {
+            clearTimeout(submitTimer);
+            submitTimer = setTimeout(() => form.requestSubmit(), 350);
+        }
+
+        searchInput.addEventListener('input', submitFiltersSoon);
+        categoryFilter.addEventListener('change', () => form.requestSubmit());
+        stockFilter.addEventListener('change', () => form.requestSubmit());
+    });
+</script>
+{% endblock %}

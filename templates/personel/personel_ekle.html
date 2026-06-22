@@ -1,0 +1,368 @@
+{% extends '_base.html' %}
+
+{% block title %}Personel Ekle{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-4">
+    <span class="material-symbols-outlined text-primary-600 font-bold">person_add</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Personel Ekle</h1>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<div class="hidden sm:flex items-center gap-2">
+    {% if current_user.is_platform_admin %}
+    <button type="button" onclick="doldurDemoVeriler()" 
+            class="btn-secondary text-amber-700 dark:text-amber-300">
+        <span class="material-symbols-outlined text-lg">auto_awesome</span>
+        Demo Veri Doldur
+    </button>
+    {% endif %}
+    <a href="{{ url_for('departmanlar') }}" class="btn-secondary">
+        <span class="material-symbols-outlined text-lg">domain</span>
+        Departmanlar
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <section class="rounded-2xl border border-primary-100 bg-primary-50/70 p-5 dark:border-primary-900/40 dark:bg-primary-900/10">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+                <p class="text-xs font-black uppercase tracking-widest text-primary-600">Personel kayıt akışı</p>
+                <h2 class="mt-1 text-2xl font-black text-slate-900 dark:text-white">Önce zorunlu bilgileri, sonra ek detayları doldurun</h2>
+                <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Zorunlu alanlar yıldızla işaretlidir. Banka, resmi bilgiler ve fotoğraf daha sonra da güncellenebilir.</p>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-xs font-bold sm:grid-cols-4 md:w-auto">
+                <a href="#kisisel-bilgiler" class="rounded-lg bg-white px-3 py-2 text-center text-primary-700 shadow-sm dark:bg-slate-900">1. Kişisel</a>
+                <a href="#is-bilgileri" class="rounded-lg bg-white px-3 py-2 text-center text-primary-700 shadow-sm dark:bg-slate-900">2. İş</a>
+                <a href="#acil-durum" class="rounded-lg bg-white px-3 py-2 text-center text-primary-700 shadow-sm dark:bg-slate-900">3. İletişim</a>
+                <a href="#resmi-bilgiler" class="rounded-lg bg-white px-3 py-2 text-center text-primary-700 shadow-sm dark:bg-slate-900">4. Ek</a>
+            </div>
+        </div>
+    </section>
+
+    <div class="flex sm:hidden gap-2">
+        {% if current_user.is_platform_admin %}
+        <button type="button" onclick="doldurDemoVeriler()" class="flex-1 rounded-lg bg-amber-600 px-3 py-2 text-sm font-bold text-white">Demo Doldur</button>
+        {% endif %}
+        <a href="{{ url_for('departmanlar') }}" class="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-center text-sm font-bold text-slate-700 dark:border-slate-700 dark:text-slate-200">Departmanlar</a>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data" class="space-y-8">
+        <!-- Kişisel Bilgiler -->
+        <div id="kisisel-bilgiler" class="scroll-mt-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">person</span>
+                    Kişisel Bilgiler
+                </h2>
+                <span class="text-xs font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/20 px-3 py-1 rounded-full">Zorunlu ana bölüm</span>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Sicil No *</label>
+                    <input type="text" name="sicil_no" required 
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white"
+                           placeholder="Örn: 2024001">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Ad *</label>
+                    <input type="text" name="ad" required 
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Soyad *</label>
+                    <input type="text" name="soyad" required 
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">TC Kimlik No *</label>
+                    <input type="text" name="tc_kimlik" required maxlength="11"
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white"
+                           placeholder="11 haneli TC kimlik numarası">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Doğum Tarihi *</label>
+                    <input type="date" name="dogum_tarihi" required 
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Cinsiyet *</label>
+                    <select name="cinsiyet" required 
+                            class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                        <option value="">Seçiniz</option>
+                        <option value="Erkek">Erkek</option>
+                        <option value="Kadın">Kadın</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Medeni Hal</label>
+                    <select name="medeni_hal" 
+                            class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                        <option value="">Seçiniz</option>
+                        <option value="Bekar">Bekar</option>
+                        <option value="Evli">Evli</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Telefon</label>
+                    <input type="tel" name="telefon" 
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white"
+                           placeholder="Örn: 0555 555 55 55">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">E-posta</label>
+                    <input type="email" name="email" 
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white"
+                           placeholder="ornek@firma.com">
+                </div>
+
+                <div class="lg:col-span-3">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Adres</label>
+                    <textarea name="adres" rows="3" 
+                              class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white"
+                              placeholder="Tam adres bilgisi"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- İş Bilgileri -->
+        <div id="is-bilgileri" class="scroll-mt-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">work</span>
+                    İş Bilgileri
+                </h2>
+                <span class="text-xs font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/20 px-3 py-1 rounded-full">Kadro ve maaş</span>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">İşe Giriş Tarihi *</label>
+                    <input type="date" name="ise_giris_tarihi" required 
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">İşe Çıkış Tarihi</label>
+                    <input type="date" name="ise_cikis_tarihi" 
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Çalışma Durumu *</label>
+                    <select name="calisma_durumu" required 
+                            class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                        <option value="Aktif">Aktif</option>
+                        <option value="Pasif">Pasif</option>
+                        <option value="İzinli">İzinli</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Departman *</label>
+                    <select name="departman_id" required 
+                            class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                        <option value="">Departman Seçiniz</option>
+                        {% for departman in departmanlar %}
+                        <option value="{{ departman.id }}">{{ departman.ad }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Pozisyon *</label>
+                    <input type="text" name="pozisyon" required 
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white"
+                           placeholder="Örn: Yazılım Uzmanı">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Aylık Maaş *</label>
+                    <input type="number" name="maas" required step="0.01" min="0"
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white"
+                           placeholder="0.00">
+                </div>
+            </div>
+        </div>
+
+        <!-- İletişim ve Acil Durum -->
+        <div id="acil-durum" class="scroll-mt-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary-600">contact_phone</span>
+                İletişim ve Acil Durum
+            </h2>
+            <p class="mb-6 text-sm text-slate-500 dark:text-slate-400">Bu alanlar acil durumda hızlı erişim sağlar; eksikse kayıt sonrası tamamlanabilir.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Ehliyet</label>
+                    <select name="ehliyet" 
+                            class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                        <option value="">Seçiniz</option>
+                        <option value="Yok">Yok</option>
+                        <option value="B">B</option>
+                        <option value="A">A</option>
+                        <option value="B2">B2</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                        <option value="E">E</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Ehliyet No</label>
+                    <input type="text" name="ehliyet_no" 
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Kan Grubu</label>
+                    <select name="kan_grubu" 
+                            class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                        <option value="">Seçiniz</option>
+                        <option value="A Rh+">A Rh+</option>
+                        <option value="A Rh-">A Rh-</option>
+                        <option value="B Rh+">B Rh+</option>
+                        <option value="B Rh-">B Rh-</option>
+                        <option value="0 Rh+">0 Rh+</option>
+                        <option value="0 Rh-">0 Rh-</option>
+                        <option value="AB Rh+">AB Rh+</option>
+                        <option value="AB Rh-">AB Rh-</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Acil Durum Kişisi</label>
+                    <input type="text" name="acil_durum_kisi" 
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white"
+                           placeholder="Yakınınızın adı soyadı">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Acil Durum Telefonu</label>
+                    <input type="tel" name="acil_durum_telefon" 
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white"
+                           placeholder="Acil durum telefon numarası">
+                </div>
+            </div>
+        </div>
+
+        <!-- Banka ve Resmi Bilgiler -->
+        <div id="resmi-bilgiler" class="scroll-mt-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary-600">account_balance</span>
+                Banka ve Resmi Bilgiler
+            </h2>
+            <p class="mb-6 text-sm text-slate-500 dark:text-slate-400">Bordro ve ödeme süreçleri için kullanılır; doğruluğunu kayıt öncesi kontrol edin.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">SGK No</label>
+                    <input type="text" name="sgk_no" 
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Vergi No</label>
+                    <input type="text" name="vergi_no" 
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">IBAN</label>
+                    <input type="text" name="iban" 
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white"
+                           placeholder="TRXX XXXX XXXX XXXX XXXX XXXX XX">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Banka Adı</label>
+                    <input type="text" name="banka_adi" 
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white"
+                           placeholder="Banka adı">
+                </div>
+            </div>
+        </div>
+
+        <!-- Profil Fotoğrafı -->
+        <div id="profil-fotografi" class="scroll-mt-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary-600">photo_camera</span>
+                Profil Fotoğrafı
+            </h2>
+            
+            <div class="flex items-center gap-6">
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Profil Fotoğrafı Yükle</label>
+                    <input type="file" name="profil_foto" accept="image/*"
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white file:mr-4 file:py-2 file:file:mr-4 file:py-2">
+                    <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">JPG, PNG formatında. Maksimum dosya boyutu: 5MB.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Butonlar -->
+        <div class="app-form-actions">
+            <a href="{{ url_for('personel_yonetimi') }}" class="btn-secondary">
+                İptal
+            </a>
+            <button type="submit" class="btn-primary">
+                Personeli Kaydet
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+function doldurDemoVeriler() {
+    // Kişisel Bilgiler
+    document.querySelector('input[name="sicil_no"]').value = 'DEMO' + Math.floor(Math.random() * 10000);
+    document.querySelector('input[name="ad"]').value = 'Demo';
+    document.querySelector('input[name="soyad"]').value = 'Personel';
+    document.querySelector('input[name="tc_kimlik"]').value = '12345678901';
+    document.querySelector('input[name="dogum_tarihi"]').value = '1990-01-01';
+    document.querySelector('select[name="cinsiyet"]').value = 'Erkek';
+    document.querySelector('select[name="medeni_hal"]').value = 'Evli';
+    document.querySelector('input[name="telefon"]').value = '0555 555 55 55';
+    document.querySelector('input[name="email"]').value = 'demo.personel@firma.com';
+    document.querySelector('textarea[name="adres"]').value = 'Demo Mah. Demo Sok. No:1 Demo İlçe/İstanbul';
+    document.querySelector('select[name="ehliyet"]').value = 'B';
+    document.querySelector('input[name="ehliyet_no"]').value = '123456789';
+    document.querySelector('select[name="kan_grubu"]').value = 'A Rh+';
+    document.querySelector('input[name="acil_durum_kisi"]').value = 'Demo Yakını';
+    document.querySelector('input[name="acil_durum_telefon"]').value = '0555 444 44 44';
+    
+    // İş Bilgiler
+    document.querySelector('input[name="ise_giris_tarihi"]').value = '2023-01-01';
+    document.querySelector('select[name="calisma_durumu"]').value = 'Aktif';
+    {% if departmanlar %}
+    document.querySelector('select[name="departman_id"]').value = '{{ departmanlar[0].id if departmanlar else "" }}';
+    {% endif %}
+    document.querySelector('input[name="pozisyon"]').value = 'Demo Personel';
+    document.querySelector('input[name="maas"]').value = '15000';
+    
+    // İletişim ve Acil Durum (zaten yukarıda dolduruldu)
+    
+    // Banka ve Resmi Bilgiler
+    document.querySelector('input[name="sgk_no"]').value = '1234567890';
+    document.querySelector('input[name="vergi_no"]').value = '1234567890';
+    document.querySelector('input[name="iban"]').value = 'TR12 3456 7890 1234 5678 9012 34';
+    document.querySelector('input[name="banka_adi"]').value = 'Demo Bankası';
+    
+    // Bildirim göster
+    showMessage('Demo veriler başarıyla dolduruldu! Şimdi kaydedebilirsiniz.', 'success');
+}
+</script>
+{% endblock %}

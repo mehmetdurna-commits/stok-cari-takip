@@ -1,0 +1,347 @@
+{% extends '_base.html' %}
+{% block title %}Yeni Teklif - Stok ve Cari Takip{% endblock %}
+{% set active_page = 'teklif_yonetimi' %}
+{% block top_bar %}
+<div class="flex items-center gap-4">
+    <span class="material-symbols-outlined text-primary-600 font-bold">add_note</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Yeni Teklif</h1>
+</div>
+{% endblock %}
+{% block header_actions %}
+<div class="flex items-center gap-4">
+    <a href="{{ url_for('teklif_yonetimi') }}" class="p-2 text-slate-400 hover:text-primary transition-colors">
+        <span class="material-symbols-outlined">arrow_back</span>
+    </a>
+</div>
+{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto">
+        
+    <!-- Form Info -->
+    <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-blue-600">info</span>
+            <span class="text-sm text-blue-800 dark:text-blue-200">
+                {% if duzenle_modu %}
+                    Teklif <strong>{{ teklif.teklif_no }}</strong> düzenleniyor
+                {% else %}
+                    Yeni teklif oluşturuluyor - Lütfen müşteri ve ürün bilgilerini girin
+                {% endif %}
+            </span>
+        </div>
+    </div>
+    
+    <form id="teklifForm" method="POST" action="{% if duzenle_modu %}{{ url_for('teklif_duzenle', id=teklif.id) }}{% else %}{{ url_for('teklif_ekle') }}{% endif %}" class="space-y-6">
+        <!-- Müşteri Seçimi -->
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <h3 class="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4">Müşteri Bilgileri</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Müşteri *</label>
+                    <select name="cari_id" required class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary/20">
+                        <option value="">Müşteri seçin</option>
+                        {% for cari in cariler %}
+                        <option value="{{ cari.id }}" {% if duzenle_modu and teklif.cari_id == cari.id %}selected{% endif %}>{{ cari.unvan }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Teklif No</label>
+                    <input type="text" name="teklif_no" value="{% if duzenle_modu %}{{ teklif.teklif_no }}{% else %}{{ yeni_teklif_no }}{% endif %}" readonly class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-500"/>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Tarih</label>
+                    <input type="date" name="tarih" value="{% if duzenle_modu and teklif.tarih %}{{ teklif.tarih.strftime('%Y-%m-%d') }}{% else %}{{ bugun }}{% endif %}" required class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary/20"/>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Geçerlilik Tarihi</label>
+                    <input type="date" name="gecerlilik_tarihi" value="{% if duzenle_modu and teklif.gecerlilik_tarihi %}{{ teklif.gecerlilik_tarihi.strftime('%Y-%m-%d') }}{% endif %}" required class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary/20"/>
+                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ürün Kalemleri -->
+                        <div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-bold text-slate-800 dark:text-slate-200">Teklif Kalemleri</h3>
+                                <button type="button" onclick="addKalem()" class="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-sm hover:bg-primary/20 transition-colors">
+                                    <span class="material-symbols-outlined text-sm">add</span>
+                                    Kalem Ekle
+                                </button>
+                            </div>
+                            
+                            <div id="kalemler-container" class="space-y-3">
+                                {% if duzenle_modu and teklif.kalemler %}
+                                    {% for kalem in teklif.kalemler %}
+                                    <div class="kalem-row grid grid-cols-12 gap-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                        <div class="col-span-4">
+                                            <select name="urunler[]" required onchange="updateUrun(this)" class="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded text-sm">
+                                                <option value="">Ürün seçin</option>
+                                                {% for urun in urunler %}
+                                                <option value="{{ urun.id }}" data-fiyat="{{ urun.satis_fiyati }}" data-birim="{{ urun.birim }}" {% if kalem.urun_id == urun.id %}selected{% endif %}>{{ urun.urun_adi }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-span-2">
+                                            <input type="number" name="miktarlar[]" value="{{ kalem.miktar }}" min="1" step="0.01" required onchange="calculateRow(this)" class="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded text-sm text-center"/>
+                                        </div>
+                                        <div class="col-span-2">
+                                            <input type="text" name="birimler[]" value="{{ kalem.birim }}" readonly class="w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-sm text-center text-slate-500"/>
+                                        </div>
+                                        <div class="col-span-3">
+                                            <input type="number" name="fiyatlar[]" value="{{ kalem.birim_fiyat }}" step="0.01" required onchange="calculateRow(this)" class="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded text-sm text-right"/>
+                                        </div>
+                                        <div class="col-span-1 flex items-center justify-center">
+                                            <button type="button" onclick="removeKalem(this)" class="text-slate-400 hover:text-red-500 transition-colors">
+                                                <span class="material-symbols-outlined">delete</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <!-- İlk kalem -->
+                                    <div class="kalem-row grid grid-cols-12 gap-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                        <div class="col-span-4">
+                                            <select name="urunler[]" required onchange="updateUrun(this)" class="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded text-sm">
+                                                <option value="">Ürün seçin</option>
+                                                {% for urun in urunler %}
+                                                <option value="{{ urun.id }}" data-fiyat="{{ urun.satis_fiyati }}" data-birim="{{ urun.birim }}">{{ urun.urun_adi }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-span-2">
+                                            <input type="number" name="miktarlar[]" value="1" min="1" step="0.01" required onchange="calculateRow(this)" class="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded text-sm text-center"/>
+                                        </div>
+                                        <div class="col-span-2">
+                                            <input type="text" name="birimler[]" value="Adet" readonly class="w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-sm text-center text-slate-500"/>
+                                        </div>
+                                        <div class="col-span-3">
+                                            <input type="number" name="fiyatlar[]" value="0" step="0.01" required onchange="calculateRow(this)" class="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded text-sm text-right"/>
+                                        </div>
+                                        <div class="col-span-1 flex items-center justify-center">
+                                            <button type="button" onclick="removeKalem(this)" class="text-slate-400 hover:text-red-500 transition-colors">
+                                                <span class="material-symbols-outlined">delete</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Toplamlar -->
+                            <div class="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+                                <div class="flex justify-end space-y-2">
+                                    <div class="w-64 space-y-2">
+                                        <div class="flex justify-between text-sm">
+                                            <span class="text-slate-500">Ara Toplam</span>
+                                            <span id="ara-toplam" class="font-medium">₺0.00</span>
+                                        </div>
+                                        <div class="flex justify-between text-sm">
+                                            <span class="text-slate-500">KDV (%18)</span>
+                                            <span id="kdv-tutar" class="font-medium">₺0.00</span>
+                                        </div>
+                                        <div class="flex justify-between text-lg font-bold pt-2 border-t border-slate-200 dark:border-slate-600">
+                                            <span>Genel Toplam</span>
+                                            <span id="genel-toplam">₺0.00</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notlar -->
+                        <div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <h3 class="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4">Notlar ve Şartlar</h3>
+                            <textarea name="notlar" rows="4" class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary/20" placeholder="Teklif notları, ödeme şartları vb...">{% if duzenle_modu %}{{ teklif.notlar or '' }}{% endif %}</textarea>
+                        </div>
+                        
+                        <!-- Footer Action Bar -->
+                        <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 py-4 shadow-lg z-10">
+                            <div class="max-w-5xl mx-auto flex items-center justify-between">
+                                <div class="text-sm text-slate-500">
+                                    {% if duzenle_modu %}
+                                        <span class="material-symbols-outlined text-sm align-middle">edit</span>
+                                        Teklif düzenleniyor: <span class="font-medium text-slate-700 dark:text-slate-300">{{ teklif.teklif_no }}</span>
+                                    {% else %}
+                                        <span class="material-symbols-outlined text-sm align-middle">add_note</span>
+                                        Yeni teklif oluşturuluyor
+                                    {% endif %}
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <a href="{{ url_for('teklif_yonetimi') }}" class="flex items-center gap-2 px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                                        <span class="material-symbols-outlined">close</span>
+                                        İptal
+                                    </a>
+                                    <button type="submit" form="teklifForm" class="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg transform hover:scale-[1.02]" style="background-color: #2563eb !important;">
+                                        <span class="material-symbols-outlined">save</span>
+                                        {% if duzenle_modu %}Güncelle{% else %}Kaydet{% endif %}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Bottom Spacer for Fixed Footer -->
+                        <div class="h-20"></div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function addKalem() {
+            const container = document.getElementById('kalemler-container');
+            const kalem = document.querySelector('.kalem-row').cloneNode(true);
+            
+            // Reset values
+            kalem.querySelectorAll('input').forEach(input => {
+                if (input.type === 'number') {
+                input.value = input.name.includes('miktar') ? 1 : 0;
+                } else {
+                    input.value = '';
+                }
+            });
+            kalem.querySelector('select').value = '';
+            
+            container.appendChild(kalem);
+            calculateTotal();
+            
+            // Scroll to new row
+            kalem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function removeKalem(btn) {
+            const kalemler = document.querySelectorAll('.kalem-row');
+            if (kalemler.length > 1) {
+                btn.closest('.kalem-row').remove();
+                calculateTotal();
+            } else {
+                showToast('En az bir kalem eklenmelidir', 'warning');
+            }
+        }
+
+        function updateUrun(select) {
+            const row = select.closest('.kalem-row');
+            const option = select.selectedOptions[0];
+            
+            if (option.value) {
+                const fiyat = option.dataset.fiyat || 0;
+                const birim = option.dataset.birim || 'Adet';
+                
+                row.querySelector('[name="fiyatlar[]"]').value = fiyat;
+                row.querySelector('[name="birimler[]"]').value = birim;
+            }
+            calculateRow(row);
+        }
+
+        function calculateRow(element) {
+            calculateTotal();
+        }
+
+        function calculateTotal() {
+            let araToplam = 0;
+            
+            document.querySelectorAll('.kalem-row').forEach(row => {
+                const miktar = parseFloat(row.querySelector('[name="miktarlar[]"]').value) || 0;
+                const fiyat = parseFloat(row.querySelector('[name="fiyatlar[]"]').value) || 0;
+                araToplam += miktar * fiyat;
+            });
+            
+            const kdv = araToplam * 0.18;
+            const genelToplam = araToplam + kdv;
+            
+            document.getElementById('ara-toplam').textContent = '₺' + araToplam.toFixed(2);
+            document.getElementById('kdv-tutar').textContent = '₺' + kdv.toFixed(2);
+            document.getElementById('genel-toplam').textContent = '₺' + genelToplam.toFixed(2);
+        }
+
+        // Form validation before submit
+        document.getElementById('teklifForm').addEventListener('submit', function(e) {
+            const cariId = document.querySelector('[name="cari_id"]').value;
+            if (!cariId) {
+                e.preventDefault();
+                showToast('Lütfen bir müşteri seçin', 'error');
+                return;
+            }
+            
+            const kalemler = document.querySelectorAll('.kalem-row');
+            let validKalem = false;
+            
+            kalemler.forEach(row => {
+                const urun = row.querySelector('[name="urunler[]"]').value;
+                const miktar = parseFloat(row.querySelector('[name="miktarlar[]"]').value) || 0;
+                const fiyat = parseFloat(row.querySelector('[name="fiyatlar[]"]').value) || 0;
+                
+                if (urun && miktar > 0 && fiyat > 0) {
+                    validKalem = true;
+                }
+            });
+            
+            if (!validKalem) {
+                e.preventDefault();
+                showToast('Lütfen en az bir geçerli kalem ekleyin', 'error');
+                return;
+            }
+            
+            // Show loading state
+            const submitBtn = document.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span> Kaydediliyor...';
+            submitBtn.disabled = true;
+            
+            // Reset button after 3 seconds (in case of server issues)
+            setTimeout(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }, 3000);
+        });
+
+        // İlk hesaplama
+        calculateTotal();
+        
+        // Düzenleme modunda başlangıç değerlerini ayarla
+        document.querySelectorAll('.kalem-row').forEach(row => {
+            const select = row.querySelector('select');
+            if (select && select.value) {
+                updateUrun(select);
+            }
+        });
+        
+        // Toast notification function
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 translate-x-full`;
+            
+            const colors = {
+                success: 'bg-green-500 text-white',
+                error: 'bg-red-500 text-white',
+                warning: 'bg-yellow-500 text-white',
+                info: 'bg-blue-500 text-white'
+            };
+            
+            toast.className += ' ' + colors[type];
+            toast.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined">${type === 'success' ? 'check_circle' : type === 'error' ? 'error' : type === 'warning' ? 'warning' : 'info'}</span>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            // Animate in
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+            }, 100);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => {
+                    document.body.removeChild(toast);
+                }, 300);
+            }, 3000);
+        }
+    </script>
+</form>
+</div>
+{% endblock %}

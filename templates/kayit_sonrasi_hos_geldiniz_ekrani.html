@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+
+<html lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Modern Stok Takip - Hoş Geldiniz</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0440ae",
+                        "background-light": "#f5f6f8",
+                        "background-dark": "#0f1623",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-[#111318] antialiased">
+<div class="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Navigation Header -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-primary/10 bg-white px-6 md:px-10 py-3 shadow-sm">
+<div class="flex items-center gap-3">
+<div class="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+</div>
+<h2 class="text-primary text-xl font-bold leading-tight tracking-tight">Modern Stok Takip</h2>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center rounded-full h-10 w-10 bg-primary/10 text-primary transition-colors hover:bg-primary hover:text-white">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<div class="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center border-2 border-primary/30 overflow-hidden">
+<img alt="Profil Fotoğrafı" class="h-full w-full object-cover" data-alt="Profesyonel iş adamı kullanıcı profil avatarı" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqtRXWk6G3ZXXMGl9sIQiyx4DoJpssw71UHyyl1CBDtRqFc-nxlOcpbJT6aDY8wqMBjMrkdb2nV5THkjDXWjqWregCUTi8MScc4pnQ5zFyitPwRfDxFYX0JlR_D9vl-OXwuXBwn3aOz7B7drDsoSWyaREX06F_kmWplIJ010sMELRWbm1bl5E_bxM7_gKT4rtlbLsB7QPjUx-RyIj3LQa3XyWn9LhQxbRY8-Ni8YBujIsdRcJ-I-Qwk_OweK7eej3e9dQgVO1dhao"/>
+</div>
+</div>
+</header>
+<main class="flex-1 flex flex-col items-center justify-center px-4 py-12 md:py-20 max-w-[1200px] mx-auto w-full">
+<!-- Welcome Hero Section -->
+<div class="text-center mb-12 animate-fade-in">
+<div class="inline-flex items-center justify-center p-3 mb-6 rounded-full bg-green-100 text-green-600 ring-8 ring-green-50">
+<span class="material-symbols-outlined text-4xl" data-icon="check_circle">check_circle</span>
+</div>
+<h1 class="text-[#111318] text-4xl md:text-5xl font-black leading-tight tracking-tight mb-4">
+                    Modern Stok Takip'e Hoş Geldiniz!
+                </h1>
+<p class="text-[#5f6f8c] text-lg md:text-xl font-normal max-w-2xl mx-auto">
+                    Kayıt işleminiz başarıyla tamamlandı. İşletmenizi büyütmek için ihtiyacınız olan her şey hazır. Haydi envanterinizi birlikte kurmaya başlayalım.
+                </p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full">
+<!-- Left Content: Onboarding Cards -->
+<div class="lg:col-span-2 flex flex-col gap-6">
+<div class="flex items-center justify-between px-2">
+<h2 class="text-xl font-bold text-[#111318]">Hızlı Başlangıç Adımları</h2>
+<span class="text-sm font-medium text-primary bg-primary/10 px-3 py-1 rounded-full">0/3 Tamamlandı</span>
+</div>
+<!-- Step 1 -->
+<div class="flex flex-col md:flex-row items-center gap-6 rounded-xl bg-white p-6 shadow-sm border border-primary/5 hover:border-primary/20 transition-all group">
+<div class="flex-shrink-0 size-14 rounded-xl bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+<span class="material-symbols-outlined text-3xl" data-icon="add_box">add_box</span>
+</div>
+<div class="flex-1 text-center md:text-left">
+<h3 class="text-lg font-bold text-[#111318]">İlk Ürününüzü Ekleyin</h3>
+<p class="text-[#5f6f8c] text-sm leading-relaxed mt-1">Envanterinizi yönetmeye başlamak için ilk stok kartını tanımlayın ve miktar girin.</p>
+</div>
+<button class="w-full md:w-auto px-6 py-2.5 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-colors shadow-md shadow-primary/20">Başla</button>
+</div>
+<!-- Step 2 -->
+<div class="flex flex-col md:flex-row items-center gap-6 rounded-xl bg-white p-6 shadow-sm border border-primary/5 hover:border-primary/20 transition-all group">
+<div class="flex-shrink-0 size-14 rounded-xl bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+<span class="material-symbols-outlined text-3xl" data-icon="group_add">group_add</span>
+</div>
+<div class="flex-1 text-center md:text-left">
+<h3 class="text-lg font-bold text-[#111318]">Müşteri Hesabı Oluşturun</h3>
+<p class="text-[#5f6f8c] text-sm leading-relaxed mt-1">Satış yapacağınız müşteri ve bayilerinizi sisteme kaydederek takibe başlayın.</p>
+</div>
+<button class="w-full md:w-auto px-6 py-2.5 bg-primary/10 text-primary font-semibold rounded-lg hover:bg-primary hover:text-white transition-colors">Oluştur</button>
+</div>
+<!-- Step 3 -->
+<div class="flex flex-col md:flex-row items-center gap-6 rounded-xl bg-white p-6 shadow-sm border border-primary/5 hover:border-primary/20 transition-all group">
+<div class="flex-shrink-0 size-14 rounded-xl bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+<span class="material-symbols-outlined text-3xl" data-icon="business">business</span>
+</div>
+<div class="flex-1 text-center md:text-left">
+<h3 class="text-lg font-bold text-[#111318]">Firma Profilini Düzenleyin</h3>
+<p class="text-[#5f6f8c] text-sm leading-relaxed mt-1">Faturalar ve raporlar için logo ve firma bilgilerinizi güncelleyerek özelleştirin.</p>
+</div>
+<button class="w-full md:w-auto px-6 py-2.5 bg-primary/10 text-primary font-semibold rounded-lg hover:bg-primary hover:text-white transition-colors">Düzenle</button>
+</div>
+</div>
+<!-- Right Sidebar: Plan Summary & Meta -->
+<div class="flex flex-col gap-6">
+<!-- Plan Card -->
+<div class="rounded-xl bg-white p-6 shadow-sm border border-primary/5">
+<div class="flex items-center justify-between mb-4">
+<p class="text-[#5f6f8c] text-sm font-medium">Plan Özetiniz</p>
+<span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded uppercase tracking-wider">Aktif</span>
+</div>
+<div class="flex items-center gap-3 mb-6">
+<div class="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="workspace_premium">workspace_premium</span>
+</div>
+<div>
+<h4 class="text-lg font-bold text-[#111318]">Pro Plan</h4>
+<p class="text-[#5f6f8c] text-sm italic">Sınırsız Kullanıcı Erişimi</p>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-sm">
+<span class="text-[#111318] font-medium">Stok Kullanımı</span>
+<span class="text-[#5f6f8c]">0 / 300 Ürün</span>
+</div>
+<div class="w-full bg-primary/10 h-2.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full transition-all" style="width: 2%;"></div>
+</div>
+<p class="text-xs text-[#5f6f8c] leading-tight">Henüz ürün eklenmedi. İlk ürününüzü eklediğinizde bu çubuk güncellenecektir.</p>
+</div>
+<button class="w-full mt-6 py-2.5 rounded-lg border border-primary/20 text-primary font-semibold text-sm hover:bg-primary/5 transition-colors">
+                            Planı Yönet
+                        </button>
+</div>
+<!-- Visual Accent Card -->
+<div class="relative overflow-hidden rounded-xl bg-primary p-6 text-white shadow-lg shadow-primary/20">
+<div class="relative z-10">
+<h4 class="font-bold text-lg mb-2">Desteğe mi ihtiyacınız var</h4>
+<p class="text-white/80 text-sm mb-4">Ekibimiz her zaman yanınızda. Eğitim videolarını izleyin veya bize canlı sohbetten ulaşın.</p>
+<a class="inline-flex items-center text-sm font-semibold hover:underline gap-1" href="{{ url_for('dashboard') }}">
+                                Panele Git
+                                <span class="material-symbols-outlined text-sm" data-icon="open_in_new">open_in_new</span>
+</a>
+</div>
+<!-- Abstract Background Decoration -->
+<div class="absolute -right-4 -bottom-4 size-32 opacity-10">
+<span class="material-symbols-outlined text-[120px]" data-icon="help_center">help_center</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Dashboard Button (Final Action) -->
+<div class="mt-16 flex flex-col items-center gap-4">
+<button class="flex items-center gap-3 px-10 py-4 bg-primary text-white text-lg font-bold rounded-xl hover:bg-primary/90 transition-all shadow-xl shadow-primary/30 transform hover:-translate-y-0.5">
+                    Kontrol Paneline Git
+                    <span class="material-symbols-outlined" data-icon="dashboard">Ana Panel</span>
+</button>
+<p class="text-[#5f6f8c] text-sm">Kuruluma daha sonra devam edebilirsiniz.</p>
+</div>
+</main>
+<footer class="mt-auto px-6 py-8 border-t border-primary/5 bg-white/50 text-center">
+<p class="text-[#5f6f8c] text-sm"> 2024 Modern Stok Takip Teknolojileri A.Ş. Tüm hakları saklıdır.</p>
+</footer>
+</div>
+</div>
+</body></html>

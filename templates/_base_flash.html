@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Stok ve Cari Takip{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+        }
+    </script>
+    <style>
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: rgb(99 102 241);
+        }
+        .toggle-checkbox:checked + .toggle-label::after {
+            transform: translateX(1.25rem);
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-slate-50 dark:bg-slate-900">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col">
+            <!-- Logo -->
+            <div class="p-4 border-b border-slate-200 dark:border-slate-800">
+                <div class="flex items-center gap-3">
+                    <div class="size-10 bg-primary rounded-lg flex items-center justify-center">
+                        <span class="material-symbols-outlined text-white text-xl">inventory_2</span>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-slate-900 dark:text-white">{{ site_config().get('platform_name', site_config().get('name', 'StokCari')) }}</h1>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Yönetim Sistemi</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Navigation -->
+            <nav class="flex-1 px-3 space-y-1 mt-4">
+                <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" href="{{ url_for('dashboard') }}">
+                    <span class="material-symbols-outlined">dashboard</span>
+                    Ana Panel
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" href="{{ url_for('urunler') }}">
+                    <span class="material-symbols-outlined">warehouse</span>
+                    Ürünler (Stok)
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" href="{{ url_for('cariler') }}">
+                    <span class="material-symbols-outlined">group</span>
+                    Cariler
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" href="{{ url_for('pos') }}">
+                    <span class="material-symbols-outlined">shopping_cart</span>
+                    POS (Satış)
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" href="{{ url_for('iade') }}">
+                    <span class="material-symbols-outlined">assignment_return</span>
+                    İade İşlemleri
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" href="{{ url_for('gunluk_satislar') }}">
+                    <span class="material-symbols-outlined">receipt_long</span>
+                    Günlük Satışlar
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" href="{{ url_for('teklif_yonetimi') }}">
+                    <span class="material-symbols-outlined">description</span>
+                    Teklifler
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" href="{{ url_for('raporlar') }}">
+                    <span class="material-symbols-outlined">bar_chart</span>
+                    Raporlar
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" href="{{ url_for('settings') }}">
+                    <span class="material-symbols-outlined">settings</span>
+                    Ayarlar
+                </a>
+            </nav>
+            
+            <!-- User Menu -->
+            <div class="p-3 border-t border-slate-200 dark:border-slate-800">
+                <div class="flex items-center justify-between">
+                    <div class="text-right">
+                        <p class="text-xs font-semibold truncate">{{ current_user.yetkili_adi or current_user.firma_adi or 'Kullanıcı' }}</p>
+                        <p class="text-[10px] text-slate-500">{{ current_user.paket_tipi or 'Demo' }}</p>
+                    </div>
+                    <form method="POST" action="{{ url_for('cikis') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="material-symbols-outlined text-slate-400 text-lg hover:text-slate-600">logout</button>
+                    </form>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-white dark:bg-slate-900">
+            <!-- Flash Messages -->
+            {% include '_flash_messages.html' %}
+            
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

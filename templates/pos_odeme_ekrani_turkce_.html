@@ -1,0 +1,592 @@
+{% extends '_base.html' %}
+
+{% block title %}POS Ödeme{% endblock %}
+
+{% block head %}
+<style>
+    .numpad-btn:active { transform: scale(0.95); }
+    .payment-method.selected {
+        border-color: #0440ae;
+        background-color: #0440ae10;
+    }
+    .payment-method.selected .method-icon { color: #0440ae; }
+    .payment-method.selected .method-text { color: #0440ae; font-weight: 700; }
+    .payment-method.selected .check-icon { display: flex; }
+
+    /* Print: show only receipt */
+    @media print {
+        body { background: #fff !important; }
+        body * { visibility: hidden !important; }
+        #receiptPrint, #receiptPrint * { visibility: visible !important; }
+        #receiptPrint { position: fixed; left: 0; top: 0; width: 80mm; padding: 6mm; }
+    }
+
+    #receiptPrint {
+        display: none;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 12px;
+        line-height: 1.35;
+        color: #000;
+    }
+
+    @media print {
+        #receiptPrint { display: block; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-100 dark:bg-slate-900 flex items-center justify-center p-4">
+    <!-- Print-only receipt -->
+    <div id="receiptPrint" aria-hidden="true"></div>
+
+    <!-- Main Payment Container -->
+    <div class="bg-white dark:bg-slate-800 w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <!-- Header -->
+        <header class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-white dark:bg-slate-800">
+            <div class="flex items-center gap-3">
+                <div class="size-10 bg-primary-600 rounded-xl flex items-center justify-center text-white">
+                    <span class="material-symbols-outlined">point_of_sale</span>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Ödeme İşlemi</h1>
+                    <p class="text-xs text-slate-500" id="transactionNo">İşlem No: #POS-<span id="txNumber"></span></p>
+                </div>
+            </div>
+            <a href="{{ url_for('pos') }}" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 transition-colors">
+                <span class="material-symbols-outlined">close</span>
+            </a>
+        </header>
+
+        <!-- Content -->
+        <div class="flex flex-1 overflow-hidden flex-col lg:flex-row min-h-0">
+            
+            <!-- Left: Order Summary -->
+            <div class="flex-1 p-6 bg-slate-50 dark:bg-slate-800/50 overflow-y-auto min-h-0">
+                
+                <!-- Total Display -->
+                <div class="mb-6 p-5 bg-primary-600/10 rounded-xl border-2 border-primary-600/20">
+                    <p class="text-slate-600 text-xs font-bold uppercase tracking-wider mb-1">ÖDENECEK TUTAR</p>
+                    <p class="text-4xl font-black text-primary-600" id="odemeTutar">₺0,00</p>
+                </div>
+
+                <!-- Cart Items -->
+                <div class="mb-6">
+                    <h3 class="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-slate-400">shopping_bag</span>
+                        Sepet Öğeleri
+                    </h3>
+                    <div id="cartItemsList" class="space-y-2 max-h-48 overflow-y-auto pr-2">
+                        <!-- Items will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Payment Method -->
+                <div class="mb-6">
+                    <h3 class="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-3">Ödeme Yöntemi</h3>
+                    <div class="grid grid-cols-3 gap-3">
+                        <button onclick="selectPaymentMethod('cash')" id="method-cash" class="payment-method selected relative flex flex-col items-center justify-center p-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl cursor-pointer transition-all hover:border-primary-600/50 bg-white dark:bg-slate-700">
+                            <span class="material-symbols-outlined text-3xl mb-2 method-icon text-primary-600">payments</span>
+                            <span class="font-bold text-sm method-text text-slate-700 dark:text-slate-300">Nakit</span>
+                            <span class="check-icon absolute top-2 right-2 text-primary-600 hidden">
+                                <span class="material-symbols-outlined">check_circle</span>
+                            </span>
+                        </button>
+                        <button onclick="selectPaymentMethod('card')" id="method-card" class="payment-method relative flex flex-col items-center justify-center p-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl cursor-pointer transition-all hover:border-primary-600/50 bg-white dark:bg-slate-700">
+                            <span class="material-symbols-outlined text-3xl mb-2 method-icon text-slate-400">credit_card</span>
+                            <span class="font-bold text-sm method-text text-slate-600 dark:text-slate-400">Kredi Kartı</span>
+                            <span class="check-icon absolute top-2 right-2 text-primary-600 hidden">
+                                <span class="material-symbols-outlined">check_circle</span>
+                            </span>
+                        </button>
+                        <button onclick="selectPaymentMethod('credit')" id="method-credit" class="payment-method relative flex flex-col items-center justify-center p-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl cursor-pointer transition-all hover:border-primary-600/50 bg-white dark:bg-slate-700">
+                            <span class="material-symbols-outlined text-3xl mb-2 method-icon text-slate-400">person_add</span>
+                            <span class="font-bold text-sm method-text text-slate-600 dark:text-slate-400">Cari Hesap</span>
+                            <span class="check-icon absolute top-2 right-2 text-primary-600 hidden">
+                                <span class="material-symbols-outlined">check_circle</span>
+                            </span>
+                        </button>
+                    </div>
+                    <div class="mt-4">
+                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Hesap</label>
+                        <select id="accountSelect" class="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700">
+                            <option value="">Otomatik</option>
+                        </select>
+                        <p class="text-[11px] text-slate-500 mt-1" id="accountHint">Ödeme yöntemine göre otomatik seçilir (istersen değiştir).</p>
+                    </div>
+                </div>
+
+                <!-- Balance Info -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="p-4 bg-white dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
+                        <p class="text-slate-500 text-xs font-bold uppercase mb-1">Alınan</p>
+                        <p class="text-2xl font-bold text-slate-900 dark:text-white" id="alinanTutar">₺0,00</p>
+                    </div>
+                    <div class="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
+                        <p class="text-green-600 text-xs font-bold uppercase mb-1">Para Üstü</p>
+                        <p class="text-2xl font-bold text-green-600" id="paraUstu">₺0,00</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Numeric Keypad -->
+            <div class="w-full lg:w-[360px] bg-white dark:bg-slate-800 p-6 border-l border-slate-200 dark:border-slate-700 overflow-y-auto min-h-0">
+                
+                <!-- Amount Input -->
+                <div class="mb-4">
+                    <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">Alınan Tutar</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-slate-400">₺</span>
+                        <input id="alinanInput" readonly 
+                               class="w-full bg-slate-50 dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 rounded-xl px-12 py-4 text-3xl font-black text-slate-900 dark:text-white focus:border-primary-600 focus:ring-0 text-right" 
+                               type="text" value="" placeholder="0,00"/>
+                    </div>
+                </div>
+
+                <!-- Quick Add Buttons -->
+                <div class="grid grid-cols-4 gap-2 mb-4">
+                    <button onclick="addAmount(10)" class="py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg font-bold text-slate-700 dark:text-slate-300 text-sm transition-colors">+10</button>
+                    <button onclick="addAmount(20)" class="py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg font-bold text-slate-700 dark:text-slate-300 text-sm transition-colors">+20</button>
+                    <button onclick="addAmount(50)" class="py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg font-bold text-slate-700 dark:text-slate-300 text-sm transition-colors">+50</button>
+                    <button onclick="addAmount(100)" class="py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg font-bold text-slate-700 dark:text-slate-300 text-sm transition-colors">+100</button>
+                </div>
+                <div class="grid grid-cols-3 gap-2 mb-4">
+                    <button onclick="setExactAmount()" class="py-2 bg-primary-600/10 hover:bg-primary-600/20 text-primary-700 rounded-lg font-bold text-sm transition-colors col-span-3">Tam Tutar (Küsürat Yok)</button>
+                </div>
+
+                <!-- Numpad -->
+                <div class="grid grid-cols-3 gap-2 mb-4">
+                    <button onclick="appendNumber('7')" class="numpad-btn h-14 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-xl font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all">7</button>
+                    <button onclick="appendNumber('8')" class="numpad-btn h-14 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-xl font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all">8</button>
+                    <button onclick="appendNumber('9')" class="numpad-btn h-14 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-xl font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all">9</button>
+                    <button onclick="appendNumber('4')" class="numpad-btn h-14 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-xl font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all">4</button>
+                    <button onclick="appendNumber('5')" class="numpad-btn h-14 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-xl font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all">5</button>
+                    <button onclick="appendNumber('6')" class="numpad-btn h-14 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-xl font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all">6</button>
+                    <button onclick="appendNumber('1')" class="numpad-btn h-14 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-xl font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all">1</button>
+                    <button onclick="appendNumber('2')" class="numpad-btn h-14 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-xl font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all">2</button>
+                    <button onclick="appendNumber('3')" class="numpad-btn h-14 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-xl font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all">3</button>
+                    <button onclick="appendNumber('0')" class="numpad-btn h-14 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-xl font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all">0</button>
+                    <button onclick="appendNumber('.')" class="numpad-btn h-14 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-xl font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all">.</button>
+                    <button onclick="backspace()" class="numpad-btn h-14 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-xl font-bold text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all flex items-center justify-center">
+                        <span class="material-symbols-outlined">backspace</span>
+                    </button>
+                </div>
+
+                <!-- Clear Button -->
+                <button onclick="clearInput()" class="w-full py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-xl font-bold text-slate-600 dark:text-slate-400 transition-colors flex items-center justify-center gap-2 mb-4">
+                    <span class="material-symbols-outlined">delete</span>
+                    Temizle
+                </button>
+
+                <!-- Complete Button -->
+                <button onclick="completeSale()" id="completeBtn" class="w-full py-4 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-black text-lg shadow-lg shadow-primary-500/30 transition-all flex items-center justify-center gap-3">
+                    <span class="material-symbols-outlined">check_circle</span>
+                    <span id="btnText">Ödemeyi Tamamla</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Satış verilerini localStorage'dan al
+    let saleData = null;
+    let currentInput = '';
+    let selectedMethod = 'cash';
+    const ACCOUNTS = {{ (accounts_json or [])|tojson }};
+    let selectedAccountId = null;
+    const FIRM_NAME = {{ (firm_name or 'StokCari')|tojson }};
+
+    function accountTypeForMethod(method) {
+        if (method === 'cash') return 'cash';
+        if (method === 'card') return 'pos';
+        return null; // credit or unknown -> no cash movement by default
+    }
+
+    function refreshAccountSelect() {
+        const select = document.getElementById('accountSelect');
+        if (!select) return;
+
+        const desiredType = accountTypeForMethod(selectedMethod);
+        const previous = select.value;
+
+        select.innerHTML = '<option value="">Otomatik</option>';
+        const options = (ACCOUNTS || []).filter(a => !desiredType || a.type === desiredType);
+        for (const a of options) {
+            const opt = document.createElement('option');
+            opt.value = String(a.id);
+            opt.textContent = `${a.name} (${a.currency || 'TRY'})`;
+            select.appendChild(opt);
+        }
+
+        // Preserve explicit user choice if still valid, otherwise auto-pick first matching.
+        if (previous && Array.from(select.options).some(o => o.value === previous)) {
+            select.value = previous;
+            selectedAccountId = parseInt(previous, 10);
+        } else if (options.length > 0 && desiredType) {
+            select.value = String(options[0].id);
+            selectedAccountId = options[0].id;
+        } else {
+            select.value = '';
+            selectedAccountId = null;
+        }
+
+        const hint = document.getElementById('accountHint');
+        if (hint) {
+        hint.textContent = desiredType ? 'Ödeme yöntemine göre otomatik seçilir (istersen değiştir).' : 'Cari hesap işleminde kasa hareketi oluşturulmaz.';
+        }
+
+        select.disabled = !desiredType;
+        select.classList.toggle('opacity-50', !desiredType);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const select = document.getElementById('accountSelect');
+        if (select) {
+            select.addEventListener('change', () => {
+                selectedAccountId = select.value ? parseInt(select.value, 10) : null;
+            });
+        }
+        refreshAccountSelect();
+    });
+
+    function creditRequiresCustomer() {
+        const customerId = saleData.customerId;
+        return selectedMethod === 'credit' && (!customerId || String(customerId).trim() === '');
+    }
+
+    function syncCreditUIState() {
+        const btn = document.getElementById('completeBtn');
+        const btnText = document.getElementById('btnText');
+        if (!btn || !btnText) return;
+
+        if (creditRequiresCustomer()) {
+            btn.disabled = true;
+            btn.classList.add('opacity-60');
+            btnText.textContent = 'Önce cari seç';
+        } else {
+            btn.disabled = false;
+            btn.classList.remove('opacity-60');
+            btnText.textContent = 'Ödemeyi Tamamla';
+        }
+    }
+    
+    try {
+        saleData = JSON.parse(localStorage.getItem('posSaleData') || '{}');
+    } catch(e) {
+        console.error('Sale data parse error:', e);
+    }
+
+    // İşlem numarası oluştur
+    document.getElementById('txNumber').textContent = Date.now().toString().slice(-6);
+
+    function readSaleNumber(value, fallback = 0) {
+        if (value === '' || value === null || value === undefined) return fallback;
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
+    // Toplam tutar hesapla
+        const totalAmount = saleData ? (saleData.items || []).reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0) : 0;
+    const kdvRate = readSaleNumber(saleData.kdvRate, 0);
+    const kdvAmount = totalAmount * (kdvRate / 100);
+    const discount = readSaleNumber(saleData.discount, 0);
+    const grandTotal = totalAmount + kdvAmount - discount;
+
+    // Tutarı göster
+    document.getElementById('odemeTutar').textContent = formatCurrency(grandTotal);
+    syncCreditUIState();
+
+    // Sepet öğelerini göster
+    function loadCartItems() {
+        const container = document.getElementById('cartItemsList');
+        if (!saleData || !saleData.items || saleData.items.length === 0) {
+            container.innerHTML = '<p class="text-slate-400 text-sm text-center py-4">Sepet boş</p>';
+            return;
+        }
+        
+        container.innerHTML = saleData.items.map(item => `
+            <div class="flex items-center justify-between p-3 bg-white dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600">
+                <div class="flex-1 min-w-0">
+                    <p class="font-medium text-sm text-slate-900 dark:text-white truncate">${item.name}</p>
+                    <p class="text-xs text-slate-500">${item.quantity} x ${formatCurrency(item.price)}</p>
+                </div>
+                <p class="font-bold text-slate-900 dark:text-white">${formatCurrency(item.price * item.quantity)}</p>
+            </div>
+        `).join('');
+    }
+
+    // Para birimi formatı
+    function formatCurrency(amount) {
+        return amount.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ₺';
+    }
+
+    // Numpad fonksiyonları
+    function appendNumber(num) {
+        if (num === '.' && currentInput.includes('.')) return;
+        if (currentInput.length >= 10) return;
+        
+        currentInput += num;
+        updateDisplay();
+    }
+
+    function backspace() {
+        currentInput = currentInput.slice(0, -1);
+        updateDisplay();
+    }
+
+    function clearInput() {
+        currentInput = '';
+        updateDisplay();
+    }
+
+    function addAmount(amount) {
+        const current = parseFloat(currentInput) || 0;
+        currentInput = (current + amount).toString();
+        updateDisplay();
+    }
+
+    function setExactAmount() {
+        currentInput = grandTotal.toString();
+        updateDisplay();
+    }
+
+    function updateDisplay() {
+        const input = document.getElementById('alinanInput');
+        const rawValue = currentInput || '0';
+        
+        // Format display
+        if (rawValue === '0' || rawValue === '') {
+            input.value = '';
+        } else {
+            const num = parseFloat(rawValue);
+            input.value = formatCurrency(num);
+        }
+        
+        hesaplaParaUstu();
+    }
+
+    // Para üstü hesapla
+    function hesaplaParaUstu() {
+        const alinan = parseFloat(currentInput) || 0;
+        const paraUstu = alinan - grandTotal;
+        
+        document.getElementById('alinanTutar').textContent = formatCurrency(alinan);
+        document.getElementById('paraUstu').textContent = formatCurrency(Math.max(0, paraUstu));
+        
+        const paraUstuEl = document.getElementById('paraUstu');
+        if (paraUstu < 0) {
+            paraUstuEl.classList.remove('text-green-600');
+            paraUstuEl.classList.add('text-red-500');
+            paraUstuEl.parentElement.classList.remove('bg-green-50', 'dark:bg-green-900/20', 'border-green-200', 'dark:border-green-800');
+            paraUstuEl.parentElement.classList.add('bg-red-50', 'dark:bg-red-900/20', 'border-red-200', 'dark:border-red-800');
+        } else {
+            paraUstuEl.classList.remove('text-red-500');
+            paraUstuEl.classList.add('text-green-600');
+            paraUstuEl.parentElement.classList.remove('bg-red-50', 'dark:bg-red-900/20', 'border-red-200', 'dark:border-red-800');
+            paraUstuEl.parentElement.classList.add('bg-green-50', 'dark:bg-green-900/20', 'border-green-200', 'dark:border-green-800');
+        }
+    }
+
+    // Ödeme yöntemi seçimi
+    function selectPaymentMethod(method) {
+        selectedMethod = method;
+        
+        // Tüm butonlardan selected class'ını kaldır
+        document.querySelectorAll('.payment-method').forEach(btn => {
+            btn.classList.remove('selected');
+        });
+        
+        // Seçili butona selected class'ı ekle
+        document.getElementById('method-' + method).classList.add('selected');
+        
+        // Cari hesap seçildiğinde para üstü hesaplamasını devre dışı bırak
+        if (method === 'credit') {
+            currentInput = grandTotal.toString();
+            updateDisplay();
+            document.getElementById('alinanInput').disabled = true;
+            document.getElementById('alinanInput').classList.add('opacity-50');
+        } else {
+            document.getElementById('alinanInput').disabled = false;
+            document.getElementById('alinanInput').classList.remove('opacity-50');
+        }
+        refreshAccountSelect();
+        syncCreditUIState();
+    }
+
+
+        // Satışı tamamla
+        async function completeSale() {
+            if (!saleData || !saleData.items || saleData.items.length === 0) {
+                showNotification('Sepet boş!', 'error');
+                return;
+            }
+
+            if (creditRequiresCustomer()) {
+                showNotification('Veresiye satış için POS ekranında cari seçmelisiniz.', 'error');
+                return;
+            }
+            
+            // Nakit ödemelerde yetersiz tutar kontrolü
+            if (selectedMethod === 'cash' && (parseFloat(currentInput) || 0) < grandTotal) {
+                showNotification('Alınan tutar yetersiz!', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('completeBtn');
+            const btnText = document.getElementById('btnText');
+            
+            btn.disabled = true;
+            btnText.textContent = 'İşleniyor...';
+            btn.classList.add('opacity-75');
+            
+            try {
+                // Ödeme yöntemini ekle
+                const postData = {
+                    ...saleData,
+                    paymentMethod: selectedMethod,
+                    account_id: selectedAccountId,
+                    receivedAmount: parseFloat(currentInput) || 0
+                };
+                
+                const response = await fetch('{{ url_for("pos_satis") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(postData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    localStorage.removeItem('posCart');
+                    localStorage.removeItem('posSaleData');
+                    
+                    // Başarılı bildirim
+                    showNotification(result.message, 'success');
+                    
+                    // Fiş yazdır seçeneği
+                    if (confirm('Satış tamamlandı! Fiş yazdırmak ister misiniz')) {
+                        try {
+                            renderReceiptForPrint(result.receipt || null, postData);
+                        } catch (e) {}
+                        window.print();
+                    }
+                    
+                    window.location.href = '{{ url_for("pos") }}';
+                } else {
+                    showNotification(result.message, 'error');
+                    btn.disabled = false;
+                    btnText.textContent = 'Ödemeyi Tamamla';
+                    btn.classList.remove('opacity-75');
+                }
+            } catch (error) {
+                console.error('Satış hatası:', error);
+                showNotification('Satış işlemi sırasında bir hata oluştu.', 'error');
+                btn.disabled = false;
+                btnText.textContent = 'Ödemeyi Tamamla';
+                btn.classList.remove('opacity-75');
+            }
+        }
+
+        function escapeHtml(text) {
+            return String(text || '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function formatLine(label, value) {
+            const left = escapeHtml(label);
+            const right = escapeHtml(value);
+            return `<div style="display:flex; justify-content:space-between; gap:10px;"><div>${left}</div><div>${right}</div></div>`;
+        }
+
+        function renderReceiptForPrint(receipt, postData) {
+            const container = document.getElementById('receiptPrint');
+            if (!container) return;
+
+            const now = new Date();
+            const faturaNo = receipt.fatura_no || receipt.invoice_no || '';
+            const paymentMethod = receipt.payment_method || postData.paymentMethod || selectedMethod || '';
+            const customer = receipt.customer.unvan || '';
+            const items = receipt.items || postData.items || [];
+
+            const subtotal = receipt.subtotal " grandTotal;
+            const vatRate = receipt.vat_rate " (postData.kdvRate " 0);
+            const vatTotal = receipt.vat_total " 0;
+            const discount = receipt.discount " (postData.discount " 0);
+            const total = receipt.total " grandTotal;
+            const received = postData.receivedAmount " (parseFloat(currentInput) || 0);
+            const change = Math.max(0, received - total);
+
+            const lines = [];
+            lines.push(`<div style="text-align:center; font-weight:700;">${escapeHtml(FIRM_NAME)}</div>`);
+            lines.push(`<div style="text-align:center;">${escapeHtml(now.toLocaleString())}</div>`);
+            if (faturaNo) lines.push(`<div style="text-align:center;">Fiş No: ${escapeHtml(faturaNo)}</div>`);
+            lines.push(`<div style="border-top:1px dashed #000; margin:8px 0;"></div>`);
+
+            if (customer) lines.push(`<div>Müşteri: ${escapeHtml(customer)}</div>`);
+            lines.push(`<div>Ödeme: ${escapeHtml(paymentMethod)}</div>`);
+            lines.push(`<div style="border-top:1px dashed #000; margin:8px 0;"></div>`);
+
+            for (const it of items) {
+                const name = it.name || it.urun_adi || it.productName || '';
+                const qty = it.qty " it.quantity " 1;
+                const unit = it.unit || it.birim || '';
+                const unitPrice = it.unit_price " it.price " 0;
+                const lineTotal = it.line_total " (Number(qty) * Number(unitPrice));
+                lines.push(`<div style="font-weight:700;">${escapeHtml(name)}</div>`);
+                lines.push(formatLine(`${qty} ${unit} x ${formatCurrency(unitPrice)}`, formatCurrency(lineTotal)));
+            }
+
+            lines.push(`<div style="border-top:1px dashed #000; margin:8px 0;"></div>`);
+            lines.push(formatLine('Ara Toplam', formatCurrency(subtotal)));
+            lines.push(formatLine(`KDV (%${vatRate})`, formatCurrency(vatTotal)));
+            if (Number(discount) > 0) lines.push(formatLine('İskonto', '-' + formatCurrency(discount)));
+            lines.push(`<div style="border-top:1px solid #000; margin:6px 0;"></div>`);
+            lines.push(formatLine('GENEL TOPLAM', formatCurrency(total)));
+            if (selectedMethod === 'cash') {
+                lines.push(formatLine('Alınan', formatCurrency(received)));
+                lines.push(formatLine('Para Üstü', formatCurrency(change)));
+            }
+            lines.push(`<div style="border-top:1px dashed #000; margin:8px 0;"></div>`);
+            lines.push(`<div style="text-align:center;">Teşekkür ederiz</div>`);
+
+            container.innerHTML = lines.join('');
+        }
+
+        // Bildirim göster
+        function showNotification(message, type) {
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500'
+            };
+            
+            const notif = document.createElement('div');
+            notif.className = `fixed top-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-xl shadow-lg z-50 font-bold`;
+            notif.textContent = message;
+            document.body.appendChild(notif);
+            
+            setTimeout(() => notif.remove(), 3000);
+        }
+
+        // Klavye desteği
+        document.addEventListener('keydown', (e) => {
+            if (e.key >= '0' && e.key <= '9') appendNumber(e.key);
+            if (e.key === '.') appendNumber('.');
+            if (e.key === 'Backspace') backspace();
+            if (e.key === 'Escape') clearInput();
+            if (e.key === 'Enter') completeSale();
+        });
+
+        // Başlat
+        loadCartItems();
+        hesaplaParaUstu();
+    </script>
+{% endblock %}

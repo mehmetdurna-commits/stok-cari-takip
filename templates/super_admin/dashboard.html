@@ -1,0 +1,1846 @@
+{% extends '_base.html' %}
+
+{% block title %}Super Admin - Stok ve Cari Takip{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-3">
+    <span class="material-symbols-outlined text-primary-600">shield_person</span>
+    <div>
+        <h1 class="text-xl font-bold text-slate-900 dark:text-white">Super Admin</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400">Platform sahibi kontrol merkezi</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.settings-tab-btn {
+    color: #64748b;
+}
+.settings-tab-btn.active {
+    background-color: #2563eb;
+    color: #fff;
+}
+.dark .settings-tab-btn {
+    color: #cbd5e1;
+}
+.dark .settings-tab-btn.active {
+    background-color: #2563eb;
+    color: #fff;
+}
+.super-admin-tabbar .settings-tab-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+.super-admin-tabbar {
+    scrollbar-width: thin;
+}
+.system-management-tabbar {
+    scrollbar-width: thin;
+}
+.system-management-tab-btn {
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+}
+.system-management-tab-btn.active {
+    background: #0f172a;
+    border-color: #0f172a;
+    color: #ffffff;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
+}
+.dark .system-management-tab-btn {
+    color: #cbd5e1;
+    border-color: #334155;
+    background: #0f172a;
+}
+.dark .system-management-tab-btn.active {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+}
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+const tabFromHash = window.location.hash ? window.location.hash.substring(1) : 'overview';
+    const systemTabFromHash = tabFromHash.startsWith('platform-system-')
+        ? tabFromHash.replace('platform-system-', '')
+        : 'operation';
+const resolvedTopTab = tabFromHash.startsWith('platform-system-') ? 'platform-system' : tabFromHash;
+const initialTab = document.getElementById(`${resolvedTopTab}-content`) ? resolvedTopTab : 'overview';
+    if (window.switchTab) window.switchTab(initialTab);
+    switchSystemManagementTab(systemTabFromHash, false);
+
+    const searchInput = document.getElementById('organizationSearch');
+    const planFilter = document.getElementById('organizationPlanFilter');
+    const statusFilter = document.getElementById('organizationStatusFilter');
+    const countLabel = document.getElementById('organizationCount');
+    const emptyState = document.getElementById('organizationEmptyState');
+    const expandButton = document.getElementById('expandAllOrganizations');
+    const rows = Array.from(document.querySelectorAll('.organization-row'));
+
+    function applyOrganizationFilters() {
+        const query = (searchInput.value || '').trim().toLowerCase();
+        const plan = planFilter.value || '';
+        const status = statusFilter.value || '';
+        let visible = 0;
+
+        rows.forEach((row) => {
+            const haystack = `${row.dataset.name || ''} ${row.dataset.owner || ''} ${row.dataset.plan || ''}`;
+            const matchesSearch = !query || haystack.includes(query);
+            const matchesPlan = !plan || row.dataset.plan === plan;
+            const matchesStatus = !status || row.dataset.active === status || row.dataset.maintenance === status;
+            const show = matchesSearch && matchesPlan && matchesStatus;
+            row.classList.toggle('hidden', !show);
+            if (show) visible += 1;
+        });
+
+        if (countLabel) countLabel.textContent = `${visible} / ${rows.length} firma`;
+        if (emptyState) emptyState.classList.toggle('hidden', visible !== 0);
+    }
+
+    [searchInput, planFilter, statusFilter].forEach((control) => {
+        if (control) control.addEventListener('input', applyOrganizationFilters);
+    });
+
+    if (expandButton) {
+        expandButton.addEventListener('click', () => {
+            const shouldOpen = rows.some((row) => !row.open && !row.classList.contains('hidden'));
+            rows.forEach((row) => {
+                if (!row.classList.contains('hidden')) row.open = shouldOpen;
+            });
+        });
+    }
+
+    const supportFilterButtons = Array.from(document.querySelectorAll('[data-support-filter]'));
+    const supportRows = Array.from(document.querySelectorAll('[data-support-status]'));
+    const supportEmptyState = document.getElementById('supportEmptyState');
+    const supportCount = document.getElementById('supportTicketCount');
+    const idleSupportClass = ['text-slate-600', 'hover:bg-slate-50', 'dark:text-slate-300', 'dark:hover:bg-slate-800'];
+
+    function applySupportFilter(status) {
+        let visible = 0;
+        supportRows.forEach((row) => {
+            const show = !status || row.dataset.supportStatus === status;
+            row.classList.toggle('hidden', !show);
+            if (show) visible += 1;
+        });
+
+        supportFilterButtons.forEach((button) => {
+            const active = button.dataset.supportFilter === status;
+            button.classList.toggle('bg-primary-600', active);
+            button.classList.toggle('text-white', active);
+            idleSupportClass.forEach((className) => button.classList.toggle(className, !active));
+        });
+
+        if (supportEmptyState) supportEmptyState.classList.toggle('hidden', visible !== 0);
+        if (supportCount) supportCount.textContent = `${visible} / ${supportRows.length} talep`;
+    }
+
+    supportFilterButtons.forEach((button) => {
+        button.addEventListener('click', () => applySupportFilter(button.dataset.supportFilter || ''));
+    });
+});
+
+function openUpdaterHelp() {
+    const dlg = document.getElementById('updaterHelpDialog');
+    if (!dlg) return;
+    if (typeof dlg.showModal === 'function') dlg.showModal();
+}
+
+function closeUpdaterHelp() {
+    const dlg = document.getElementById('updaterHelpDialog');
+    if (!dlg) return;
+    if (typeof dlg.close === 'function') dlg.close();
+}
+
+function switchSystemManagementTab(tabId, pushHash = true) {
+    const buttons = document.querySelectorAll('.system-management-tab-btn');
+    const panels = document.querySelectorAll('.system-management-panel');
+    let activeExists = false;
+
+    panels.forEach((panel) => {
+        const active = panel.id === `system-${tabId}-panel`;
+        panel.classList.toggle('hidden', !active);
+        if (active) activeExists = true;
+    });
+
+        const resolvedTab = activeExists ? tabId : 'operation';
+
+    buttons.forEach((button) => {
+        const active = button.dataset.systemTab === resolvedTab;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+
+    panels.forEach((panel) => {
+        const active = panel.id === `system-${resolvedTab}-panel`;
+        panel.classList.toggle('hidden', !active);
+    });
+
+    if (pushHash) {
+        history.replaceState(null, '', `#platform-system-${resolvedTab}`);
+    }
+}
+</script>
+{% endblock %}
+
+{% block header_actions %}
+<div class="flex items-center gap-2">
+    <span class="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+        <span class="material-symbols-outlined text-lg">verified_user</span>
+        Platform sahibi
+    </span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-8">
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+        <nav class="super-admin-tabbar flex flex-nowrap gap-1 overflow-x-auto p-2" role="tablist">
+            <button onclick="switchTab('overview')" id="overview-tab" class="settings-tab-btn active px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">space_dashboard</span>
+                Genel Bakış
+            </button>
+            <button onclick="switchTab('platform-actions')" id="platform-actions-tab" class="settings-tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">task_alt</span>
+                Aksiyon Merkezi
+            </button>
+            <button onclick="switchTab('companies')" id="companies-tab" class="settings-tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">domain</span>
+                Firma Yönetimi
+            </button>
+            <button onclick="switchTab('platform-users')" id="platform-users-tab" class="settings-tab-btn hidden px-4 py-2.5 rounded-lg items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">group</span>
+                Kullanıcılar
+            </button>
+            <button onclick="switchTab('platform-team')" id="platform-team-tab" class="settings-tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">badge</span>
+                Platform Ekibi
+            </button>
+            <button onclick="switchTab('platform-system')" id="platform-system-tab" class="settings-tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">admin_panel_settings</span>
+                Sistem Yönetimi
+            </button>
+            <button onclick="switchTab('platform-audit')" id="platform-audit-tab" class="settings-tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">history</span>
+                Audit Logları
+            </button>
+            <button onclick="switchTab('platform-backup')" id="platform-backup-tab" class="settings-tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">backup</span>
+                Yedekleme
+            </button>
+            <button onclick="switchTab('platform-support')" id="platform-support-tab" class="settings-tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">support_agent</span>
+                Destek Talepleri
+            </button>
+        </nav>
+    </div>
+
+    <div id="overview-content" class="settings-content">
+    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {% set stat_cards = [
+            ('domain', 'Firmalar', stats.organizations, stats.active_organizations ~ ' aktif'),
+            ('group', 'Kullanicilar', stats.users, stats.platform_admins ~ ' super admin'),
+            ('inventory_2', 'Urunler', stats.products, 'tum platform'),
+            ('receipt_long', 'Satislar', stats.sales, stats.expired_subscriptions ~ ' suresi dolan destek')
+        ] %}
+        {% for icon, label, value, hint in stat_cards %}
+        <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <p class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ label }}</p>
+                    <p class="mt-2 text-3xl font-bold text-slate-900 dark:text-white">{{ value }}</p>
+                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ hint }}</p>
+                </div>
+                <span class="material-symbols-outlined rounded-lg bg-primary-50 dark:bg-primary-900/30 p-2 text-primary-600 dark:text-primary-300">{{ icon }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </section>
+
+    <section class="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div class="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white">Operasyon sagligi</h2>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Bugun dikkat isteyen platform sinyalleri.</p>
+                </div>
+                <button type="button" onclick="switchTab('platform-actions')" class="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900">
+                    <span class="material-symbols-outlined text-lg">task_alt</span>
+                    Aksiyonlar
+                </button>
+            </div>
+            <div class="grid gap-3 p-5 md:grid-cols-3">
+                <div class="rounded-lg bg-slate-50 p-4 dark:bg-slate-950">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Acik aksiyon</p>
+                    <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{{ platform_insights.open_actions }}</p>
+                </div>
+                <div class="rounded-lg bg-rose-50 p-4 dark:bg-rose-950/20">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-rose-600 dark:text-rose-200">Kritik aksiyon</p>
+                    <p class="mt-2 text-2xl font-bold text-rose-700 dark:text-rose-200">{{ platform_insights.critical_actions }}</p>
+                </div>
+                <div class="rounded-lg bg-amber-50 p-4 dark:bg-amber-950/20">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-200">Destek bekliyor</p>
+                    <p class="mt-2 text-2xl font-bold text-amber-800 dark:text-amber-100">{{ platform_insights.pending_support }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Sistem sagligi</h2>
+            <div class="mt-4 space-y-3">
+                <div class="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-950">
+                    <span class="text-slate-600 dark:text-slate-300">Son yedek</span>
+                    <span class="font-semibold text-slate-900 dark:text-white">{{ platform_insights.latest_backup.created_at|datetime_tr if platform_insights.latest_backup else '-' }}</span>
+                </div>
+                {% for value, label in platform_admin_role_labels.items() %}
+                <div class="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-950">
+                    <span class="text-slate-600 dark:text-slate-300">{{ label }}</span>
+                    <span class="font-semibold text-slate-900 dark:text-white">{{ platform_insights.platform_admin_roles.get(value, 0) }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="mt-5 grid gap-4 lg:grid-cols-2">
+        <div class="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Yenileme riski</h2>
+            </div>
+            <div class="divide-y divide-slate-200 dark:divide-slate-800">
+                {% for org in platform_insights.risky_organizations %}
+                <a href="{{ url_for('super_admin_organization_detail', organization_id=org.id) }}" class="flex items-center justify-between gap-3 px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <span class="min-w-0 truncate text-sm font-semibold text-slate-900 dark:text-white">{{ org.name }}</span>
+                    <span class="shrink-0 text-xs text-slate-500 dark:text-slate-400">{{ org.subscription_end|date_tr if org.subscription_end else '-' }}</span>
+                </a>
+                {% else %}
+                <p class="px-5 py-8 text-sm text-slate-500 dark:text-slate-400">Yaklasan yenileme riski yok.</p>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Destek yogunlugu</h2>
+            </div>
+            <div class="divide-y divide-slate-200 dark:divide-slate-800">
+                {% for org, ticket_count in platform_insights.support_hotspots %}
+                <a href="{{ url_for('super_admin_organization_detail', organization_id=org.id) }}" class="flex items-center justify-between gap-3 px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <span class="min-w-0 truncate text-sm font-semibold text-slate-900 dark:text-white">{{ org.name }}</span>
+                    <span class="shrink-0 rounded-full bg-primary-50 px-2 py-1 text-xs font-bold text-primary-700 dark:bg-primary-950/40 dark:text-primary-200">{{ ticket_count }} talep</span>
+                </a>
+                {% else %}
+                <p class="px-5 py-8 text-sm text-slate-500 dark:text-slate-400">Destek yogunlugu yok.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    </div>
+
+    <div id="platform-actions-content" class="settings-content hidden">
+    <section class="space-y-5">
+        <div class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Aksiyon Merkezi</h2>
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Kritik destek, abonelik ve operasyon takiplerini Super Admin icinde yonet.</p>
+            </div>
+            {% if action_center.next_action %}
+            <div class="rounded-lg bg-primary-50 px-4 py-3 text-sm dark:bg-primary-950/30">
+                <p class="font-semibold text-primary-800 dark:text-primary-200">Siradaki aksiyon</p>
+                <p class="mt-1 max-w-xl truncate text-slate-700 dark:text-slate-200">{{ action_center.next_action.title }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+            {% set action_cards = [
+                ('priority_high', 'Acik', action_center.stats.open, 'takip bekliyor', 'primary'),
+                ('emergency_home', 'Kritik', action_center.stats.critical, 'oncelikli', 'rose'),
+                ('timer', 'Geciken', action_center.stats.overdue, 'SLA asildi', 'amber'),
+                ('today', 'Bugun', action_center.stats.due_today, 'son tarih', 'blue'),
+                ('snooze', 'Ertelenen', action_center.stats.snoozed, 'takipte', 'slate'),
+                ('check_circle', 'Tamamlanan', action_center.stats.done, 'kapandi', 'emerald')
+            ] %}
+            {% for icon, label, value, hint, tone in action_cards %}
+            <div class="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ label }}</p>
+                        <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{{ value }}</p>
+                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ hint }}</p>
+                    </div>
+                    <span class="material-symbols-outlined rounded-lg p-2 {% if tone == 'rose' %}bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-300{% elif tone == 'amber' %}bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300{% elif tone == 'blue' %}bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300{% elif tone == 'emerald' %}bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300{% elif tone == 'slate' %}bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300{% else %}bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300{% endif %}">{{ icon }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div class="space-y-3">
+                {% for action in action_center.actions.items %}
+                {% set sla = action_center.sla_state(action) %}
+                <article class="rounded-xl border bg-white p-5 dark:bg-slate-900 {% if sla.overdue %}border-rose-200 dark:border-rose-900/60{% else %}border-slate-200 dark:border-slate-800{% endif %}">
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="rounded-full px-2 py-1 text-xs font-semibold {% if action.severity == 'critical' %}bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200{% elif action.severity == 'high' %}bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200{% elif action.severity == 'low' %}bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200{% else %}bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200{% endif %}">{{ action_center.severity_labels.get(action.severity, action.severity) }}</span>
+                                <span class="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ action_center.source_labels.get(action.source_type, action.source_type) }}</span>
+                                <span class="rounded-full px-2 py-1 text-xs font-semibold {{ 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200' if sla.tone == 'rose' else 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200' if sla.tone == 'amber' else 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200' if sla.tone == 'blue' else 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' if sla.tone == 'emerald' else 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200' }}">{{ sla.label }}</span>
+                                <span class="text-xs text-slate-500 dark:text-slate-400">Sahip: {{ action.assigned_user.email if action.assigned_user else 'atanmadi' }}</span>
+                            </div>
+                            <h3 class="mt-3 text-base font-bold text-slate-900 dark:text-white">{{ action.title }}</h3>
+                            <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{{ action.description }}</p>
+                            {% if action.ai_summary or action.ai_recommendation %}
+                            <div class="mt-3 rounded-lg border border-primary-100 bg-primary-50 p-3 dark:border-primary-900/50 dark:bg-primary-950/20">
+                                <p class="text-xs font-bold uppercase tracking-wide text-primary-700 dark:text-primary-200">AI operasyon notu</p>
+                                {% if action.ai_summary %}<p class="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{{ action.ai_summary }}</p>{% endif %}
+                                {% if action.ai_recommendation %}<p class="mt-1 text-sm text-slate-700 dark:text-slate-200">{{ action.ai_recommendation }}</p>{% endif %}
+                            </div>
+                            {% endif %}
+                            {% if action.events %}
+                            <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                                Son hareket: {{ action_center.event_labels.get(action.events[-1].event_type, action.events[-1].event_type) }} · {{ action.events[-1].created_at|datetime_tr if action.events[-1].created_at else '-' }}
+                            </p>
+                            {% endif %}
+                        </div>
+                        <div class="shrink-0 space-y-2 lg:w-48">
+                            <form method="post" action="{{ url_for('super_admin_update_action', action_id=action.id) }}">
+                                <input type="hidden" name="operation" value="assign">
+                                <select name="assigned_user_id" onchange="this.form.submit()" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+                                    <option value="">Sahip ata</option>
+                                    {% for admin in action_center.platform_admins %}
+                                    <option value="{{ admin.id }}" {% if action.assigned_user_id == admin.id %}selected{% endif %}>{{ user_display_name(admin) }} · {{ user_display_subtitle(admin) }}</option>
+                                    {% endfor %}
+                                </select>
+                            </form>
+                            {% if action.source_type == 'support' %}
+                            <a href="{{ url_for('super_admin_support_ticket_detail', ticket_id=action.source_id) }}" class="inline-flex w-full items-center justify-center gap-1 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900">
+                                <span class="material-symbols-outlined text-base">open_in_new</span>
+                                Talebe git
+                            </a>
+                            {% elif action.source_type == 'subscription' %}
+                            <button type="button" onclick="switchTab('companies')" class="inline-flex w-full items-center justify-center gap-1 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900">
+                                <span class="material-symbols-outlined text-base">domain</span>
+                                Firmalara git
+                            </button>
+                            {% endif %}
+                            <form method="post" action="{{ url_for('super_admin_refresh_action_ai', action_id=action.id) }}">
+                                <button class="inline-flex w-full items-center justify-center gap-1 rounded-lg border border-primary-200 px-3 py-2 text-xs font-semibold text-primary-700 hover:bg-primary-50 dark:border-primary-900 dark:text-primary-200 dark:hover:bg-primary-950/30">
+                                    <span class="material-symbols-outlined text-base">auto_awesome</span>
+                                    AI yenile
+                                </button>
+                            </form>
+                            {% if action.status != 'done' %}
+                            <form method="post" action="{{ url_for('super_admin_update_action', action_id=action.id) }}">
+                                <input type="hidden" name="operation" value="done">
+                                <button class="inline-flex w-full items-center justify-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">
+                                    <span class="material-symbols-outlined text-base">check</span>
+                                    Tamamla
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </article>
+                {% else %}
+                <div class="rounded-xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">Bekleyen aksiyon bulunmuyor.</div>
+                {% endfor %}
+            </div>
+
+            <div class="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                <h3 class="text-base font-bold text-slate-900 dark:text-white">Operasyon dagilimi</h3>
+                <div class="mt-4 space-y-4">
+                    <div>
+                        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Kaynak</p>
+                        <div class="space-y-2">
+                            {% for value, label in action_center.source_labels.items() %}
+                            <div class="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-950">
+                                <span class="text-slate-600 dark:text-slate-300">{{ label }}</span>
+                                <span class="font-bold text-slate-900 dark:text-white">{{ action_center.source_counts.get(value, 0) }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div>
+                        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Onem</p>
+                        <div class="grid grid-cols-2 gap-2">
+                            {% for value, label in action_center.severity_labels.items() %}
+                            <div class="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-800">
+                                <span class="block text-xs text-slate-500 dark:text-slate-400">{{ label }}</span>
+                                <span class="mt-1 block text-lg font-bold text-slate-900 dark:text-white">{{ action_center.severity_counts.get(value, 0) }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    </div>
+
+    <div id="platform-support-content" class="settings-content hidden">
+    <section class="space-y-4">
+        <div class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Destek Talepleri</h2>
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Firmalardan gelen talepleri Super Admin akisi icinde takip et.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <span id="supportTicketCount" class="inline-flex items-center rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{{ support_center.tickets.items|length }} / {{ support_center.tickets.items|length }} talep</span>
+                <button type="button" data-support-filter="" class="rounded-lg px-3 py-2 text-sm font-semibold bg-primary-600 text-white">Tumu</button>
+                {% for value, label in support_center.status_labels.items() %}
+                <button type="button" data-support-filter="{{ value }}" class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800">{{ label }}</button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            {% for value, label in support_center.status_labels.items() %}
+            <div class="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ label }}</p>
+                <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{{ support_center.status_counts.get(value, 0) }}</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[900px]">
+                    <thead class="bg-slate-50 dark:bg-slate-800">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Talep</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Firma</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Durum</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Oncelik</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Guncelleme</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                        {% for ticket in support_center.tickets.items %}
+                        <tr data-support-status="{{ ticket.status }}" onclick="window.location.href='{{ url_for('super_admin_support_ticket_detail', ticket_id=ticket.id) }}'" class="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <td class="px-4 py-3">
+                                <a href="{{ url_for('super_admin_support_ticket_detail', ticket_id=ticket.id) }}" class="font-semibold text-slate-900 hover:text-primary-600 dark:text-white">#{{ ticket.id }} {{ ticket.subject }}</a>
+                                <p class="mt-1 text-xs text-slate-500">{{ support_center.category_labels.get(ticket.category, ticket.category) }}</p>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{{ ticket.organization.name if ticket.organization else '-' }}</td>
+                            <td class="px-4 py-3"><span class="rounded-full bg-primary-50 px-2 py-1 text-xs font-semibold text-primary-700 dark:bg-primary-950/40 dark:text-primary-200">{{ support_center.status_labels.get(ticket.status, ticket.status) }}</span></td>
+                            <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{{ support_center.priority_labels.get(ticket.priority, ticket.priority) }}</td>
+                            <td class="px-4 py-3 text-sm text-slate-500">{{ ticket.updated_at|datetime_tr if ticket.updated_at else '-' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="px-4 py-10 text-center text-sm text-slate-500">Destek talebi bulunamadi.</td></tr>
+                        {% endfor %}
+                        <tr id="supportEmptyState" class="hidden"><td colspan="5" class="px-4 py-10 text-center text-sm text-slate-500">Bu durumda destek talebi bulunmuyor.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+    </div>
+
+    <div id="companies-content" class="settings-content hidden">
+    <section id="firmalar" class="space-y-4">
+        <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Firma Yonetimi</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Paket, limit, durum ve modul yetkilerini tek yerden yonet.</p>
+            </div>
+            <span id="organizationCount" class="text-sm text-slate-500 dark:text-slate-400">{{ org_cards|length }} firma</span>
+        </div>
+        {% if stats.expired_subscriptions or stats.renewal_due_subscriptions %}
+        <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">
+            <span class="font-semibold">{{ stats.expired_subscriptions }}</span> firmanin destek suresi doldu,
+            <span class="font-semibold">{{ stats.renewal_due_subscriptions }}</span> firmanin yenilemesi yaklasti.
+        </div>
+        {% endif %}
+
+        <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+            <div class="grid gap-3 lg:grid-cols-[1fr_180px_180px_auto]">
+                <label class="relative">
+                    <span class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg text-slate-400">search</span>
+                    <input id="organizationSearch" type="search" placeholder="Firma, sahip e-posta veya paket ara" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 py-2 pl-10 pr-3 text-sm text-slate-900 dark:text-white focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100 dark:focus:ring-primary-900/40">
+                </label>
+                <select id="organizationPlanFilter" class="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-900 dark:text-white">
+                    <option value="">Tum paketler</option>
+                    <option value="demo">Demo</option>
+                    <option value="standart">Standart</option>
+                    <option value="profesyonel">Profesyonel</option>
+                </select>
+                <select id="organizationStatusFilter" class="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-900 dark:text-white">
+                    <option value="">Tum durumlar</option>
+                    <option value="active">Aktif</option>
+                    <option value="passive">Pasif</option>
+                    <option value="maintenance">Bakimda</option>
+                </select>
+                <button type="button" id="expandAllOrganizations" class="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
+                    <span class="material-symbols-outlined text-lg">unfold_more</span>
+                    Ac/Kapat
+                </button>
+            </div>
+        </div>
+
+        <div id="organizationList" class="max-h-[680px] space-y-3 overflow-y-auto pr-1">
+            {% for item in org_cards %}
+            {% set org = item.organization %}
+            {% set usage = item.usage %}
+            {% set subscription = item.subscription %}
+            <details class="organization-row group rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900" data-name="{{ org.name|lower }}" data-owner="{{ (item.owner.email if item.owner else '')|lower }}" data-plan="{{ org.plan }}" data-active="{{ 'active' if org.active else 'passive' }}" data-maintenance="{{ 'maintenance' if org.maintenance_mode else '' }}" {% if loop.first %}open{% endif %}>
+                <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="truncate text-base font-bold text-slate-900 dark:text-white">{{ org.name }}</h3>
+                            <span class="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ org.plan|title }}</span>
+                            {% if org.maintenance_mode %}
+                            <span class="rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">Bakimda</span>
+                            {% elif org.active %}
+                            <span class="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">Aktif</span>
+                            {% else %}
+                            <span class="rounded-full bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-800 dark:bg-rose-950/40 dark:text-rose-200">Pasif</span>
+                            {% endif %}
+                            <span class="rounded-full px-2 py-1 text-xs font-semibold {% if subscription.tone == 'rose' %}bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200{% elif subscription.tone == 'amber' %}bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200{% elif subscription.tone == 'blue' %}bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200{% elif subscription.tone == 'emerald' %}bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200{% else %}bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200{% endif %}">{{ subscription.label }}</span>
+                        </div>
+                        <p class="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{{ item.owner.email if item.owner else 'atanmamis' }} · {{ usage.users }} kullanici · {{ usage.products }} urun · Destek bitis: {{ org.subscription_end|date_tr if org.subscription_end else '-' }}</p>
+                    </div>
+                    <div class="flex shrink-0 items-center gap-4">
+                        <div class="hidden text-right sm:block">
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Son hareket</p>
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-200">{{ usage.last_activity|date_tr if usage.last_activity else '-' }}</p>
+                        </div>
+                        <span class="material-symbols-outlined text-slate-400 transition-transform group-open:rotate-180">expand_more</span>
+                    </div>
+                </summary>
+
+                <form method="post" action="{{ url_for('super_admin_update_organization', organization_id=org.id) }}" class="border-t border-slate-200 dark:border-slate-800">
+                <div class="grid gap-5 p-5 lg:grid-cols-[1.2fr_1fr]">
+                    <div class="space-y-4">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div class="min-w-0">
+                                <input name="name" value="{{ org.name }}" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-base font-semibold text-slate-900 dark:text-white focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100 dark:focus:ring-primary-900/40">
+                                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Sahip: {{ item.owner.email if item.owner else 'atanmamis' }}</p>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <label class="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm text-slate-700 dark:text-slate-200">
+                                    <input type="checkbox" name="active" class="rounded border-slate-300 text-primary-600" {% if org.active %}checked{% endif %}>
+                                    Aktif
+                                </label>
+                                <label class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+                                    <input type="checkbox" name="maintenance_mode" class="rounded border-amber-300 text-amber-600" {% if org.maintenance_mode %}checked{% endif %}>
+                                    Firma bakimi
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="grid gap-3 md:grid-cols-3">
+                            <label class="space-y-1">
+                                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Paket</span>
+                                <select name="plan" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm">
+                                    {% for plan in ['demo', 'standart', 'profesyonel'] %}
+                                    <option value="{{ plan }}" {% if org.plan == plan %}selected{% endif %}>{{ plan|title }}</option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                            <label class="space-y-1">
+                                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Kullanici limiti</span>
+                                <input type="number" min="1" name="user_limit" value="{{ org.user_limit or 1 }}" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm">
+                            </label>
+                            <label class="space-y-1">
+                                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Urun limiti</span>
+                                <input type="number" min="1" name="product_limit" value="{{ org.product_limit or 10 }}" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm">
+                            </label>
+                        </div>
+
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
+                            <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                <div>
+                                    <p class="text-sm font-bold text-slate-900 dark:text-white">Abonelik ve destek suresi</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">
+                                        {% if subscription.days_left is none %}
+                                        Bitis tarihi belirlenmedi.
+                                        {% elif subscription.days_left < 0 %}
+                                        {{ -subscription.days_left }} gun once sona erdi.
+                                        {% else %}
+                                        {{ subscription.days_left }} gun kaldi.
+                                        {% endif %}
+                                    </p>
+                                </div>
+                                <span class="rounded-full px-2 py-1 text-xs font-semibold {% if subscription.tone == 'rose' %}bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200{% elif subscription.tone == 'amber' %}bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200{% elif subscription.tone == 'blue' %}bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200{% elif subscription.tone == 'emerald' %}bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200{% else %}bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200{% endif %}">{{ subscription.label }}</span>
+                            </div>
+                            <div class="grid gap-3 md:grid-cols-3">
+                                <label class="space-y-1">
+                                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Baslangic</span>
+                                    <input type="date" name="subscription_start" value="{{ org.subscription_start.isoformat() if org.subscription_start else '' }}" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm">
+                                </label>
+                                <label class="space-y-1">
+                                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Bitis</span>
+                                    <input type="date" name="subscription_end" value="{{ org.subscription_end.isoformat() if org.subscription_end else '' }}" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm">
+                                </label>
+                                <label class="space-y-1">
+                                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Durum</span>
+                                    <select name="subscription_status" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm">
+                                        {% for value, label in [('trial', 'Deneme'), ('active', 'Aktif'), ('expired', 'Suresi doldu'), ('cancelled', 'Iptal')] %}
+                                        <option value="{{ value }}" {% if subscription.status == value %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </label>
+                            </div>
+                            <label class="mt-3 block space-y-1">
+                                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Yenileme / destek notu</span>
+                                <textarea name="subscription_note" rows="2" maxlength="500" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm" placeholder="Orn: 2027 yenilemesi icin teklif gonderildi.">{{ org.subscription_note or '' }}</textarea>
+                            </label>
+                        </div>
+
+                        <div>
+                            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Modul yetkileri</p>
+                            <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                {% for key, label in platform_modules %}
+                                <label class="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm text-slate-700 dark:text-slate-200">
+                                    <input type="checkbox" name="modules" value="{{ key }}" class="rounded border-slate-300 text-primary-600" {% if item.modules.get(key) %}checked{% endif %}>
+                                    {{ label }}
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="rounded-lg bg-slate-50 dark:bg-slate-950 p-3">
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Kullanici</p>
+                                <p class="mt-1 text-lg font-bold text-slate-900 dark:text-white">{{ usage.users }} / {{ org.user_limit or 1 }}</p>
+                            </div>
+                            <div class="rounded-lg bg-slate-50 dark:bg-slate-950 p-3">
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Urun</p>
+                                <p class="mt-1 text-lg font-bold text-slate-900 dark:text-white">{{ usage.products }} / {{ org.product_limit or 10 }}</p>
+                            </div>
+                            <div class="rounded-lg bg-slate-50 dark:bg-slate-950 p-3">
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Cari</p>
+                                <p class="mt-1 text-lg font-bold text-slate-900 dark:text-white">{{ usage.customers }}</p>
+                            </div>
+                            <div class="rounded-lg bg-slate-50 dark:bg-slate-950 p-3">
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Teklif</p>
+                                <p class="mt-1 text-lg font-bold text-slate-900 dark:text-white">{{ usage.quotes }}</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">
+                            Son hareket: {{ usage.last_activity|datetime_tr if usage.last_activity else 'kayit yok' }}
+                        </p>
+                        <div class="flex flex-wrap gap-2">
+                            <a href="{{ url_for('super_admin_organization_detail', organization_id=org.id) }}" class="inline-flex items-center gap-2 rounded-lg border border-primary-200 bg-primary-50 px-4 py-2 text-sm font-semibold text-primary-700 hover:bg-primary-100 dark:border-primary-900/50 dark:bg-primary-950/30 dark:text-primary-200">
+                                <span class="material-symbols-outlined text-lg">monitoring</span>
+                                Firma 360
+                            </a>
+                            <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">
+                                <span class="material-symbols-outlined text-lg">save</span>
+                                Kaydet
+                            </button>
+                            <button type="submit" formaction="{{ url_for('super_admin_impersonate', organization_id=org.id) }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
+                                <span class="material-symbols-outlined text-lg">support_agent</span>
+                                Destek girisi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                </form>
+                <div class="border-t border-slate-200 p-5 dark:border-slate-800">
+                    <div class="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-900 dark:text-white">Firma kullanicilari</h4>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Bu firmaya bagli kullanicilarin rol ve aktiflik durumunu buradan yonet.</p>
+                        </div>
+                        <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">{{ item.users|length }} / {{ org.user_limit or 1 }} kullanici</span>
+                    </div>
+                    <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                        <table class="w-full min-w-[760px]">
+                            <thead class="bg-slate-50 dark:bg-slate-800">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Kullanici</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Rol</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Paket</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Durum</th>
+                                    <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Islem</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                                {% for user in item.users %}
+                                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                    <form method="post" action="{{ url_for('super_admin_update_user', user_id=user.id) }}">
+                                        <input type="hidden" name="firma_adi" value="{{ user.firma_adi }}">
+                                        <input type="hidden" name="paket_tipi" value="{{ user.paket_tipi }}">
+                                        <input type="hidden" name="urun_limiti" value="{{ user.urun_limiti or org.product_limit or 10 }}">
+                                        <input type="hidden" name="source_context" value="organization_users">
+                                        <td class="px-4 py-3">
+                                            <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ user.email }}</p>
+                                            <p class="text-xs text-slate-500 dark:text-slate-400">{{ user.yetkili_adi or 'Ad bilgisi yok' }}</p>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <select name="role" class="w-32 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+                                                {% for role, label in [('owner', 'Sahip'), ('admin', 'Admin'), ('staff', 'Personel')] %}
+                                                <option value="{{ role }}" {% if user.role == role %}selected{% endif %}>{{ label }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{{ user.paket_tipi|title }} · {{ user.urun_limiti or org.product_limit or 10 }} urun</td>
+                                        <td class="px-4 py-3">
+                                            <label class="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+                                                <input type="checkbox" name="aktif" class="rounded border-slate-300 text-primary-600" {% if user.aktif %}checked{% endif %} {% if user.id == current_user.id %}disabled{% endif %}>
+                                                Aktif
+                                            </label>
+                                        </td>
+                                        <td class="px-4 py-3 text-right">
+                                            <button class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-700">
+                                                <span class="material-symbols-outlined text-lg">save</span>
+                                                Kaydet
+                                            </button>
+                                        </td>
+                                    </form>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="5" class="px-4 py-8 text-center text-sm text-slate-500">Bu firmaya bagli kullanici yok.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </details>
+            {% else %}
+            <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center text-slate-500 dark:text-slate-400">Henuz firma kaydi yok.</div>
+            {% endfor %}
+            <div id="organizationEmptyState" class="hidden rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center text-slate-500 dark:text-slate-400">Filtreye uyan firma bulunamadi.</div>
+        </div>
+    </section>
+    </div>
+
+    <div id="platform-users-content" class="settings-content hidden">
+    <section id="kullanicilar" class="space-y-4">
+        <div>
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Kullanici ve Yetki Yonetimi</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Kullanici durumu, rol, paket ve super admin yetkisini yonet.</p>
+        </div>
+        <div class="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[980px]">
+                    <thead class="bg-slate-50 dark:bg-slate-800">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Kullanici</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Firma</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Paket</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Limit</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Rol</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Super Admin Rol</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Durum</th>
+                            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Islem</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                        {% for user in users %}
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <form method="post" action="{{ url_for('super_admin_update_user', user_id=user.id) }}">
+                                <td class="px-4 py-3">
+                                    <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ user.email }}</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">{{ user.yetkili_adi or '-' }}</p>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <input name="firma_adi" value="{{ user.firma_adi }}" class="w-44 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm">
+                                </td>
+                                <td class="px-4 py-3">
+                                    <select name="paket_tipi" class="w-36 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm">
+                                        {% for plan in ['demo', 'standart', 'profesyonel'] %}
+                                        <option value="{{ plan }}" {% if user.paket_tipi == plan %}selected{% endif %}>{{ plan|title }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <input type="number" min="1" name="urun_limiti" value="{{ user.urun_limiti or 10 }}" class="w-24 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm">
+                                </td>
+                                <td class="px-4 py-3">
+                                    <select name="role" class="w-32 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm">
+                                        {% for role in ['owner', 'admin', 'staff'] %}
+                                        <option value="{{ role }}" {% if user.role == role %}selected{% endif %}>{{ role }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <select name="platform_role" class="w-40 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm" {% if not user.is_platform_admin and user.id != current_user.id %}disabled{% endif %}>
+                                        {% for value, label in platform_admin_role_labels.items() %}
+                                        <option value="{{ value }}" {% if (user.platform_role or 'viewer') == value %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex flex-col gap-2 text-sm text-slate-700 dark:text-slate-200">
+                                        <label class="inline-flex items-center gap-2">
+                                            <input type="checkbox" name="aktif" class="rounded border-slate-300 text-primary-600" {% if user.aktif %}checked{% endif %} {% if user.id == current_user.id %}disabled{% endif %}>
+                                            Aktif
+                                        </label>
+                                        <label class="inline-flex items-center gap-2">
+                                            <input type="checkbox" name="is_platform_admin" class="rounded border-slate-300 text-primary-600" {% if user.is_platform_admin %}checked{% endif %} {% if user.id == current_user.id %}disabled{% endif %}>
+                                            Super admin
+                                        </label>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-right">
+                                    <button class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-700">
+                                        <span class="material-symbols-outlined text-lg">save</span>
+                                        Kaydet
+                                    </button>
+                                </td>
+                            </form>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+    </div>
+
+    <div id="platform-team-content" class="settings-content hidden">
+    <section class="space-y-4">
+        <div class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Platform Ekibi</h2>
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Destek, operasyon ve finans ekibini firma kaydi olusturmadan yonet.</p>
+            </div>
+            <span class="rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700 dark:bg-primary-950/40 dark:text-primary-200">{{ platform_team|length }} ekip uyesi</span>
+        </div>
+
+        <div class="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            <div class="mb-4 flex items-start gap-3">
+                <span class="material-symbols-outlined rounded-lg bg-emerald-50 p-2 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300">verified_user</span>
+                <div>
+                    <h3 class="text-base font-bold text-slate-900 dark:text-white">Rol yetkileri</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Roller sabit yetki setleriyle calisir; ekip uyesine rol verince bu yetkiler uygulanir.</p>
+                </div>
+            </div>
+            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                {% for role, role_label in platform_admin_role_labels.items() %}
+                <div class="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
+                    <p class="font-semibold text-slate-900 dark:text-white">{{ role_label }}</p>
+                    <div class="mt-3 space-y-2">
+                        {% for permission, permission_label in platform_permission_labels.items() %}
+                        <div class="flex items-start gap-2 text-xs">
+                            <span class="material-symbols-outlined mt-0.5 text-sm {{ 'text-emerald-600 dark:text-emerald-300' if permission in platform_role_permissions.get(role, []) else 'text-slate-300 dark:text-slate-700' }}">{{ 'check_circle' if permission in platform_role_permissions.get(role, []) else 'radio_button_unchecked' }}</span>
+                            <span class="{{ 'text-slate-700 dark:text-slate-200' if permission in platform_role_permissions.get(role, []) else 'text-slate-400 dark:text-slate-600' }}">{{ permission_label }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="grid gap-4 xl:grid-cols-[420px_minmax(0,1fr)]">
+            <form method="post" action="{{ url_for('super_admin_create_platform_team_member') }}" class="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                <div class="mb-5 flex items-start gap-3">
+                    <span class="material-symbols-outlined rounded-lg bg-primary-50 p-2 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300">person_add</span>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900 dark:text-white">Yeni ekip uyesi</h3>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Bu kullanici firma listesine musteri olarak eklenmez.</p>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Ad soyad</span>
+                        <input name="name" maxlength="100" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">E-posta</span>
+                        <input type="email" name="email" required class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Rol</span>
+                        <select name="platform_role" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+                            {% for value, label in platform_admin_role_labels.items() %}
+                            <option value="{{ value }}" {% if value == 'support' %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Gecici sifre</span>
+                        <input type="password" name="password" minlength="8" required class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+                    </label>
+                    <button class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">
+                        <span class="material-symbols-outlined text-lg">add</span>
+                        Ekibe ekle
+                    </button>
+                </div>
+            </form>
+
+            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[840px]">
+                        <thead class="bg-slate-50 dark:bg-slate-800">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Ekip uyesi</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Rol</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Durum</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Sifre</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Islem</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                            {% for member in platform_team %}
+                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                <form method="post" action="{{ url_for('super_admin_update_platform_team_member', user_id=member.id) }}">
+                                    <td class="px-4 py-3">
+                                        <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ user_display_name(member) }}</p>
+                                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ member.email }}</p>
+                                        <input name="name" value="{{ member.yetkili_adi or '' }}" placeholder="Ad soyad" class="mt-2 w-48 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+                                        {% if not member.organization_id %}
+                                        <p class="mt-1 text-xs text-emerald-600 dark:text-emerald-300">Firma kaydi yok</p>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <select name="platform_role" class="w-40 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" {% if member.id == current_user.id %}disabled{% endif %}>
+                                            {% for value, label in platform_admin_role_labels.items() %}
+                                            <option value="{{ value }}" {% if (member.platform_role or 'viewer') == value %}selected{% endif %}>{{ label }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <label class="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+                                            <input type="checkbox" name="aktif" class="rounded border-slate-300 text-primary-600" {% if member.aktif %}checked{% endif %} {% if member.id == current_user.id %}disabled{% endif %}>
+                                            Aktif
+                                        </label>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <input type="password" name="password" minlength="8" placeholder="Degistirme" class="w-36 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        <button class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-700">
+                                            <span class="material-symbols-outlined text-lg">save</span>
+                                            Kaydet
+                                        </button>
+                                    </td>
+                                </form>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5" class="px-4 py-10 text-center text-sm text-slate-500">Platform ekibi uyesi yok.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+    </div>
+
+    <div id="platform-system-content" class="settings-content hidden">
+    <section id="sistem" class="space-y-5">
+        <form id="releaseUploadForm" method="post" action="{{ url_for('super_admin_upload_release') }}" enctype="multipart/form-data"></form>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <nav class="system-management-tabbar flex flex-wrap gap-2 overflow-x-auto" aria-label="Sistem yönetimi alt sekmeleri">
+                <button type="button" data-system-tab="operation" onclick="switchSystemManagementTab('operation')" aria-selected="true" class="system-management-tab-btn active inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all">
+                    <span class="material-symbols-outlined text-lg">tune</span>
+                    Operasyon
+                </button>
+                <button type="button" data-system-tab="infrastructure" onclick="switchSystemManagementTab('infrastructure')" aria-selected="false" class="system-management-tab-btn inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all">
+                    <span class="material-symbols-outlined text-lg">dns</span>
+                    Altyapi
+                </button>
+                <button type="button" data-system-tab="security" onclick="switchSystemManagementTab('security')" aria-selected="false" class="system-management-tab-btn inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all">
+                    <span class="material-symbols-outlined text-lg">shield_lock</span>
+                    Guvenlik
+                </button>
+                <button type="button" data-system-tab="defaults" onclick="switchSystemManagementTab('defaults')" aria-selected="false" class="system-management-tab-btn inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all">
+                    <span class="material-symbols-outlined text-lg">storefront</span>
+                    Ticari Varsayilanlar
+                </button>
+                <button type="button" data-system-tab="test-center" onclick="switchSystemManagementTab('test-center')" aria-selected="false" class="system-management-tab-btn inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all">
+                    <span class="material-symbols-outlined text-lg">science</span>
+                    Test Merkezi
+                </button>
+            </nav>
+        </div>
+
+        <form method="post" action="{{ url_for('super_admin_update_system_controls') }}" class="space-y-5">
+            <div id="system-operation-panel" class="system-management-panel space-y-5">
+                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                    <div class="mb-4 flex items-start gap-3">
+                        <span class="material-symbols-outlined rounded-xl bg-slate-100 p-2 text-slate-700 dark:bg-slate-800 dark:text-slate-200">system_update</span>
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Guncelleme</h2>
+                            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Yeni surumu zip olarak yukle. Updater saglikliysa yeni surume gecer, sorun varsa mevcut surum calismaya devam eder.</p>
+                        </div>
+                    </div>
+                    <div class="grid gap-4 lg:grid-cols-3">
+                        <div class="rounded-xl border border-slate-200 p-4 text-sm dark:border-slate-800">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Calisan surum</p>
+                            <p class="mt-2 font-mono text-slate-900 dark:text-white">{{ app_version }}</p>
+                        </div>
+                        <div class="rounded-xl border border-slate-200 p-4 text-sm dark:border-slate-800 lg:col-span-2">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Updater durumu</p>
+                            {% if updater_status %}
+                            <p class="mt-2 text-slate-900 dark:text-white">
+                                <span class="font-semibold">{{ updater_status.state }}</span>
+                                {% if updater_status.active_release %}<span class="ml-2 font-mono">{{ updater_status.active_release }}</span>{% endif %}
+                            </p>
+                            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ updater_status.updated_at }} - {{ updater_status.message }}</p>
+                            {% if updater_heartbeat %}
+                            <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Timer: <span class="font-mono">{{ updater_heartbeat.timer.state }}</span> - Son calisma: <span class="font-mono">{{ updater_heartbeat.updated_at }}</span></p>
+                            {% else %}
+                            <p class="mt-2 text-xs text-amber-700 dark:text-amber-300">Updater heartbeat bulunamadi. Timer kurulmamis veya calismiyor olabilir.</p>
+                            {% endif %}
+                            {% else %}
+                            <p class="mt-2 text-slate-500 dark:text-slate-400">Henüz bir guncelleme kaydi yok.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <label class="block w-full">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Release zip</span>
+                            <input form="releaseUploadForm" type="file" name="release_zip" accept=".zip" required class="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                        </label>
+                        <button form="releaseUploadForm" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">
+                            <span class="material-symbols-outlined text-lg">upload</span>
+                            Yukle ve uygula
+                        </button>
+                        <button type="button" onclick="openUpdaterHelp()" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:hover:bg-slate-900">
+                            <span class="material-symbols-outlined text-lg">help</span>
+                            Updater kurulumu
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+                    <div class="space-y-5">
+                        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                            <div class="mb-5 flex items-start justify-between gap-4">
+                                <div>
+                                    <h2 class="text-lg font-bold text-slate-900 dark:text-white">Calisma Modu ve Kilitler</h2>
+                                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Platform seviyesinde erisim, degisiklik ve riskli islem davranisini yonet.</p>
+                                </div>
+                                <button class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900">
+                                    <span class="material-symbols-outlined text-lg">save</span>
+                                    Kaydet
+                                </button>
+                            </div>
+                            <div class="grid gap-3 md:grid-cols-2">
+                                {% set toggles = [
+                                    ('maintenance_mode', 'Bakim modu', 'Normal kullanici erisimini gecici durdurur.', system_controls.maintenance_mode, 'amber'),
+                                    ('readonly_mode', 'Salt-okunur mod', 'Platform ekibi disindaki degisiklik islemlerini durdurur.', system_controls.readonly_mode, 'blue'),
+                                    ('registrations_enabled', 'Yeni firma kaydi', 'Yeni firma kayitlarini acik tutar.', system_controls.registrations_enabled, 'emerald'),
+                                    ('file_uploads_locked', 'Dosya yukleme kilidi', 'Destek ekran goruntusu dahil yeni yuklemeleri durdurur.', system_controls.file_uploads_locked, 'rose'),
+                                    ('dangerous_operations_locked', 'Riskli islem kilidi', 'Silme, geri yukleme ve toplu kritik islemleri durdurur.', system_controls.dangerous_operations_locked, 'rose'),
+                                    ('security_shield_enabled', 'Supheli istek kalkani', 'Tarama, injection ve path traversal denemelerini engeller.', system_controls.security_shield_enabled, 'emerald'),
+                                    ('owner_account_protection', 'Sahip hesabi koruma', 'Platform sahibi hesabinin rol, durum ve sifresini ekip degistiremez.', system_controls.owner_account_protection, 'rose'),
+                                    ('financial_changes_locked', 'Finansal degisiklik kilidi', 'Paket, limit, abonelik ve odeme degisikliklerini sahibin kendisine birakir.', system_controls.financial_changes_locked, 'rose'),
+                                    ('support_impersonation_locked', 'Destek girisi kilidi', 'Ekip uyelerinin musteri hesabina destek modunda girmesini durdurur.', system_controls.support_impersonation_locked, 'amber'),
+                                    ('data_export_locked', 'Veri cikisi kilidi', 'Yedek goruntuleme/indirme gibi veri cikislarini sahibin onayina alir.', system_controls.data_export_locked, 'rose'),
+                                    ('pos_integration_enabled_for_users', 'POS Entegrasyon sekmesi', 'Normal kullanicilarin ayarlarinda POS entegrasyon kurulumunu gosterir.', system_controls.pos_integration_enabled_for_users, 'blue'),
+                                    ('owner_approval_required', 'Sahip onayi modu', 'Kritik islemleri ekip icin kilitler; platform sahibi dogrudan uygular.', system_controls.owner_approval_required, 'amber')
+                                ] %}
+                                {% for name, title, hint, checked, tone in toggles %}
+                                <label class="flex items-start gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                                    <input type="checkbox" name="{{ name }}" class="mt-1 rounded border-slate-300 text-primary-600" {% if checked %}checked{% endif %}>
+                                    <span>
+                                        <span class="block text-sm font-semibold text-slate-900 dark:text-white">{{ title }}</span>
+                                        <span class="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">{{ hint }}</span>
+                                    </span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Bakim ve Duyuru</h2>
+                            <div class="mt-4 grid gap-4 md:grid-cols-2">
+                                <label class="block md:col-span-2">
+                                    <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Bakim mesaji</span>
+                                    <textarea name="maintenance_message" rows="3" maxlength="500" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">{{ system_controls.maintenance_message }}</textarea>
+                                </label>
+                                <label class="block">
+                                    <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tahmini bitis</span>
+                                    <input name="maintenance_eta" value="{{ system_controls.maintenance_eta }}" placeholder="Bugun 18:30" maxlength="60" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                                </label>
+                                <label class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:text-slate-200">
+                                    <span>Global duyuru</span>
+                                    <input type="checkbox" name="global_notice_enabled" class="rounded border-slate-300 text-primary-600" {% if system_controls.global_notice_enabled %}checked{% endif %}>
+                                </label>
+                                <label class="block md:col-span-2">
+                                    <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Duyuru metni</span>
+                                    <input name="global_notice_message" value="{{ system_controls.global_notice_message }}" maxlength="240" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-5">
+                        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Oturum Mudahalesi</h2>
+                            <label class="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100">
+                                <input type="checkbox" name="terminate_sessions" class="mt-1 rounded border-amber-300 text-amber-600">
+                                <span>
+                                    <span class="block font-semibold">Platform ekibi haric tum oturumlari sonlandir</span>
+                                    <span class="mt-1 block text-xs leading-5">Kaydet ile birlikte mevcut normal kullanici oturumlari yeniden giris ister.</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="system-infrastructure-panel" class="system-management-panel hidden space-y-5">
+                <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+                    <div class="space-y-5">
+                        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                            <h2 class="text-lg font-bold text-slate-900 dark:text-white">SMTP Ayarlari</h2>
+                            <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Guvenlik: Parola alanini bos birakirsan mevcut parola degismez.</p>
+                                <div class="mt-4 grid gap-3 md:grid-cols-2">
+                                    <label class="block md:col-span-2">
+                                        <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">SMTP Host</span>
+                                        <input name="smtp_host" value="{{ platform_config.smtp_host }}" placeholder="smtp.ornek.com" maxlength="200" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                                    </label>
+                                    <label class="block">
+                                        <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">SMTP Port</span>
+                                        <input name="smtp_port" value="{{ platform_config.smtp_port }}" placeholder="587" maxlength="6" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                                    </label>
+                                    <label class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                                        <span>TLS kullan</span>
+                                        <input type="checkbox" name="smtp_use_tls" class="rounded border-slate-300 text-primary-600" {% if platform_config.smtp_use_tls %}checked{% endif %}>
+                                    </label>
+                                    <label class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                                        <span>SSL kullan</span>
+                                        <input type="checkbox" name="smtp_use_ssl" class="rounded border-slate-300 text-primary-600" {% if platform_config.smtp_use_ssl %}checked{% endif %}>
+                                    </label>
+                                    <label class="block">
+                                        <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Kullanici adi</span>
+                                        <input name="smtp_username" value="{{ platform_config.smtp_username }}" placeholder="destek@maxad.com" maxlength="200" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                                    </label>
+                                    <label class="block">
+                                        <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Parola</span>
+                                        <input name="smtp_password" value="" type="password" placeholder="Degistirmek icin gir" maxlength="200" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                                    </label>
+                                    <label class="block md:col-span-2">
+                                        <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Gonderen e-posta (From)</span>
+                                        <input name="smtp_from_email" value="{{ platform_config.smtp_from_email }}" placeholder="destek@maxad.com" maxlength="200" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                                    </label>
+                                    <label class="block md:col-span-2">
+                                        <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Gonderen adi</span>
+                                        <input name="smtp_from_name" value="{{ platform_config.smtp_from_name }}" placeholder="Maxad" maxlength="120" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-5">
+                        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Yedekleme Politikasi</h2>
+                            <div class="mt-4 grid gap-4">
+                                <label class="block">
+                                    <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Otomatik yedekleme</span>
+                                    <select name="auto_backup_frequency" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                                        {% for value, label in [('off', 'Kapali'), ('daily', 'Gunluk'), ('weekly', 'Haftalik'), ('monthly', 'Aylik')] %}
+                                        <option value="{{ value }}" {% if platform_config.auto_backup_frequency == value %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </label>
+                                <label class="block">
+                                    <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Yedek saklama (gun)</span>
+                                    <input type="number" min="1" max="3650" name="backup_retention_days" value="{{ platform_config.backup_retention_days }}" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Servis Sagligi</h2>
+                            <div class="mt-4 space-y-3">
+                                {% for key, value in system_health.checks.items() %}
+                                <div class="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm dark:bg-slate-950">
+                                    <span class="text-slate-600 dark:text-slate-300">{{ key|replace('_', ' ')|title }}</span>
+                                    <span class="rounded-full px-2 py-1 text-xs font-bold {% if value == 'ok' or value == 'active' %}bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200{% elif value == 'warning' or value == 'passive' %}bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200{% else %}bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-200{% endif %}">{{ value }}</span>
+                                </div>
+                                {% endfor %}
+                                <div class="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm dark:bg-slate-950">
+                                    <span class="text-slate-600 dark:text-slate-300">Son yedek</span>
+                                    <span class="font-semibold text-slate-900 dark:text-white">{{ system_health.latest_backup.created_at|datetime_tr if system_health.latest_backup else '-' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end">
+                    <button class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900">
+                        <span class="material-symbols-outlined text-lg">save</span>
+                        Altyapi ayarlarini kaydet
+                    </button>
+                </div>
+            </div>
+
+            <div id="system-security-panel" class="system-management-panel hidden space-y-5">
+                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    {% set system_cards = [
+                        ('monitor_heart', 'Servis durumu', 'Saglikli' if system_health.status == 'healthy' else 'Kontrol gerekli', system_health.environment, 'emerald' if system_health.status == 'healthy' else 'rose'),
+                        ('admin_panel_settings', 'Calisma modu', 'Bakimda' if system_controls.maintenance_mode else 'Normal', 'salt-okunur acik' if system_controls.readonly_mode else 'tam erisim', 'amber' if system_controls.maintenance_mode or system_controls.readonly_mode else 'emerald'),
+                        ('shield_lock', 'Guvenlik kalkani', 'Aktif' if system_controls.security_shield_enabled else 'Pasif', system_security.blocked_threats_24h ~ ' engel / 24s', 'emerald' if system_controls.security_shield_enabled else 'rose'),
+                        ('login', 'Giris riski', system_security.failed_logins_24h, 'basarisiz giris / 24s', 'amber' if system_security.failed_logins_24h else 'slate')
+                    ] %}
+                    {% for icon, label, value, hint, tone in system_cards %}
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ label }}</p>
+                                <p class="mt-2 text-xl font-bold text-slate-900 dark:text-white">{{ value }}</p>
+                                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ hint }}</p>
+                            </div>
+                            <span class="material-symbols-outlined rounded-lg p-2 {% if tone == 'rose' %}bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-300{% elif tone == 'amber' %}bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300{% elif tone == 'emerald' %}bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300{% else %}bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300{% endif %}">{{ icon }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                        <div class="mb-5 flex items-start gap-3">
+                            <span class="material-symbols-outlined rounded-xl bg-amber-50 p-2 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300">shield_lock</span>
+                            <div>
+                                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Guvenlik Politikasi</h2>
+                                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Oturum ve parola kurallarini sistem yonetiminden uygula.</p>
+                            </div>
+                        </div>
+                        <div class="grid gap-4 md:grid-cols-3">
+                            <label class="block">
+                                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Minimum sifre uzunlugu</span>
+                                <input type="number" min="8" max="32" name="min_password_length" value="{{ platform_config.min_password_length }}" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                            </label>
+                            <label class="block">
+                                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Oturum suresi (dakika)</span>
+                                <input type="number" min="15" max="43200" name="session_lifetime_minutes" value="{{ platform_config.session_lifetime_minutes }}" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                            </label>
+                            <label class="block">
+                                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Basarisiz giris limiti</span>
+                                <input type="number" min="3" max="25" name="failed_login_limit" value="{{ platform_config.failed_login_limit }}" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                        <h2 class="text-lg font-bold text-slate-900 dark:text-white">Sistem Olaylari</h2>
+                        <div class="mt-4 space-y-3">
+                            {% for event in system_security.recent_events %}
+                            <div class="rounded-xl bg-slate-50 px-3 py-2 text-sm dark:bg-slate-950">
+                                <p class="font-semibold text-slate-900 dark:text-white">{{ event.action|audit_action_label }}</p>
+                                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ event.timestamp|datetime_tr if event.timestamp else '-' }} - {{ event.user.email if event.user else '-' }}</p>
+                            </div>
+                            {% else %}
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Sistem yonetimi olayi yok.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end">
+                    <button class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900">
+                        <span class="material-symbols-outlined text-lg">save</span>
+                        Guvenlik ayarlarini kaydet
+                    </button>
+                </div>
+            </div>
+
+            <div id="system-defaults-panel" class="system-management-panel hidden space-y-5">
+                <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                        <div class="mb-5 flex items-start gap-3">
+                            <span class="material-symbols-outlined rounded-xl bg-primary-50 p-2 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300">tune</span>
+                            <div>
+                                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Platform Varsayilanlari</h2>
+                                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Platform kimligi ve SEO varsayilanlarini yonet.</p>
+                            </div>
+                        </div>
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <label class="block md:col-span-2">
+                                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Platform adi</span>
+                                <input name="platform_name" value="{{ platform_config.platform_name }}" maxlength="120" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-primary-900/40">
+                            </label>
+                            <label class="block md:col-span-2">
+                                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Site URL (SEO)</span>
+                                <input name="site_url" value="{{ platform_config.site_url }}" placeholder="https://www.maxad.com" maxlength="200" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                                <span class="mt-1 block text-[11px] text-slate-500 dark:text-slate-400">Canonical, sitemap ve OG URL uretimi icin kullanilir.</span>
+                            </label>
+                            <label class="block md:col-span-2">
+                                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Site adi (SEO)</span>
+                                <input name="site_name" value="{{ platform_config.site_name }}" maxlength="120" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                            </label>
+                            <label class="block md:col-span-2">
+                                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Site aciklamasi (SEO)</span>
+                                <input name="site_description" value="{{ platform_config.site_description }}" maxlength="240" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                            </label>
+                            <label class="block md:col-span-2">
+                                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">OG Gorsel URL (Opsiyonel)</span>
+                                <input name="site_og_image" value="{{ platform_config.site_og_image }}" placeholder="https://www.maxad.com/static/og.svg" maxlength="240" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                        <div class="mb-5 flex items-start gap-3">
+                            <span class="material-symbols-outlined rounded-xl bg-slate-100 p-2 text-slate-700 dark:bg-slate-800 dark:text-slate-200">package_2</span>
+                            <div>
+                                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Varsayilan Paket ve Demo Limitleri</h2>
+                                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Yeni firma kaydinda uygulanacak paket ve baslangic limitleri.</p>
+                            </div>
+                        </div>
+                        <div class="grid gap-4">
+                            <label class="block">
+                                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Varsayilan paket</span>
+                                <select name="default_plan" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                                    {% for plan in ['demo', 'standart', 'profesyonel'] %}
+                                    <option value="{{ plan }}" {% if platform_config.default_plan == plan %}selected{% endif %}>{{ plan|title }}</option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                            <label class="block">
+                                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Kullanici limiti</span>
+                                <input type="number" min="1" max="500" name="default_user_limit" value="{{ platform_config.default_user_limit }}" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                            </label>
+                            <label class="block">
+                                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Urun limiti</span>
+                                <input type="number" min="1" max="1000000" name="default_product_limit" value="{{ platform_config.default_product_limit }}" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                            </label>
+                            <label class="block">
+                                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Destek e-postasi</span>
+                                <input type="email" name="support_email" value="{{ platform_config.support_email }}" placeholder="destek@firma.com" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end">
+                    <button class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900">
+                        <span class="material-symbols-outlined text-lg">save</span>
+                        Varsayilanlari kaydet
+                    </button>
+                </div>
+            </div>
+        </form>
+
+            <div id="system-test-center-panel" class="system-management-panel hidden space-y-5">
+                <div class="grid gap-4 md:grid-cols-3">
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Hizli Teshis</p>
+                        <p class="mt-2 text-lg font-bold text-slate-900 dark:text-white">{{ self_test.status_label if self_test else 'Henuz test calistirilmadi' }}</p>
+                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{% if self_test %}{{ self_test.ran_at[:16]|replace('T', ' ') }}{% else %}Rotalar, API ve template kontrolleri{% endif %}</p>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Derin Is Akisi</p>
+                        <p class="mt-2 text-lg font-bold text-slate-900 dark:text-white">{{ workflow_test.status_label if workflow_test else 'Henuz test calistirilmadi' }}</p>
+                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{% if workflow_test %}{{ workflow_test.ran_at[:16]|replace('T', ' ') }}{% else %}Satis, stok, cari ve izolasyon senaryolari{% endif %}</p>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Genel Durum</p>
+                        <p class="mt-2 text-lg font-bold text-slate-900 dark:text-white">{{ system_health.status|title }}</p>
+                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Canliya hazirlik kontrollerini bu sekmeden izle.</p>
+                    </div>
+                </div>
+
+                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div class="flex items-start gap-3">
+                            <span class="material-symbols-outlined rounded-lg p-2 {% if self_test and self_test.status == 'failed' %}bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-300{% elif self_test and self_test.status == 'warning' %}bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300{% else %}bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300{% endif %}">smart_toy</span>
+                            <div>
+                                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Test Robotu ve Test Merkezi</h2>
+                                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Hizli teshis, derin akis ve son raporlari tek yerde izle.</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <form method="post" action="{{ url_for('super_admin_run_self_test') }}">
+                                <button type="submit" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">
+                                    <span class="material-symbols-outlined text-lg">play_arrow</span>
+                                    Hizli Teshis
+                                </button>
+                            </form>
+                            <form method="post" action="{{ url_for('super_admin_run_workflow_test') }}">
+                                <button type="submit" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800">
+                                    <span class="material-symbols-outlined text-lg">account_tree</span>
+                                    Derin Akis
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    {% if self_test %}
+                    <div class="mt-4 grid grid-cols-3 gap-2">
+                        <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-950">
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Gecen</p>
+                            <p class="mt-1 text-lg font-bold text-emerald-600 dark:text-emerald-300">{{ self_test.summary.passed }}</p>
+                        </div>
+                        <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-950">
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Uyari</p>
+                            <p class="mt-1 text-lg font-bold text-amber-600 dark:text-amber-300">{{ self_test.summary.warnings }}</p>
+                        </div>
+                        <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-950">
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Hata</p>
+                            <p class="mt-1 text-lg font-bold text-rose-600 dark:text-rose-300">{{ self_test.summary.failed }}</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-500 dark:text-slate-400">
+                        <div class="rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-800">Rota: <span class="font-semibold text-slate-800 dark:text-slate-200">{{ self_test.summary.routes }}</span></div>
+                        <div class="rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-800">API: <span class="font-semibold text-slate-800 dark:text-slate-200">{{ self_test.summary.api_routes }}</span></div>
+                        <div class="rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-800">Sayfa: <span class="font-semibold text-slate-800 dark:text-slate-200">{{ self_test.summary.templates }}</span></div>
+                        <div class="rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-800">Buton/Form: <span class="font-semibold text-slate-800 dark:text-slate-200">{{ self_test.summary.buttons }}/{{ self_test.summary.forms }}</span></div>
+                    </div>
+                    <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">Son calisma: {{ self_test.ran_at[:16]|replace('T', ' ') }}</p>
+
+                    <div class="mt-4 space-y-3">
+                        {% set issue_count = namespace(value=0) %}
+                        {% for check in self_test.checks %}
+                        {% if check.status != 'passed' %}
+                        {% set issue_count.value = issue_count.value + 1 %}
+                        <details class="rounded-xl border {% if check.status == 'failed' %}border-rose-200 bg-rose-50/60 dark:border-rose-900/60 dark:bg-rose-950/20{% else %}border-amber-200 bg-amber-50/60 dark:border-amber-900/60 dark:bg-amber-950/20{% endif %}">
+                            <summary class="cursor-pointer px-3 py-2 text-sm font-semibold {% if check.status == 'failed' %}text-rose-800 dark:text-rose-100{% else %}text-amber-800 dark:text-amber-100{% endif %}">{{ check.area }} · {{ check.check }}</summary>
+                            <div class="space-y-2 px-3 pb-3 text-xs text-slate-700 dark:text-slate-200">
+                                <p><span class="font-semibold">Beklenen:</span> {{ check.expected }}</p>
+                                <p><span class="font-semibold">Gerceklesen:</span> {{ check.actual }}</p>
+                                {% if check.probable_cause %}<p><span class="font-semibold">Olasi neden:</span> {{ check.probable_cause }}</p>{% endif %}
+                                {% if check.suggestion %}<p><span class="font-semibold">Mudahale:</span> {{ check.suggestion }}</p>{% endif %}
+                                {% if check.technical_detail %}<p class="text-slate-500 dark:text-slate-400"><span class="font-semibold">Teknik:</span> {{ check.technical_detail }}</p>{% endif %}
+                            </div>
+                        </details>
+                        {% endif %}
+                        {% endfor %}
+                        {% if issue_count.value == 0 %}
+                        <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-100">Tum kontroller gecti.</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if workflow_test %}
+                    <div class="mt-4 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-bold text-slate-900 dark:text-white">Derin is akisi</p>
+                                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ workflow_test.status_label }} · {{ workflow_test.ran_at[:16]|replace('T', ' ') }}</p>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs font-bold">
+                                <span class="rounded-full bg-emerald-100 px-2 py-1 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">{{ workflow_test.summary.passed }}</span>
+                                <span class="rounded-full bg-amber-100 px-2 py-1 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200">{{ workflow_test.summary.warnings }}</span>
+                                <span class="rounded-full bg-rose-100 px-2 py-1 text-rose-700 dark:bg-rose-950/40 dark:text-rose-200">{{ workflow_test.summary.failed }}</span>
+                            </div>
+                        </div>
+                        <div class="mt-3 space-y-2">
+                            {% set workflow_issue_count = namespace(value=0) %}
+                            {% for check in workflow_test.checks %}
+                            {% if check.status != 'passed' %}
+                            {% set workflow_issue_count.value = workflow_issue_count.value + 1 %}
+                            <details class="rounded-xl border {% if check.status == 'failed' %}border-rose-200 bg-rose-50/60 dark:border-rose-900/60 dark:bg-rose-950/20{% else %}border-amber-200 bg-amber-50/60 dark:border-amber-900/60 dark:bg-amber-950/20{% endif %}">
+                                <summary class="cursor-pointer px-3 py-2 text-sm font-semibold {% if check.status == 'failed' %}text-rose-800 dark:text-rose-100{% else %}text-amber-800 dark:text-amber-100{% endif %}">{{ check.area }} · {{ check.check }}</summary>
+                                <div class="space-y-2 px-3 pb-3 text-xs text-slate-700 dark:text-slate-200">
+                                    <p><span class="font-semibold">Beklenen:</span> {{ check.expected }}</p>
+                                    <p><span class="font-semibold">Gerceklesen:</span> {{ check.actual }}</p>
+                                    {% if check.probable_cause %}<p><span class="font-semibold">Olasi neden:</span> {{ check.probable_cause }}</p>{% endif %}
+                                    {% if check.suggestion %}<p><span class="font-semibold">Mudahale:</span> {{ check.suggestion }}</p>{% endif %}
+                                    {% if check.technical_detail %}<p class="text-slate-500 dark:text-slate-400"><span class="font-semibold">Teknik:</span> {{ check.technical_detail }}</p>{% endif %}
+                                </div>
+                            </details>
+                            {% endif %}
+                            {% endfor %}
+                            {% if workflow_issue_count.value == 0 %}
+                            <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-100">Satis, stok, cari, nakit ve firma izolasyonu kontrolleri gecti.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-900 dark:text-white">Test Envanteri</h3>
+                            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ test_inventory.source_file }} icindeki testleri teknik adlariyla birlikte okunabilir sekilde listeler.</p>
+                        </div>
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-800 dark:bg-slate-950">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Toplam Test</p>
+                            <p class="mt-1 text-lg font-bold text-slate-900 dark:text-white">{{ test_inventory.total }}</p>
+                        </div>
+                    </div>
+
+                    {% if test_inventory.error %}
+                    <div class="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-100">
+                        Test envanteri okunamadi: {{ test_inventory.error }}
+                    </div>
+                    {% else %}
+                    {% if single_test_result %}
+                    <div class="mt-4 rounded-2xl border {% if single_test_result.status == 'passed' %}border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/50 dark:bg-emerald-950/20{% else %}border-rose-200 bg-rose-50/70 dark:border-rose-900/50 dark:bg-rose-950/20{% endif %} p-4">
+                        <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-wide {% if single_test_result.status == 'passed' %}text-emerald-700 dark:text-emerald-200{% else %}text-rose-700 dark:text-rose-200{% endif %}">Son Tekil Test Sonucu</p>
+                                <p class="mt-1 text-base font-bold text-slate-900 dark:text-white">{{ single_test_result.label }}</p>
+                                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ single_test_result.technical_name }} · Satir {{ single_test_result.line if single_test_result.line else '-' }}</p>
+                            </div>
+                            <div class="text-left lg:text-right">
+                                <p class="text-sm font-semibold {% if single_test_result.status == 'passed' %}text-emerald-700 dark:text-emerald-200{% else %}text-rose-700 dark:text-rose-200{% endif %}">{{ single_test_result.status_label }}</p>
+                                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ single_test_result.duration_seconds }} sn · kod {{ single_test_result.returncode }}</p>
+                            </div>
+                        </div>
+                        <div class="mt-3 rounded-xl border border-slate-200 bg-white/90 p-3 dark:border-slate-800 dark:bg-slate-950/80">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Cikti</p>
+                            <pre class="mt-2 overflow-auto whitespace-pre-wrap break-words text-xs text-slate-700 dark:text-slate-200">{{ single_test_result.output }}</pre>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="mt-4 space-y-3">
+                        {% for group in test_inventory.groups %}
+                        <details class="rounded-xl border border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-950/40" {% if loop.first %}open{% endif %}>
+                            <summary class="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white">
+                                <span>{{ group['category'] }}</span>
+                                <span class="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-600 dark:bg-slate-900 dark:text-slate-300">{{ group['count'] }}</span>
+                            </summary>
+                            <div class="space-y-2 border-t border-slate-200 px-4 py-3 dark:border-slate-800">
+                                {% for item in group['items'] %}
+                                <div class="rounded-xl border border-slate-200 bg-white px-3 py-3 dark:border-slate-800 dark:bg-slate-900">
+                                    <div class="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                                        <div>
+                                            <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ item.label }}</p>
+                                            <p class="mt-1 font-mono text-xs text-slate-500 dark:text-slate-400">{{ item.technical_name }}</p>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xs font-semibold text-slate-400 dark:text-slate-500">Satir {{ item.line }}</span>
+                                            <form method="post" action="{{ url_for('super_admin_run_inventory_test') }}">
+                                                <input type="hidden" name="test_name" value="{{ item.technical_name }}">
+                                                <button
+                                                    type="submit"
+                                                    class="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800"
+                                                >
+                                                    <span class="material-symbols-outlined text-base">play_arrow</span>
+                                                    Tek tikla calistir
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </details>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+        <dialog id="updaterHelpDialog" class="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl dark:border-slate-800 dark:bg-slate-950">
+            <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800">
+                <div>
+                    <p class="text-sm font-semibold text-slate-900 dark:text-white">Updater kurulumu</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Sunucuda bir kez yapilir. Sonra guncellemeler buradan zip yukleyerek otomatik uygulanir.</p>
+                </div>
+                <button type="button" onclick="closeUpdaterHelp()" class="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="space-y-4 px-6 py-5">
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm dark:border-slate-800 dark:bg-slate-900">
+                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Komutlar</p>
+                    <pre class="overflow-auto whitespace-pre-wrap rounded-lg bg-white p-3 text-xs text-slate-900 dark:bg-slate-950 dark:text-slate-100">sudo cp /opt/stokcari/current/deploy/systemd/stokcari-updater.service /etc/systemd/system/stokcari-updater.service
+sudo cp /opt/stokcari/current/deploy/systemd/stokcari-updater.timer /etc/systemd/system/stokcari-updater.timer
+sudo systemctl daemon-reload
+sudo systemctl enable --now stokcari-updater.timer
+sudo systemctl status stokcari-updater.timer
+sudo systemctl list-timers | grep stokcari-updater</pre>
+                    <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Sorun olursa log: <span class="font-mono">sudo journalctl -u stokcari-updater.service -n 200 --no-pager</span></p>
+                </div>
+                <div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                    <button type="button" onclick="closeUpdaterHelp()" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:hover:bg-slate-900">Kapat</button>
+                </div>
+            </div>
+        </dialog>
+    </section>
+    </div>
+
+
+    <section id="platform-audit-content" class="settings-content hidden">
+        <div id="loglar" class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-5 py-4">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Son Loglar</h2>
+                <a href="{{ url_for('super_admin_logs') }}" class="text-sm font-semibold text-primary-600 hover:text-primary-700">Tumunu gor</a>
+            </div>
+            <div class="divide-y divide-slate-200 dark:divide-slate-800">
+                {% for log in recent_logs %}
+                <div class="px-5 py-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ log.action|audit_action_label }}</p>
+                        <span class="text-xs text-slate-500 dark:text-slate-400">{{ log.timestamp|datetime_tr if log.timestamp else '-' }}</span>
+                    </div>
+                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ log.user.email if log.user else '-' }} · {{ log.resource_type|audit_resource_label }}{% if log.resource_id %} #{{ log.resource_id }}{% endif %}</p>
+                </div>
+                {% else %}
+                <p class="p-5 text-sm text-slate-500 dark:text-slate-400">Log kaydi yok.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section id="platform-backup-content" class="settings-content hidden">
+        <div id="yedekler" class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-5 py-4">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Son Yedekler</h2>
+                <a href="{{ url_for('super_admin_backups') }}" class="text-sm font-semibold text-primary-600 hover:text-primary-700">Tumunu gor</a>
+            </div>
+            <div class="divide-y divide-slate-200 dark:divide-slate-800">
+                {% for backup in backups %}
+                <div class="px-5 py-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">{{ backup.filename }}</p>
+                        <span class="rounded-full px-2 py-1 text-xs font-semibold {% if backup.status == 'completed' %}bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200{% else %}bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-200{% endif %}">{{ backup.status }}</span>
+                    </div>
+                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ backup.created_at|datetime_tr if backup.created_at else '-' }} · {{ ((backup.file_size or 0) / 1024)|round(1) }} KB</p>
+                </div>
+                {% else %}
+                <p class="p-5 text-sm text-slate-500 dark:text-slate-400">Yedek kaydi yok.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section id="removed-platform-settings-content" class="settings-content hidden">
+        <form method="post" action="{{ url_for('super_admin_update_settings') }}" class="space-y-4">
+            <div class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white">Sistem Ayarlari</h2>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Platformun varsayilan davranislarini ve guvenlik politikalarini yonet.</p>
+                </div>
+                <button class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">
+                    <span class="material-symbols-outlined text-lg">save</span>
+                    Ayarlari kaydet
+                </button>
+            </div>
+
+            <div class="grid gap-4 xl:grid-cols-3">
+                <div class="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                    <div class="mb-5 flex items-start gap-3">
+                        <span class="material-symbols-outlined rounded-lg bg-primary-50 p-2 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300">tune</span>
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900 dark:text-white">Platform</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Yeni firmalar icin temel varsayilanlar.</p>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Platform adi</span>
+                            <input name="platform_name" value="{{ platform_config.platform_name }}" maxlength="120" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-primary-900/40">
+                        </label>
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Varsayilan paket</span>
+                            <select name="default_plan" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                                {% for plan in ['demo', 'standart', 'profesyonel'] %}
+                                <option value="{{ plan }}" {% if platform_config.default_plan == plan %}selected{% endif %}>{{ plan|title }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <label class="block">
+                                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Kullanici limiti</span>
+                                <input type="number" min="1" max="500" name="default_user_limit" value="{{ platform_config.default_user_limit }}" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                            </label>
+                            <label class="block">
+                                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Urun limiti</span>
+                                <input type="number" min="1" max="1000000" name="default_product_limit" value="{{ platform_config.default_product_limit }}" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                            </label>
+                        </div>
+                        <label class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:text-slate-200">
+                            <span>Yeni firma kayitlari</span>
+                            <input type="checkbox" name="registrations_enabled" class="rounded border-slate-300 text-primary-600" {% if platform_config.registrations_enabled %}checked{% endif %}>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                    <div class="mb-5 flex items-start gap-3">
+                        <span class="material-symbols-outlined rounded-lg bg-amber-50 p-2 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300">shield_lock</span>
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900 dark:text-white">Guvenlik</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Oturum ve parola politikalari.</p>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Minimum sifre uzunlugu</span>
+                            <input type="number" min="8" max="32" name="min_password_length" value="{{ platform_config.min_password_length }}" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                        </label>
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Oturum suresi (dakika)</span>
+                            <input type="number" min="15" max="43200" name="session_lifetime_minutes" value="{{ platform_config.session_lifetime_minutes }}" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                        </label>
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Basarisiz giris limiti</span>
+                            <input type="number" min="3" max="25" name="failed_login_limit" value="{{ platform_config.failed_login_limit }}" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                        </label>
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Destek e-postasi</span>
+                            <input type="email" name="support_email" value="{{ platform_config.support_email }}" placeholder="destek@firma.com" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                    <div class="mb-5 flex items-start gap-3">
+                        <span class="material-symbols-outlined rounded-lg bg-emerald-50 p-2 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300">backup</span>
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900 dark:text-white">Operasyon</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Bakim metni ve yedekleme tercihleri.</p>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Bakim mesaji</span>
+                            <textarea name="maintenance_message" rows="4" maxlength="500" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">{{ platform_config.maintenance_message }}</textarea>
+                        </label>
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Otomatik yedekleme</span>
+                            <select name="auto_backup_frequency" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                                {% for value, label in [('off', 'Kapali'), ('daily', 'Gunluk'), ('weekly', 'Haftalik'), ('monthly', 'Aylik')] %}
+                                <option value="{{ value }}" {% if platform_config.auto_backup_frequency == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Yedek saklama (gun)</span>
+                            <input type="number" min="1" max="3650" name="backup_retention_days" value="{{ platform_config.backup_retention_days }}" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </form>
+        <div class="hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-5 py-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white">Sistem Ayarları</h2>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Platform geneli ayarlar ve kayıtlı yapılandırmalar.</p>
+                </div>
+                <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ platform_settings|length }} kayıt</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[760px]">
+                    <thead class="bg-slate-50 dark:bg-slate-800">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Anahtar</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Değer</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Açıklama</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Güncelleme</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                        {% for setting in platform_settings %}
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <td class="px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white">{{ setting.key }}</td>
+                            <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{{ setting.value or '-' }}</td>
+                            <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{{ setting.description or '-' }}</td>
+                            <td class="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">{{ setting.updated_at|datetime_tr if setting.updated_at else '-' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="px-4 py-10 text-center text-slate-500 dark:text-slate-400">Platform ayarı bulunamadı.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

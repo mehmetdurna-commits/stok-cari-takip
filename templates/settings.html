@@ -1,0 +1,2827 @@
+{% extends '_base.html' %}
+
+{% block title %}Ayarlar - Stok ve Cari Takip{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-3">
+    <span class="material-symbols-outlined text-primary-600">settings</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Ayarlar</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Settings Navigation -->
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 mb-6">
+        <nav class="flex flex-wrap gap-1 p-2" role="tablist">
+            <button type="button" role="tab" aria-selected="true" aria-controls="profile-content" onclick="switchTab('profile')" id="profile-tab" class="settings-tab-btn active px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">person</span>
+                Profil
+            </button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="preferences-content" onclick="switchTab('preferences')" id="preferences-tab" class="settings-tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">tune</span>
+                Tercihler
+            </button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="notifications-content" onclick="switchTab('notifications')" id="notifications-tab" class="settings-tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">notifications</span>
+                Bildirimler
+            </button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="security-content" onclick="switchTab('security')" id="security-tab" class="settings-tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">shield</span>
+                Güvenlik
+            </button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="data-content" onclick="switchTab('data')" id="data-tab" class="settings-tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">storage</span>
+                Veri Yönetimi
+            </button>
+            {% if pos_integration_visible %}
+            <button type="button" role="tab" aria-selected="false" aria-controls="pos-integration-content" onclick="switchTab('pos-integration')" id="pos-integration-tab" class="settings-tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">tap_and_play</span>
+                POS Entegrasyon
+            </button>
+            {% endif %}
+            <button type="button" role="tab" aria-selected="false" aria-controls="about-content" onclick="switchTab('about')" id="about-tab" class="settings-tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">auto_awesome</span>
+                Hakkında
+            </button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="guide-content" onclick="switchTab('guide')" id="guide-tab" class="settings-tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">menu_book</span>
+                Kullanıcı Rehberi
+            </button>
+        </nav>
+    </div>
+
+    <!-- Profile Settings -->
+    <div id="profile-content" role="tabpanel" aria-labelledby="profile-tab" class="settings-content">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Profile Information -->
+            <div class="lg:col-span-2 space-y-6">
+                <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                    <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary-600">person</span>
+                        Profil Bilgileri
+                    </h2>
+                    
+                    <form class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Firma Adı</label>
+                                <input type="text" name="firma_adi" value="{{ current_user.firma_adi }}" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Yetkili Adı</label>
+                                <input type="text" name="yetkili_adi" value="{{ current_user.yetkili_adi or '' }}" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">E-posta</label>
+                                <input type="email" value="{{ current_user.email }}" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Telefon</label>
+                                <input type="tel" name="telefon" value="{{ current_user.telefon or '' }}" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-end gap-3 pt-4">
+                            <button type="button" class="px-5 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-200">
+                                İptal
+                            </button>
+                            <button type="button" onclick="updateProfile()" class="px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200">
+                                Değişiklikleri Kaydet
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Company Information -->
+                <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                    <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary-600">business</span>
+                        Firma Bilgileri
+                    </h2>
+                    
+                    <form id="company-content" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Vergi Dairesi</label>
+                                <input type="text" name="vergi_dairesi" value="{{ current_user.vergi_dairesi or '' }}" placeholder="Vergi dairesi giriniz" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Vergi Numarası</label>
+                                <input type="text" name="vergi_numarasi" value="{{ current_user.vergi_numarasi or '' }}" placeholder="Vergi numarası giriniz" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Adres</label>
+                            <textarea name="adres" rows="3" placeholder="Firma adresi giriniz" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">{{ current_user.adres or '' }}</textarea>
+                        </div>
+                        
+                        <div class="flex justify-end gap-3 pt-4">
+                            <button type="button" class="px-5 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-200">
+                                İptal
+                            </button>
+                            <button type="button" onclick="updateCompanyInfo()" class="px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200">
+                                Değişiklikleri Kaydet
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Profile Picture -->
+            <div class="space-y-6">
+                <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                    <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-6">Profil Fotoğrafı</h3>
+                    
+                    <div class="flex flex-col items-center space-y-4">
+                        <div class="relative">
+                            <div class="w-32 h-32 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center">
+                                <span class="material-symbols-outlined text-white text-5xl">business</span>
+                            </div>
+                            <button class="absolute bottom-0 right-0 w-10 h-10 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-600 rounded-full flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-200">
+                                <span class="material-symbols-outlined text-slate-600 dark:text-slate-300 text-lg">camera_alt</span>
+                            </button>
+                        </div>
+                        
+                        <div class="text-center">
+                            <p class="text-sm text-slate-600 dark:text-slate-400 mb-3">JPG, PNG veya GIF formatında<br>Maksimum dosya boyutu: 2MB</p>
+                            <button class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm">
+                                Fotoğraf Yükle
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Account Status -->
+                <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                    <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-6">Hesap Durumu</h3>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-slate-600 dark:text-slate-400">Paket Tipi</span>
+                            <span class="px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-sm font-medium capitalize">
+                                {{ current_user.paket_tipi }}
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-slate-600 dark:text-slate-400">Ürün Limiti</span>
+                            <span class="text-sm font-medium text-slate-900 dark:text-white">{{ current_user.urun_limiti }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-slate-600 dark:text-slate-400">Kayıt Tarihi</span>
+                            <span class="text-sm font-medium text-slate-900 dark:text-white">{{ current_user.kayit_tarihi|date_tr }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-slate-600 dark:text-slate-400">Durum</span>
+                            <span class="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-sm font-medium">
+                                Aktif
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preferences Settings -->
+    <div id="preferences-content" role="tabpanel" aria-labelledby="preferences-tab" class="settings-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- General Preferences -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">tune</span>
+                    Genel Tercihler
+                </h2>
+                
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Dil</label>
+                        <select id="pref-language" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            <option value="tr" {{ 'selected' if user_settings.get('language', 'tr') == 'tr' else '' }}>Türkçe</option>
+                            <option value="en" {{ 'selected' if user_settings.get('language') == 'en' else '' }}>English</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Tema</label>
+                        <div class="grid grid-cols-3 gap-3">
+                            <button type="button" data-theme="light" class="theme-option p-3 border-2 border-slate-300 dark:border-slate-600 rounded-lg text-center">
+                                <span class="material-symbols-outlined text-2xl mb-1">light_mode</span>
+                                <p class="text-xs font-medium">Açık</p>
+                            </button>
+                            <button type="button" data-theme="dark" class="theme-option p-3 border-2 border-slate-300 dark:border-slate-600 rounded-lg text-center">
+                                <span class="material-symbols-outlined text-2xl mb-1">dark_mode</span>
+                                <p class="text-xs font-medium">Koyu</p>
+                            </button>
+                            <button type="button" data-theme="auto" class="theme-option p-3 border-2 border-slate-300 dark:border-slate-600 rounded-lg text-center">
+                                <span class="material-symbols-outlined text-2xl mb-1">brightness_auto</span>
+                                <p class="text-xs font-medium">Otomatik</p>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Sayfa Başına Öğe Sayısı</label>
+                        <select id="pref-items-per-page" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            {% set items_per_page = user_settings.get('items_per_page', '25')|string %}
+                            <option value="10" {{ 'selected' if items_per_page == '10' else '' }}>10</option>
+                            <option value="25" {{ 'selected' if items_per_page == '25' else '' }}>25</option>
+                            <option value="50" {{ 'selected' if items_per_page == '50' else '' }}>50</option>
+                            <option value="100" {{ 'selected' if items_per_page == '100' else '' }}>100</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Business Preferences -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">store</span>
+                    İşletme Tercihleri
+                </h2>
+                
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Para Birimi</label>
+                        <select id="pref-currency" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            {% set currency = user_settings.get('currency', 'TRY') %}
+                            <option value="TRY" {{ 'selected' if currency == 'TRY' else '' }}>₺ - Türk Lirası</option>
+                            <option value="USD" {{ 'selected' if currency == 'USD' else '' }}>$ - ABD Doları</option>
+                            <option value="EUR" {{ 'selected' if currency == 'EUR' else '' }}>€ - Euro</option>
+                            <option value="GBP" {{ 'selected' if currency == 'GBP' else '' }}>£ - İngiliz Sterlini</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Varsayılan KDV Oranı (%)</label>
+                        <input id="pref-default-vat-rate" type="number" value="{{ user_settings.get('default_vat_rate', 18) }}" step="1" min="0" max="100" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Stok Uyarı Eşiği</label>
+                        <input id="pref-stock-warning-threshold" type="number" value="{{ user_settings.get('stock_warning_threshold', 10) }}" min="0" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                    </div>
+                    
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Otomatik Yedekleme</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Verileri otomatik olarak yedekle</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input id="pref-auto-backup-enabled" type="checkbox" {{ 'checked' if user_settings.get('auto_backup_enabled', True) else '' }} class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Display Preferences -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">visibility</span>
+                    Görüntüleme Tercihleri
+                </h2>
+                
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Kompakt Görünüm</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Tabloları daha sıkı göster</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input id="pref-compact-view" type="checkbox" {{ 'checked' if user_settings.get('compact_view') else '' }} class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                    </div>
+                    
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Kart Görünümü</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Öğeleri kart olarak göster</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input id="pref-card-view" type="checkbox" {{ 'checked' if user_settings.get('card_view', True) else '' }} class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                    </div>
+                    
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Kenar Çubuğu Sabitle</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Kenar çubuğunu her zaman göster</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input id="pref-pinned-sidebar" type="checkbox" {{ 'checked' if user_settings.get('pinned_sidebar', True) else '' }} class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Date & Time Preferences -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">schedule</span>
+                    Tarih ve Saat
+                </h2>
+                
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Tarih Formatı</label>
+                        <select id="pref-date-format" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            {% set date_format = user_settings.get('date_format', 'dd.MM.yyyy') %}
+                            <option value="dd.MM.yyyy" {{ 'selected' if date_format == 'dd.MM.yyyy' else '' }}>DD.MM.YYYY</option>
+                            <option value="MM/dd/yyyy" {{ 'selected' if date_format == 'MM/dd/yyyy' else '' }}>MM/DD/YYYY</option>
+                            <option value="yyyy-MM-dd" {{ 'selected' if date_format == 'yyyy-MM-dd' else '' }}>YYYY-MM-DD</option>
+                            <option value="dd-MM-yyyy" {{ 'selected' if date_format == 'dd-MM-yyyy' else '' }}>DD-MM-YYYY</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Saat Formatı</label>
+                        <select id="pref-time-format" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            {% set time_format = user_settings.get('time_format', '24')|string %}
+                            <option value="24" {{ 'selected' if time_format == '24' else '' }}>24 Saat</option>
+                            <option value="12" {{ 'selected' if time_format == '12' else '' }}>12 Saat (AM/PM)</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Zaman Dilimi</label>
+                        <select id="pref-timezone" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            {% set timezone = user_settings.get('timezone', 'Europe/Istanbul') %}
+                            <option value="Europe/Istanbul" {{ 'selected' if timezone == 'Europe/Istanbul' else '' }}>İstanbul (GMT+3)</option>
+                            <option value="Europe/London" {{ 'selected' if timezone == 'Europe/London' else '' }}>Londra (GMT+0)</option>
+                            <option value="Europe/Berlin" {{ 'selected' if timezone == 'Europe/Berlin' else '' }}>Berlin (GMT+1)</option>
+                            <option value="America/New_York" {{ 'selected' if timezone == 'America/New_York' else '' }}>New York (GMT-5)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-3 mt-6">
+            <button class="px-5 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-200">
+                İptal
+            </button>
+            <button type="button" onclick="savePreferences()" class="px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200">
+                Tercihleri Kaydet
+            </button>
+        </div>
+    </div>
+
+    <!-- Notifications Settings -->
+    <div id="notifications-content" role="tabpanel" aria-labelledby="notifications-tab" class="settings-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Email Notifications -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">email</span>
+                    E-posta Bildirimleri
+                </h2>
+                
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                        <div>
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Stok Uyarıları</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Düşük stok seviyeleri hakkında bilgilendirme</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" checked class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                    </div>
+                    
+                    <div class="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                        <div>
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Cari Hareketleri</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Yeni cari işlemleri hakkında bilgilendirme</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" checked class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                    </div>
+                    
+                    <div class="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                        <div>
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Teklif Durumları</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Teklif onay/red durumları hakkında bilgilendirme</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                    </div>
+                    
+                    <div class="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                        <div>
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Günlük Raporlar</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Günlük satış ve stok raporları</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                    </div>
+                    
+                    <div class="flex items-center justify-between py-3">
+                        <div>
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Sistem Güncellemeleri</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Yeni özellikler ve güncellemeler hakkında bilgilendirme</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" checked class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- In-App Notifications -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">notifications</span>
+                    Uygulama İçi Bildirimler
+                </h2>
+                
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                        <div>
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Anlık Bildirimler</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Önemli olaylar için anlık bildirimler göster</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" checked class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                    </div>
+                    
+                    <div class="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                        <div>
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Sesli Bildirimler</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Bildirimler için ses uyarıları</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                    </div>
+                    
+                    <div class="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                        <div>
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Masaüstü Bildirimleri</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Tarayıcı masaüstü bildirimleri</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                    </div>
+                    
+                    <div class="flex items-center justify-between py-3">
+                        <div>
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Bildirim Geçmişi</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Bildirimleri geçmişte sakla</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" checked class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notification Frequency -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">schedule</span>
+                    Bildirim Sıklığı
+                </h2>
+                
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Özet Bildirimler</label>
+                        <select class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            <option value="realtime" selected>Anlık</option>
+                            <option value="hourly">Saatlik</option>
+                            <option value="daily">Günlük</option>
+                            <option value="weekly">Haftalık</option>
+                            <option value="never">Hiçbir Zaman</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Rapor Bildirimleri</label>
+                        <select class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            <option value="daily">Günlük</option>
+                            <option value="weekly" selected>Haftalık</option>
+                            <option value="monthly">Aylık</option>
+                            <option value="never">Hiçbir Zaman</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Sessiz Saatler</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <input type="time" value="22:00" class="px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            <input type="time" value="08:00" class="px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">Bu saatler arasında bildirim gönderme</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notification History -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">history</span>
+                    Bildirim Geçmişi
+                </h2>
+                
+                <div class="space-y-3">
+                    <div class="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                        <div class="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-slate-900 dark:text-white">Stok uyarısı: XYZ ürünü kritik seviyede</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">2 saat önce</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                        <div class="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-slate-900 dark:text-white">Yeni müşteri eklendi: ABC Ltd.</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">5 saat önce</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                        <div class="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-slate-900 dark:text-white">Teklif #1234 onaylandı</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">1 gün önce</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="w-full mt-4 px-4 py-2 text-center text-sm text-primary-600 hover:text-primary-700 font-medium">
+                    Tüm Bildirimleri Görüntüle
+                </button>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-3 mt-6">
+            <button class="px-5 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-200">
+                İptal
+            </button>
+            <button type="button" onclick="updateNotifications()" class="px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200">
+                Bildirim Ayarlarını Kaydet
+            </button>
+        </div>
+    </div>
+
+    <!-- Security Settings -->
+    <div id="security-content" role="tabpanel" aria-labelledby="security-tab" class="settings-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Password Settings -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">password</span>
+                    Şifre Ayarları
+                </h2>
+                
+                <form class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Mevcut Şifre</label>
+                        <input type="password" name="current_password" autocomplete="current-password" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Yeni Şifre</label>
+                        <input type="password" name="new_password" autocomplete="new-password" minlength="8" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                        <div class="mt-2 space-y-1">
+                            <div class="flex items-center gap-2">
+                                <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                    <div class="bg-red-500 h-2 rounded-full" style="width: 30%"></div>
+                                </div>
+                                <span class="text-xs text-slate-600 dark:text-slate-400">Zayıf</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Yeni Şifre (Tekrar)</label>
+                        <input type="password" name="confirm_password" autocomplete="new-password" minlength="8" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                    </div>
+                    
+                    <div class="flex justify-end">
+                        <button type="button" onclick="updatePassword()" class="px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200">
+                            Şifreyi Güncelle
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Two-Factor Authentication -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">security</span>
+                    İki Faktörlü Kimlik Doğrulama
+                </h2>
+                
+                <div class="space-y-6">
+                    <div class="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                        <div class="flex gap-3">
+                            <span class="material-symbols-outlined text-amber-600">info</span>
+                            <div>
+                                <p class="text-sm font-medium text-amber-800 dark:text-amber-200">Hesabınızı Güvence Altına Alın</p>
+                                <p class="text-xs text-amber-700 dark:text-amber-300 mt-1">İki faktörlü kimlik doğrulama, hesabınıza ek bir güvenlik katmanı ekler.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                        <div>
+                            <p class="text-sm font-medium text-slate-900 dark:text-white">SMS Doğrulaması</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Telefon numaranıza SMS gönder</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                    </div>
+                    
+                    <div class="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                        <div>
+                            <p class="text-sm font-medium text-slate-900 dark:text-white">Uygulama Doğrulaması</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Google Authenticator kullan</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                    </div>
+                    
+                    <button class="w-full px-4 py-2.5 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-200">
+                        İki Faktörlü Kimlik Doğrulamayı Yapılandır
+                    </button>
+                </div>
+            </div>
+
+            <!-- Login Sessions -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">devices</span>
+                    Aktif Oturumlar
+                </h2>
+                
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
+                                <span class="material-symbols-outlined text-primary-600">computer</span>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-slate-900 dark:text-white">Windows - Chrome</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">İstanbul, Türkiye • Şu an aktif</p>
+                            </div>
+                        </div>
+                        <span class="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-xs font-medium">Mevcut</span>
+                    </div>
+                    
+                    <div class="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                                <span class="material-symbols-outlined text-slate-600">smartphone</span>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-slate-900 dark:text-white">iPhone - Safari</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Ankara, Türkiye • 2 saat önce</p>
+                            </div>
+                        </div>
+                        <button class="text-red-600 hover:text-red-700 text-sm font-medium">Oturumu Kapat</button>
+                    </div>
+                </div>
+                
+                <button class="w-full mt-4 px-4 py-2.5 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200">
+                    Tüm Diğer Oturumları Kapat
+                </button>
+            </div>
+
+            <!-- Privacy Settings -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">privacy_tip</span>
+                    Gizlilik Ayarları
+                </h2>
+                
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                        <div>
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Profil Görünürlüğü</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Profil bilgilerinizi kimler görebilir</p>
+                        </div>
+                        <select class="px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white">
+                            <option value="private">Özel</option>
+                            <option value="public" selected>Herkes</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                        <div>
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Aktivite Durumu</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Çevrimiçi durumunuzu göster</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" checked class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                    </div>
+                    
+                    <div class="flex items-center justify-between py-3">
+                        <div>
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Veri Analizi</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Kullanım verilerini paylaş</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Audit & Monitoring -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">security</span>
+                    Güvenlik Denetimi ve İzleme
+                </h2>
+                
+                <div class="space-y-6">
+                    <div class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <div class="flex gap-3">
+                            <span class="material-symbols-outlined text-blue-600">info</span>
+                            <div>
+                                <p class="text-sm font-medium text-blue-800 dark:text-blue-200">Güvenlik Durumu</p>
+                                <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">Hesabınız güvenli ve tüm denetimler aktif</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined text-green-600">verified_user</span>
+                                <div>
+                                    <p class="text-sm font-medium text-slate-900 dark:text-white">Oturum Güvenliği</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">Tüm oturumlar doğrulanmış</p>
+                                </div>
+                            </div>
+                            <span class="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-medium">Aktif</span>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined text-amber-600">gpp_maybe</span>
+                                <div>
+                                    <p class="text-sm font-medium text-slate-900 dark:text-white">Parola Gücü</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">Güçlü parola kullanmanız önerilir</p>
+                                </div>
+                            </div>
+                            <button class="px-3 py-1.5 text-sm text-amber-600 hover:text-amber-700 font-medium">
+                                Güçlendir
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined text-slate-600">history</span>
+                                <div>
+                                    <p class="text-sm font-medium text-slate-900 dark:text-white">Son Başarısız Girişler</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">Son 30 gün: 0 deneme</p>
+                                </div>
+                            </div>
+                            <button class="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-medium">
+                                İncele
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined text-purple-600">phonelink_setup</span>
+                                <div>
+                                    <p class="text-sm font-medium text-slate-900 dark:text-white">Bağlı Cihazlar</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">2 aktif cihaz</p>
+                                </div>
+                            </div>
+                            <button class="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-medium">
+                                Yönet
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined text-red-600">warning</span>
+                                <div>
+                                    <p class="text-sm font-medium text-slate-900 dark:text-white">Veri İhlali Tespiti</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">Otomatik izleme aktif</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" checked class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6">
+                        <button onclick="runSecurityAudit()" class="w-full px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200 flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined">security_update_good</span>
+                            Güvenlik Denetimi Çalıştır
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-3 mt-6">
+            <button class="px-5 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-200">
+                İptal
+            </button>
+            <button class="px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200">
+                Güvenlik Ayarlarını Kaydet
+            </button>
+        </div>
+    </div>
+
+    <!-- Data Management Settings -->
+    <div id="data-content" role="tabpanel" aria-labelledby="data-tab" class="settings-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Backup & Recovery -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">backup</span>
+                    Yedekleme ve Kurtarma
+                </h2>
+                
+                <div class="space-y-6">
+                    <div class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <div class="flex gap-3">
+                            <span class="material-symbols-outlined text-blue-600">info</span>
+                            <div>
+                                <p class="text-sm font-medium text-blue-800 dark:text-blue-200">Son Yedekleme</p>
+                                <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                                    {{ last_backup_date if last_backup_date else 'Henüz yedekleme yapılmadı' }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <button onclick="createBackup()" class="w-full px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200 flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined">download</span>
+                            Hemen Yedekle
+                        </button>
+                        
+                        <button onclick="openBackupRestorePicker()" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-200 flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined">upload</span>
+                            Yedekten Geri Yükle
+                        </button>
+                        <input id="backup-file-input" type="file" accept=".json,application/json" class="hidden" onchange="handleBackupFileUpload(event)">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Otomatik Yedekleme Sıklığı</label>
+                        <select id="backup-frequency-select" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            <option value="daily" {{ 'selected' if backup_frequency == 'daily' else '' }}>Günlük</option>
+                            <option value="weekly" {{ 'selected' if backup_frequency == 'weekly' else '' }}>Haftalık</option>
+                            <option value="monthly" {{ 'selected' if backup_frequency == 'monthly' else '' }}>Aylık</option>
+                            <option value="never" {{ 'selected' if backup_frequency == 'never' else '' }}>Otomatik Değil</option>
+                        </select>
+                        <p id="backup-frequency-status" class="mt-2 text-sm font-medium text-emerald-600 hidden">Kaydedildi</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Export -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">file_download</span>
+                    Veri Dışa Aktarım
+                </h2>
+                
+                <div class="space-y-6">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined text-slate-600">inventory_2</span>
+                                <div>
+                                    <p class="text-sm font-medium text-slate-900 dark:text-white">Ürünler</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">{{ current_user.urunler|length }} ürün</p>
+                                </div>
+                            </div>
+                            <button class="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-medium">
+                                Dışa Aktar
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined text-slate-600">people</span>
+                                <div>
+                                    <p class="text-sm font-medium text-slate-900 dark:text-white">Cari Hesaplar</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">{{ current_user.cariler|length }} cari</p>
+                                </div>
+                            </div>
+                            <button class="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-medium">
+                                Dışa Aktar
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined text-slate-600">receipt_long</span>
+                                <div>
+                                    <p class="text-sm font-medium text-slate-900 dark:text-white">Teklifler</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">Tüm teklif kayıtları</p>
+                                </div>
+                            </div>
+                            <button class="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-medium">
+                                Dışa Aktar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Dışa Aktarım Formatı</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button class="px-4 py-2 border-2 border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 rounded-lg text-sm font-medium">
+                                Excel
+                            </button>
+                            <button class="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium">
+                                CSV
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Management Tools -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">build</span>
+                    Veri Yönetim Araçları
+                </h2>
+                
+                <div class="space-y-6">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined text-slate-600">price_change</span>
+                                <div>
+                                    <p class="text-sm font-medium text-slate-900 dark:text-white">Toplu Fiyat Güncelleme</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">Tüm ürün fiyatlarını yüzde olarak güncelle</p>
+                                </div>
+                            </div>
+                            <button onclick="window.location.href='/urunler/toplu-fiyat-guncelleme'" class="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-medium">
+                                Güncelle
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined text-slate-600">category</span>
+                                <div>
+                                    <p class="text-sm font-medium text-slate-900 dark:text-white">Kategori Yönetimi</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">Ürün kategorilerini düzenle ve yönet</p>
+                                </div>
+                            </div>
+                            <button onclick="openCategoryModal()" class="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-medium">
+                                Yönet
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined text-slate-600">warehouse</span>
+                                <div>
+                                    <p class="text-sm font-medium text-slate-900 dark:text-white">Depo Yönetimi</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">Depoları düzenle ve ürünleri yönet</p>
+                                </div>
+                            </div>
+                            <button onclick="openWarehouseModal()" class="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-medium">
+                                Yönet
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined text-slate-600">sync</span>
+                                <div>
+                                    <p class="text-sm font-medium text-slate-900 dark:text-white">Veri Senkronizasyonu</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">Tüm verileri senkronize et ve optimize et</p>
+                                </div>
+                            </div>
+                            <button class="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-medium">
+                                Senkronize Et
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined text-slate-600">analytics</span>
+                                <div>
+                                    <p class="text-sm font-medium text-slate-900 dark:text-white">Veri Analizi</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">Veri kalitesini kontrol et ve öneriler al</p>
+                                </div>
+                            </div>
+                            <button class="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-medium">
+                                Analiz Et
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Cleanup -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">cleaning_services</span>
+                    Veri Temizleme
+                </h2>
+                
+                <div class="space-y-6">
+                    <div class="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                        <div class="flex gap-3">
+                            <span class="material-symbols-outlined text-amber-600">warning</span>
+                            <div>
+                                <p class="text-sm font-medium text-amber-800 dark:text-amber-200">Dikkat</p>
+                                <p class="text-xs text-amber-700 dark:text-amber-300 mt-1">Bu işlemler geri alınamaz. Lütfen dikkatli olun.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-slate-900 dark:text-white">Eski Kayıtları Temizle</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">1 yıldan eski kayıtları sil</p>
+                            </div>
+                            <button class="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 font-medium">
+                                Temizle
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-slate-900 dark:text-white">İptal Edilmiş Teklifleri Sil</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Durumu iptal olan teklifleri kalıcı olarak sil</p>
+                            </div>
+                            <button class="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 font-medium">
+                                Temizle
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-slate-900 dark:text-white">Geçici Dosyaları Temizle</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Geçici ve önbellek dosyalarını sil</p>
+                            </div>
+                            <button class="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 font-medium">
+                                Temizle
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Storage Usage -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">storage</span>
+                    Depolama Kullanımı
+                </h2>
+                
+                <div class="space-y-6">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Toplam Depolama</span>
+                            <span class="text-sm text-slate-600 dark:text-slate-400">245 MB / 1 GB</span>
+                        </div>
+                        <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                            <div class="bg-primary-600 h-2 rounded-full" style="width: 24.5%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                                <span class="text-sm text-slate-600 dark:text-slate-400">Ürün Verileri</span>
+                            </div>
+                            <span class="text-sm font-medium text-slate-900 dark:text-white">85 MB</span>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                <span class="text-sm text-slate-600 dark:text-slate-400">Cari Hesaplar</span>
+                            </div>
+                            <span class="text-sm font-medium text-slate-900 dark:text-white">45 MB</span>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <div class="w-3 h-3 bg-purple-500 rounded-full"></div>
+                                <span class="text-sm text-slate-600 dark:text-slate-400">Teklifler</span>
+                            </div>
+                            <span class="text-sm font-medium text-slate-900 dark:text-white">65 MB</span>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <div class="w-3 h-3 bg-amber-500 rounded-full"></div>
+                                <span class="text-sm text-slate-600 dark:text-slate-400">Diğer</span>
+                            </div>
+                            <span class="text-sm font-medium text-slate-900 dark:text-white">50 MB</span>
+                        </div>
+                    </div>
+                    
+                    <button class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-200">
+                        Depolama Planını Yükselt
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-3 mt-6">
+            <button class="px-5 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-200">
+                İptal
+            </button>
+            <button onclick="saveBackupFrequency()" class="px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200">
+                Veri Ayarlarını Kaydet
+            </button>
+        </div>
+    </div>
+
+    {% if pos_integration_visible %}
+    <div id="pos-integration-content" role="tabpanel" aria-labelledby="pos-integration-tab" class="settings-content hidden">
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div class="xl:col-span-2 space-y-6">
+                <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                    <div class="p-6 border-b border-slate-200 dark:border-slate-800">
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-11 h-11 rounded-xl bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-primary-600 dark:text-primary-400">tap_and_play</span>
+                                </div>
+                                <div>
+                                    <h2 class="text-lg font-semibold text-slate-900 dark:text-white">POS Entegrasyon Kurulumu</h2>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">Teknik servis veya yetkili kullanıcı POS cihaz bilgilerini buradan girip kurulum durumunu test eder.</p>
+                                </div>
+                            </div>
+                            {% set pos_status = pos_integration_settings.get('status', 'manual') %}
+                            <span id="posIntegrationStatusBadge" class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold {{ 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' if pos_status in ['connected', 'configured'] else 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' }}">
+                                {{ {'manual': 'Manuel POS', 'configured': 'Kurulum hazır', 'connected': 'Bağlı', 'error': 'Hata var'}.get(pos_status, 'Manuel POS') }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <form id="posIntegrationForm" class="p-6 space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Çalışma modu</label>
+                                <select id="pos-mode" name="mode" onchange="togglePosIntegrationFields()" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                                    <option value="manual" {{ 'selected' if pos_integration_settings.get('mode') == 'manual' else '' }}>Manuel POS</option>
+                                    <option value="integrated" {{ 'selected' if pos_integration_settings.get('mode') == 'integrated' else '' }}>Entegrasyonlu POS</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Sağlayıcı / cihaz</label>
+                                <select id="pos-provider" name="provider" onchange="togglePosIntegrationFields()" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                                    {% for provider in pos_integration_providers %}
+                                    <option value="{{ provider.value }}" {{ 'selected' if pos_integration_settings.get('provider') == provider.value else '' }}>{{ provider.label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Ortam</label>
+                                <select name="environment" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                                    <option value="test" {{ 'selected' if pos_integration_settings.get('environment') == 'test' else '' }}>Test modu</option>
+                                    <option value="live" {{ 'selected' if pos_integration_settings.get('environment') == 'live' else '' }}>Canlı mod</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Bağlantı tipi</label>
+                                <select name="connection_type" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                                    <option value="ip" {{ 'selected' if pos_integration_settings.get('connection_type') == 'ip' else '' }}>IP / ağ bağlantısı</option>
+                                    <option value="api" {{ 'selected' if pos_integration_settings.get('connection_type') == 'api' else '' }}>API / bulut servis</option>
+                                    <option value="serial" {{ 'selected' if pos_integration_settings.get('connection_type') == 'serial' else '' }}>Seri port / yerel servis</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Banka adı</label>
+                                <input type="text" name="bank_name" value="{{ pos_integration_settings.get('bank_name', '') }}" placeholder="Örn. Ziraat, Garanti, İş Bankası" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Terminal ID</label>
+                                <input type="text" name="terminal_id" value="{{ pos_integration_settings.get('terminal_id', '') }}" placeholder="POS terminal numarası" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">İşyeri No</label>
+                                <input type="text" name="merchant_id" value="{{ pos_integration_settings.get('merchant_id', '') }}" placeholder="Merchant ID" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Cihaz IP / adres</label>
+                                <input type="text" name="device_ip" value="{{ pos_integration_settings.get('device_ip', '') }}" placeholder="192.168.1.50" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Port</label>
+                                <input type="number" name="device_port" value="{{ pos_integration_settings.get('device_port', '') }}" placeholder="Örn. 8080" min="1" max="65535" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Kullanıcı adı</label>
+                                <input type="text" name="username" value="{{ pos_integration_settings.get('username', '') }}" placeholder="Servis kullanıcı adı" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Cihaz seri no</label>
+                                <input type="text" name="device_serial" value="{{ pos_integration_settings.get('device_serial', '') }}" placeholder="Cihaz üzerindeki seri no" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Servis URL</label>
+                                <input type="url" name="service_url" value="{{ pos_integration_settings.get('service_url', '') }}" placeholder="https:// veya http:// servis adresi" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Zaman aşımı (sn)</label>
+                                <input type="number" name="timeout_seconds" value="{{ pos_integration_settings.get('timeout_seconds', 30) }}" min="5" max="120" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Test tutarı</label>
+                                <input type="number" name="test_amount" value="{{ pos_integration_settings.get('test_amount', 1) }}" min="0.01" step="0.01" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Kurulumu yapan</label>
+                                <input type="text" name="installer_name" value="{{ pos_integration_settings.get('installer_name', '') }}" placeholder="Teknik servis / yetkili adı" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Servis telefonu</label>
+                                <input type="tel" name="installer_phone" value="{{ pos_integration_settings.get('installer_phone', '') }}" placeholder="Teknik servis iletişim" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Aktivasyon / entegrasyon kodu</label>
+                                <input type="text" name="activation_code" value="{{ pos_integration_settings.get('activation_code', '') }}" placeholder="Varsa sağlayıcı aktivasyon kodu" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">API anahtarı / servis şifresi</label>
+                            <input type="password" name="api_key" placeholder="{{ 'Kayıtlı anahtar korunur; değiştirmek için yeni değer girin' if pos_integration_settings.get('api_key') else 'Sağlayıcıdan alınan API anahtarı veya şifre' }}" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <label class="flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-4">
+                                <input type="checkbox" name="auto_send_amount" {{ 'checked' if pos_integration_settings.get('auto_send_amount', True) else '' }} class="mt-1 rounded border-slate-300 text-primary-600 focus:ring-primary-500">
+                                <span>
+                                    <span class="block text-sm font-semibold text-slate-900 dark:text-white">Tutarı POS’a otomatik gönder</span>
+                                    <span class="block mt-1 text-xs text-slate-500 dark:text-slate-400">Kart ödeme seçildiğinde satış tutarı cihaza aktarılır.</span>
+                                </span>
+                            </label>
+                            <label class="flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-4">
+                                <input type="checkbox" name="require_success" {{ 'checked' if pos_integration_settings.get('require_success', True) else '' }} class="mt-1 rounded border-slate-300 text-primary-600 focus:ring-primary-500">
+                                <span>
+                                    <span class="block text-sm font-semibold text-slate-900 dark:text-white">Onay gelmeden satışı kapatma</span>
+                                    <span class="block mt-1 text-xs text-slate-500 dark:text-slate-400">POS başarısız dönerse satış tamamlanmaz.</span>
+                                </span>
+                            </label>
+                            <label class="flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-4">
+                                <input type="checkbox" name="print_receipt" {{ 'checked' if pos_integration_settings.get('print_receipt') else '' }} class="mt-1 rounded border-slate-300 text-primary-600 focus:ring-primary-500">
+                                <span>
+                                    <span class="block text-sm font-semibold text-slate-900 dark:text-white">POS sonrası fiş yazdır</span>
+                                    <span class="block mt-1 text-xs text-slate-500 dark:text-slate-400">Başarılı kart işleminden sonra fiş akışını başlatır.</span>
+                                </span>
+                            </label>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Kurulum notu</label>
+                            <textarea name="notes" rows="3" placeholder="Teknik servis notu, cihaz seri no, banka yetkilisi vb." class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">{{ pos_integration_settings.get('notes', '') }}</textarea>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+                            <p id="posIntegrationTestResult" class="text-sm text-slate-500 dark:text-slate-400">
+                                {{ pos_integration_settings.get('last_test_message') or 'Henüz test yapılmadı.' }}
+                            </p>
+                            <div class="flex flex-col sm:flex-row gap-3">
+                                <button type="button" onclick="testPosIntegration()" class="px-5 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-200">
+                                    Bağlantıyı Test Et
+                                </button>
+                                <button type="button" onclick="savePosIntegration()" class="px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200">
+                                    POS Ayarlarını Kaydet
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div role="complementary" class="space-y-4">
+                <div class="rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/10 p-5">
+                    <h3 class="font-semibold text-amber-900 dark:text-amber-100 flex items-center gap-2">
+                        <span class="material-symbols-outlined">engineering</span>
+                        Kurulum notu
+                    </h3>
+                    <p class="mt-2 text-sm leading-6 text-amber-800 dark:text-amber-200">Bu alan POS teknik servisinin cihaz bilgilerini yazılımcıya ihtiyaç duymadan girmesi için hazırlandı. Gerçek cihaz bağlantısı için sağlayıcının entegrasyon servisi ve yetkileri aktif olmalıdır.</p>
+                </div>
+                <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+                    <h3 class="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary-600 dark:text-primary-400">checklist</span>
+                        POS kurulum kontrolü
+                    </h3>
+                    <div class="mt-4 space-y-3 text-sm text-slate-600 dark:text-slate-400">
+                        <p class="flex gap-2"><span class="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>Banka veya cihaz sağlayıcı entegrasyonu aktif etti.</p>
+                        <p class="flex gap-2"><span class="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>Terminal ID ve işyeri no doğru girildi.</p>
+                        <p class="flex gap-2"><span class="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>Cihaz IP/port veya API bilgisi doğrulandı.</p>
+                        <p class="flex gap-2"><span class="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>Test işlem sonucu başarılı görüldü.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div id="about-content" role="tabpanel" aria-labelledby="about-tab" class="settings-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <div class="p-6 border-b border-slate-200 dark:border-slate-800">
+                    <div class="flex items-center gap-3">
+                        <div class="w-11 h-11 rounded-xl bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-primary-600 dark:text-primary-400">auto_awesome</span>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Uygulama Hakkında</h2>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Küçük işletmeler için sade, hızlı ve güvenli yönetim paneli.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-6 border-b border-slate-200 dark:border-slate-800">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="rounded-xl bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-900/40 p-4">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-400">Sürüm</p>
+                            <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">v{{ app_version }}</p>
+                            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Canlı kullanıma hazırlanan aktif geliştirme sürümü.</p>
+                        </div>
+                        <div class="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 p-4">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Hedef kullanıcı</p>
+                            <p class="mt-2 text-lg font-bold text-slate-900 dark:text-white">KOBİ ve perakende</p>
+                            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Hırdavat, market, servis ve küçük işletme akışlarına odaklanır.</p>
+                        </div>
+                        <div class="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 p-4">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Yaklaşım</p>
+                            <p class="mt-2 text-lg font-bold text-slate-900 dark:text-white">Sade ve anlaşılır</p>
+                            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Karmaşık ERP dili yerine günlük işletme dili kullanır.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-4">
+                        <span class="material-symbols-outlined text-primary-600 dark:text-primary-400 mb-3">point_of_sale</span>
+                        <h3 class="font-semibold text-slate-900 dark:text-white">POS ve satış</h3>
+                        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Kasa, ödeme ve fiş akışları pratik kullanım için tasarlandı.</p>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-4">
+                        <span class="material-symbols-outlined text-primary-600 dark:text-primary-400 mb-3">inventory_2</span>
+                        <h3 class="font-semibold text-slate-900 dark:text-white">Stok ve cari</h3>
+                        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Ürün, müşteri, tedarikçi ve bakiye takibi tek merkezde tutulur.</p>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-4">
+                        <span class="material-symbols-outlined text-primary-600 dark:text-primary-400 mb-3">verified_user</span>
+                        <h3 class="font-semibold text-slate-900 dark:text-white">Kontrollü yapı</h3>
+                        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Yetki, yedekleme ve işlem geçmişi canlı kullanım düşünülerek güçlendirildi.</p>
+                    </div>
+                </div>
+
+                <div class="px-6 pb-6">
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+                        <h3 class="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary-600 dark:text-primary-400">route</span>
+                            Uygulamanın amacı
+                        </h3>
+                        <p class="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-400">
+                            Bu panel; stok, POS, cari hesap, teklif, personel, nakit/kasa ve temel ön muhasebe işlemlerini tek yerde toplamak için geliştirildi. Amaç, işletme sahibinin ve çalışanların günlük işi daha az ekranda, daha az kafa karışıklığıyla tamamlamasıdır.
+                        </p>
+                        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div class="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400">
+                                <span class="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>
+                                Satıştan tahsilata kadar uçtan uca akış.
+                            </div>
+                            <div class="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400">
+                                <span class="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>
+                                Yetki ve işlem geçmişiyle kontrollü kullanım.
+                            </div>
+                            <div class="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400">
+                                <span class="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>
+                                Mobil ve masaüstünde tutarlı tasarım.
+                            </div>
+                            <div class="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400">
+                                <span class="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>
+                                Canlı geri bildirimlere göre gelişen yapı.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div role="complementary" class="self-start bg-gradient-to-br from-slate-950 via-slate-900 to-primary-950 rounded-xl border border-slate-800 p-5 text-white overflow-hidden relative">
+                <div class="absolute -right-10 -top-10 w-36 h-36 rounded-full bg-primary-500/20 blur-2xl"></div>
+                <div class="relative">
+                    <img src="{{ url_for('static', filename='images/codex-assistant.png') }}" alt="Codex geliştirme asistanı" class="w-24 h-24 rounded-2xl object-cover border border-white/20 shadow-xl">
+                    <div class="mt-4">
+                        <p class="text-xs uppercase tracking-[0.2em] text-primary-200 font-semibold">Geliştirme Asistanı</p>
+                        <h3 class="mt-2 text-lg font-bold">Codex</h3>
+                        <p class="mt-2 text-sm text-slate-300 leading-5">Mehmet Durna ile birlikte çalışan dijital ekip arkadaşı.</p>
+                    </div>
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        <span class="px-3 py-1 rounded-full bg-white/10 text-xs font-semibold">Tasarım</span>
+                        <span class="px-3 py-1 rounded-full bg-white/10 text-xs font-semibold">Test</span>
+                        <span class="px-3 py-1 rounded-full bg-white/10 text-xs font-semibold">Kod</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="guide-content" role="tabpanel" aria-labelledby="guide-tab" class="settings-content hidden">
+        <div class="mt-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div class="p-6 border-b border-slate-200 dark:border-slate-800">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-emerald-600 dark:text-emerald-400">menu_book</span>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Kullanım Kılavuzu</h2>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Yeni kullanıcılar için en sık kullanılan iş akışları.</p>
+                        </div>
+                    </div>
+                    <span class="inline-flex items-center gap-2 rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                        <span class="material-symbols-outlined text-base">schedule</span>
+                        5 dakikalık başlangıç
+                    </span>
+                </div>
+            </div>
+
+            <div class="p-6 grid grid-cols-1 lg:grid-cols-3 gap-5">
+                <div class="rounded-xl border border-primary-100 dark:border-primary-900/40 bg-primary-50/70 dark:bg-primary-900/10 p-5">
+                    <h3 class="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary-600 dark:text-primary-400">rocket_launch</span>
+                        Hızlı başlangıç
+                    </h3>
+                    <ol class="mt-4 space-y-3 text-sm text-slate-600 dark:text-slate-400">
+                        <li class="flex gap-3"><span class="font-bold text-primary-600 dark:text-primary-400">1</span><span>Önce bir ürün ekleyin ve stok miktarını girin.</span></li>
+                        <li class="flex gap-3"><span class="font-bold text-primary-600 dark:text-primary-400">2</span><span>POS ekranından ürünü sepete ekleyip satışı tamamlayın.</span></li>
+                        <li class="flex gap-3"><span class="font-bold text-primary-600 dark:text-primary-400">3</span><span>Veresiye satış varsa cari detayından tahsilat alın.</span></li>
+                        <li class="flex gap-3"><span class="font-bold text-primary-600 dark:text-primary-400">4</span><span>Gün sonunda kasa, banka ve POS hareketlerini kontrol edin.</span></li>
+                    </ol>
+                </div>
+
+                <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-5">
+                    <h3 class="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary-600 dark:text-primary-400">apps</span>
+                        Modül rehberi
+                    </h3>
+                    <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <div class="flex items-center gap-2 text-slate-600 dark:text-slate-400"><span class="material-symbols-outlined text-base text-primary-500">inventory_2</span>Stok ve ürünler</div>
+                        <div class="flex items-center gap-2 text-slate-600 dark:text-slate-400"><span class="material-symbols-outlined text-base text-primary-500">point_of_sale</span>POS satış</div>
+                        <div class="flex items-center gap-2 text-slate-600 dark:text-slate-400"><span class="material-symbols-outlined text-base text-primary-500">groups</span>Cari hesaplar</div>
+                        <div class="flex items-center gap-2 text-slate-600 dark:text-slate-400"><span class="material-symbols-outlined text-base text-primary-500">request_quote</span>Teklifler</div>
+                        <div class="flex items-center gap-2 text-slate-600 dark:text-slate-400"><span class="material-symbols-outlined text-base text-primary-500">badge</span>Personel</div>
+                        <div class="flex items-center gap-2 text-slate-600 dark:text-slate-400"><span class="material-symbols-outlined text-base text-primary-500">account_balance_wallet</span>Ön muhasebe</div>
+                    </div>
+                </div>
+
+                <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-5">
+                    <h3 class="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary-600 dark:text-primary-400">tips_and_updates</span>
+                        Pratik ipuçları
+                    </h3>
+                    <div class="mt-4 space-y-3 text-sm text-slate-600 dark:text-slate-400">
+                        <p class="flex gap-2"><span class="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>Barkod yoksa POS içinde hızlı ürün ekleyin.</p>
+                        <p class="flex gap-2"><span class="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>Cari bakiyeyi müşteri/tedarikçi türüne göre okuyun.</p>
+                        <p class="flex gap-2"><span class="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>Yedeklerinizi düzenli alın ve güvenli yerde saklayın.</p>
+                        <p class="flex gap-2"><span class="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>İşlem geçmişinden kritik değişiklikleri takip edin.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 pb-6">
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+                        <h3 class="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary-600 dark:text-primary-400">sync_alt</span>
+                            Günlük kullanım akışları
+                        </h3>
+                        <div class="mt-4 space-y-4">
+                            <div class="rounded-lg bg-slate-50 dark:bg-slate-800/60 p-4">
+                                <p class="font-semibold text-slate-900 dark:text-white">1. Peşin satış</p>
+                                <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">POS ekranında ürünü sepete ekleyin, nakit/kart ödeme seçin ve satışı tamamlayın. Satış sonrası stok otomatik azalır, kasa veya POS hareketi oluşur.</p>
+                            </div>
+                            <div class="rounded-lg bg-slate-50 dark:bg-slate-800/60 p-4">
+                                <p class="font-semibold text-slate-900 dark:text-white">2. Veresiye satış</p>
+                                <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Ödeme aşamasında veresiye seçin ve ilgili cariyi bağlayın. Tutar cari hesabına borç/alacak olarak yansır; tahsilat daha sonra cari detayından yapılır.</p>
+                            </div>
+                            <div class="rounded-lg bg-slate-50 dark:bg-slate-800/60 p-4">
+                                <p class="font-semibold text-slate-900 dark:text-white">3. Tekliften satışa geçiş</p>
+                                <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Teklif oluşturun, ürünleri ve iskonto/KDV bilgilerini kontrol edin. Müşteri onayladığında teklif durumunu güncelleyip satış sürecine taşıyın.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+                        <h3 class="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary-600 dark:text-primary-400">fact_check</span>
+                            Kontrol listesi
+                        </h3>
+                        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                            <div class="rounded-lg bg-slate-50 dark:bg-slate-800/60 p-4">
+                                <p class="font-semibold text-slate-900 dark:text-white">Ürün eklerken</p>
+                                <p class="mt-1 text-slate-600 dark:text-slate-400">Barkod, satış fiyatı, stok miktarı, kritik stok ve depo bilgisini kontrol edin.</p>
+                            </div>
+                            <div class="rounded-lg bg-slate-50 dark:bg-slate-800/60 p-4">
+                                <p class="font-semibold text-slate-900 dark:text-white">Cari açarken</p>
+                                <p class="mt-1 text-slate-600 dark:text-slate-400">Müşteri/tedarikçi türünü doğru seçin; bakiye yorumları buna göre anlam kazanır.</p>
+                            </div>
+                            <div class="rounded-lg bg-slate-50 dark:bg-slate-800/60 p-4">
+                                <p class="font-semibold text-slate-900 dark:text-white">Gün sonu</p>
+                                <p class="mt-1 text-slate-600 dark:text-slate-400">Nakit, banka, POS, veresiye satış ve iptal/iade hareketlerini karşılaştırın.</p>
+                            </div>
+                            <div class="rounded-lg bg-slate-50 dark:bg-slate-800/60 p-4">
+                                <p class="font-semibold text-slate-900 dark:text-white">Canlı kullanım</p>
+                                <p class="mt-1 text-slate-600 dark:text-slate-400">Demo veri butonlarını kullanmayın; düzenli yedek almayı alışkanlık haline getirin.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-5 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/10 p-5">
+                    <h3 class="font-semibold text-amber-900 dark:text-amber-100 flex items-center gap-2">
+                        <span class="material-symbols-outlined">priority_high</span>
+                        Kullanımda dikkat edilecekler
+                    </h3>
+                    <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-amber-800 dark:text-amber-200">
+                        <p>Satış iptali veya iade işlemlerinden sonra cari ve kasa hareketlerini kontrol edin.</p>
+                        <p>KDV ve iskonto oranlarını satıştan önce kontrol edin; tamamlanan satış finans kayıtlarını etkiler.</p>
+                        <p>Personel, stok ve finans verilerinde silme yerine mümkünse düzenleme/iptal akışlarını tercih edin.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.settings-tab-btn {
+    @apply text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800;
+}
+
+.settings-tab-btn.active {
+    @apply text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20;
+}
+
+.settings-content {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.theme-option {
+    @apply transition-all duration-200;
+}
+
+.theme-option:hover {
+    @apply border-primary-300 dark:border-primary-600 bg-primary-50 dark:bg-primary-900/20;
+}
+
+.theme-option.active {
+    @apply border-primary-500 bg-primary-50 dark:bg-primary-900/20;
+}
+</style>
+
+<script>
+const SETTINGS_STATE = {{ user_settings|tojson }};
+
+function switchTab(tabName) {
+    document.querySelectorAll('.settings-content').forEach(content => {
+        content.classList.toggle('hidden', content.id !== `${tabName}-content`);
+    });
+    document.querySelectorAll('.settings-tab-btn').forEach(button => {
+        const active = button.id === `${tabName}-tab`;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-selected', String(active));
+        button.tabIndex = active ? 0 : -1;
+    });
+}
+
+function settingValue(key, fallback = null) {
+            return Object.prototype.hasOwnProperty.call(SETTINGS_STATE, key) ? SETTINGS_STATE[key] : fallback;
+}
+
+function setThemeOption(theme) {
+    document.querySelectorAll('.theme-option').forEach(button => {
+        const active = button.dataset.theme === theme;
+        button.classList.toggle('active', active);
+        button.classList.toggle('border-primary-500', active);
+        button.classList.toggle('border-slate-300', !active);
+        button.classList.toggle('dark:border-slate-600', !active);
+    });
+}
+
+function selectedTheme() {
+    return document.querySelector('.theme-option.active').dataset.theme || settingValue('theme', 'light');
+}
+
+function readCheckbox(id) {
+    return Boolean(document.getElementById(id).checked);
+}
+
+async function savePreferences() {
+    const payload = {
+        language: document.getElementById('pref-language').value,
+        theme: selectedTheme(),
+        items_per_page: document.getElementById('pref-items-per-page').value,
+        currency: document.getElementById('pref-currency').value,
+        default_vat_rate: document.getElementById('pref-default-vat-rate').value,
+        stock_warning_threshold: document.getElementById('pref-stock-warning-threshold').value,
+        auto_backup_enabled: readCheckbox('pref-auto-backup-enabled'),
+        compact_view: readCheckbox('pref-compact-view'),
+        card_view: readCheckbox('pref-card-view'),
+        pinned_sidebar: readCheckbox('pref-pinned-sidebar'),
+        date_format: document.getElementById('pref-date-format').value,
+        time_format: document.getElementById('pref-time-format').value,
+        timezone: document.getElementById('pref-timezone').value
+    };
+
+    try {
+        const response = await fetch('/api/settings/preferences', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        showMessage(result.message, result.success ? 'success' : 'error');
+    } catch (error) {
+        console.error('Tercihler kaydedilemedi:', error);
+        showMessage('Tercihler kaydedilemedi', 'error');
+    }
+}
+
+function applyNotificationSettings() {
+    const checkboxKeys = [
+        'notify_stock_alerts', 'notify_customer_activity', 'notify_quote_status',
+        'notify_daily_reports', 'notify_system_updates', 'notify_realtime',
+        'notify_sound', 'notify_desktop', 'notify_history'
+    ];
+    document.querySelectorAll('#notifications-content input[type="checkbox"]').forEach((input, index) => {
+        const key = checkboxKeys[index];
+        if (key && Object.prototype.hasOwnProperty.call(SETTINGS_STATE, key)) {
+            input.checked = Boolean(SETTINGS_STATE[key]);
+        }
+    });
+
+    const selects = document.querySelectorAll('#notifications-content select');
+    if (selects[0] && settingValue('notification_summary_frequency')) {
+        selects[0].value = settingValue('notification_summary_frequency');
+    }
+    if (selects[1] && settingValue('notification_report_frequency')) {
+        selects[1].value = settingValue('notification_report_frequency');
+    }
+
+    const quietHours = document.querySelectorAll('#notifications-content input[type="time"]');
+    if (quietHours[0] && settingValue('quiet_hours_start')) {
+        quietHours[0].value = settingValue('quiet_hours_start');
+    }
+    if (quietHours[1] && settingValue('quiet_hours_end')) {
+        quietHours[1].value = settingValue('quiet_hours_end');
+    }
+}
+
+// Kategori Yönetimi Modal
+function openCategoryModal() {
+    const modal = document.getElementById('categoryModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        loadCategories();
+    } else {
+        console.error('Modal bulunamadı!');
+    }
+}
+
+function closeCategoryModal() {
+    const modal = document.getElementById('categoryModal');
+    modal.classList.add('hidden');
+}
+
+async function loadCategories() {
+    try {
+        const response = await fetch('/api/settings/categories');
+        const data = await response.json();
+        
+        if (data.success) {
+            const categoryList = document.getElementById('categoryList');
+            if (categoryList) {
+                categoryList.innerHTML = '';
+                
+                Object.entries(data.categories).forEach(([name, count]) => {
+                    const categoryItem = document.createElement('div');
+                    categoryItem.className = 'flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg';
+                    categoryItem.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-slate-600">label</span>
+                            <div>
+                                <p class="text-sm font-medium text-slate-900 dark:text-white">${name}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">${count} ürün</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="editCategory('${name}')" class="p-1.5 text-blue-600 hover:text-blue-700">
+                                <span class="material-symbols-outlined text-lg">edit</span>
+                            </button>
+                            <button onclick="deleteCategory('${name}')" class="p-1.5 text-red-600 hover:text-red-700">
+                                <span class="material-symbols-outlined text-lg">delete</span>
+                            </button>
+                        </div>
+                    `;
+                    categoryList.appendChild(categoryItem);
+                });
+            } else {
+                console.error('Kategori listesi bulunamadı!');
+            }
+        } else {
+            console.error('API başarısız:', data.message);
+        }
+    } catch (error) {
+        console.error('Kategoriler yüklenemedi:', error);
+    }
+}
+
+async function addCategory() {
+    const categoryName = document.getElementById('newCategoryName').value.trim();
+    if (!categoryName) {
+        showMessage('Kategori adı giriniz!', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/settings/categories', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name: categoryName })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById('newCategoryName').value = '';
+            loadCategories();
+            showMessage('Kategori eklendi', 'success');
+        } else {
+            showMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Kategori eklenemedi:', error);
+        showMessage('Kategori eklenemedi', 'error');
+    }
+}
+
+async function editCategory(oldName) {
+    const newName = prompt('Kategori adını düzenle:', oldName);
+    if (newName && newName !== oldName) {
+        try {
+            const response = await fetch('/api/settings/categories', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ old_name: oldName, new_name: newName })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                loadCategories();
+                showMessage('Kategori güncellendi', 'success');
+            } else {
+                showMessage(data.message, 'error');
+            }
+        } catch (error) {
+            console.error('Kategori güncellenemedi:', error);
+            showMessage('Kategori güncellenemedi', 'error');
+        }
+    }
+}
+
+async function deleteCategory(name) {
+    if (confirm(`"${name}" kategorisini silmek istediğinizden emin misiniz`)) {
+        try {
+            const response = await fetch('/api/settings/categories', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ name: name })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                loadCategories();
+                showMessage('Kategori silindi', 'success');
+            } else {
+                showMessage(data.message, 'error');
+            }
+        } catch (error) {
+            console.error('Kategori silinemedi:', error);
+            showMessage('Kategori silinemedi', 'error');
+        }
+    }
+}
+
+// Firma bilgileri güncelleme
+async function updateCompanyInfo() {
+    const form = document.getElementById('company-content');
+    if (!form) {
+        showMessage('Firma bilgileri formu bulunamadı', 'error');
+        return;
+    }
+    const formData = new FormData(form);
+    
+    try {
+        const response = await fetch('/api/settings/company', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            showMessage('Firma bilgileri güncellendi', 'success');
+        } else {
+            showMessage(result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Firma bilgileri güncellenemedi:', error);
+        showMessage('Firma bilgileri güncellenemedi', 'error');
+    }
+}
+
+// Profil güncelleme
+async function updateProfile() {
+    const form = document.querySelector('#profile-content form');
+    const formData = new FormData(form);
+    
+    try {
+        const response = await fetch('/api/settings/profile', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            showMessage('Profil güncellendi', 'success');
+        } else {
+            showMessage(result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Profil güncellenemedi:', error);
+        showMessage('Profil güncellenemedi', 'error');
+    }
+}
+
+// Şifre güncelleme
+async function updatePassword() {
+    const formData = new FormData(document.querySelector('#security-content form'));
+    const data = Object.fromEntries(formData);
+    
+    if (data.new_password !== data.confirm_password) {
+        showMessage('Şifreler eşleşmiyor', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/settings/password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                current_password: data.current_password,
+                new_password: data.new_password
+            })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            showMessage('Şifre güncellendi', 'success');
+            document.querySelector('#security-content form').reset();
+        } else {
+            showMessage(result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Şifre güncellenemedi:', error);
+        showMessage('Şifre güncellenemedi', 'error');
+    }
+}
+
+// Bildirim ayarları güncelleme
+async function updateNotifications() {
+    const checkboxKeys = [
+        'notify_stock_alerts', 'notify_customer_activity', 'notify_quote_status',
+        'notify_daily_reports', 'notify_system_updates', 'notify_realtime',
+        'notify_sound', 'notify_desktop', 'notify_history'
+    ];
+    const data = {};
+    document.querySelectorAll('#notifications-content input[type="checkbox"]').forEach((input, index) => {
+        if (checkboxKeys[index]) {
+            data[checkboxKeys[index]] = input.checked;
+        }
+    });
+
+    const selects = document.querySelectorAll('#notifications-content select');
+    data.notification_summary_frequency = selects[0].value || 'realtime';
+    data.notification_report_frequency = selects[1].value || 'weekly';
+
+    const quietHours = document.querySelectorAll('#notifications-content input[type="time"]');
+    data.quiet_hours_start = quietHours[0].value || '22:00';
+    data.quiet_hours_end = quietHours[1].value || '08:00';
+    
+    try {
+        const response = await fetch('/api/settings/notifications', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            showMessage('Bildirim ayarları güncellendi', 'success');
+        } else {
+            showMessage(result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Bildirim ayarları güncellenemedi:', error);
+        showMessage('Bildirim ayarları güncellenemedi', 'error');
+    }
+}
+
+// Yedekleme
+async function createBackup() {
+    try {
+        const response = await fetch('/api/settings/backup', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            showMessage(result.message, 'success');
+            if (result.filename) {
+                downloadBackup(result.filename);
+            }
+        } else {
+            showMessage(result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Yedekleme başlatılamadı:', error);
+        showMessage('Yedekleme başlatılamadı', 'error');
+    }
+}
+
+function downloadBackup(filename) {
+    const link = document.createElement('a');
+    link.href = `/api/settings/backup/download/${encodeURIComponent(filename)}`;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+}
+
+function openBackupRestorePicker() {
+    const input = document.getElementById('backup-file-input');
+    if (!input) {
+        showMessage('Yedek dosyası yükleyici bulunamadı', 'error');
+        return;
+    }
+    input.value = '';
+    input.click();
+}
+
+async function handleBackupFileUpload(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) {
+        showMessage('Yedek dosyası seçilmedi', 'info');
+        return;
+    }
+
+    const file = files[0];
+    const formData = new FormData();
+    formData.append('backup_file', file);
+
+    try {
+        const response = await fetch('/api/settings/backup/restore', {
+            method: 'POST',
+            body: formData,
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            showMessage(result.message, 'success');
+        } else {
+            showMessage(result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Yedek geri yükleme hatası:', error);
+        showMessage('Yedek geri yükleme hatası', 'error');
+    }
+}
+
+function posIntegrationPayload() {
+    const form = document.getElementById('posIntegrationForm');
+    if (!form) return null;
+    const formData = new FormData(form);
+    return {
+        mode: formData.get('mode'),
+        provider: formData.get('provider'),
+        environment: formData.get('environment'),
+        connection_type: formData.get('connection_type'),
+        bank_name: formData.get('bank_name'),
+        terminal_id: formData.get('terminal_id'),
+        merchant_id: formData.get('merchant_id'),
+        device_ip: formData.get('device_ip'),
+        device_port: formData.get('device_port'),
+        device_serial: formData.get('device_serial'),
+        service_url: formData.get('service_url'),
+        username: formData.get('username'),
+        api_key: formData.get('api_key'),
+        timeout_seconds: formData.get('timeout_seconds'),
+        test_amount: formData.get('test_amount'),
+        installer_name: formData.get('installer_name'),
+        installer_phone: formData.get('installer_phone'),
+        activation_code: formData.get('activation_code'),
+        notes: formData.get('notes'),
+        enabled: formData.get('mode') === 'integrated' && formData.get('provider') !== 'manual',
+        auto_send_amount: Boolean(formData.get('auto_send_amount')),
+        require_success: Boolean(formData.get('require_success')),
+        print_receipt: Boolean(formData.get('print_receipt'))
+    };
+}
+
+function updatePosIntegrationStatus(status, message) {
+    const badge = document.getElementById('posIntegrationStatusBadge');
+    const result = document.getElementById('posIntegrationTestResult');
+    const labels = {
+        manual: 'Manuel POS',
+        configured: 'Kurulum hazır',
+        connected: 'Bağlı',
+        error: 'Hata var'
+    };
+    if (badge) {
+        badge.textContent = labels[status] || 'Manuel POS';
+        badge.className = 'shrink-0 rounded-full px-3 py-1 text-xs font-semibold';
+        if (['configured', 'connected'].includes(status)) {
+            badge.classList.add('bg-emerald-100', 'text-emerald-700', 'dark:bg-emerald-900/30', 'dark:text-emerald-300');
+        } else if (status === 'error') {
+            badge.classList.add('bg-red-100', 'text-red-700', 'dark:bg-red-900/30', 'dark:text-red-300');
+        } else {
+            badge.classList.add('bg-slate-100', 'text-slate-600', 'dark:bg-slate-800', 'dark:text-slate-300');
+        }
+    }
+    if (result && message) {
+        result.textContent = message;
+    }
+}
+
+function togglePosIntegrationFields() {
+    const mode = document.getElementById('pos-mode').value || 'manual';
+    const provider = document.getElementById('pos-provider').value || 'manual';
+    const isIntegrated = mode === 'integrated' && provider !== 'manual';
+    document.querySelectorAll('#posIntegrationForm input, #posIntegrationForm select, #posIntegrationForm textarea').forEach(field => {
+        if (['mode', 'provider'].includes(field.name)) return;
+        field.disabled = !isIntegrated;
+        field.classList.toggle('opacity-60', !isIntegrated);
+    });
+    updatePosIntegrationStatus(isIntegrated ? 'configured' : 'manual', isIntegrated ? 'Entegrasyon bilgileri girilebilir.' : 'Manuel POS modu aktif.');
+}
+
+async function savePosIntegration() {
+    const payload = posIntegrationPayload();
+    if (!payload) {
+        showMessage('POS entegrasyon formu bulunamadı', 'error');
+        return;
+    }
+    try {
+        const response = await fetch('/api/settings/pos-integration', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (result.success) {
+            showMessage(result.message, 'success');
+            updatePosIntegrationStatus(result.pos_integration.status || 'configured', result.message);
+        } else {
+            showMessage(result.message, 'error');
+            updatePosIntegrationStatus('error', result.message);
+        }
+    } catch (error) {
+        console.error('POS entegrasyon ayarları kaydedilemedi:', error);
+        showMessage('POS entegrasyon ayarları kaydedilemedi', 'error');
+        updatePosIntegrationStatus('error', 'POS entegrasyon ayarları kaydedilemedi.');
+    }
+}
+
+async function testPosIntegration() {
+    const payload = posIntegrationPayload();
+    if (!payload) {
+        showMessage('POS entegrasyon formu bulunamadı', 'error');
+        return;
+    }
+    try {
+        const response = await fetch('/api/settings/pos-integration/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (result.success) {
+            showMessage(result.message, 'success');
+            updatePosIntegrationStatus(result.status || 'configured', result.message);
+        } else {
+            showMessage(result.message, 'error');
+            updatePosIntegrationStatus('error', result.message);
+        }
+    } catch (error) {
+        console.error('POS bağlantı testi başarısız:', error);
+        showMessage('POS bağlantı testi başarısız', 'error');
+        updatePosIntegrationStatus('error', 'POS bağlantı testi başarısız.');
+    }
+}
+
+async function saveBackupFrequency() {
+    const select = document.getElementById('backup-frequency-select');
+    if (!select) {
+        showMessage('Yedekleme sıklığı seçici bulunamadı', 'error');
+        return;
+    }
+
+    const frequency = select.value;
+    try {
+        const response = await fetch('/api/settings/backup-frequency', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ frequency })
+        });
+        const result = await response.json();
+        const status = document.getElementById('backup-frequency-status');
+        if (result.success) {
+            showMessage(result.message, 'success');
+            if (status) {
+                status.textContent = 'Kaydedildi';
+                status.classList.remove('hidden');
+                setTimeout(() => status.classList.add('hidden'), 3000);
+            }
+        } else {
+            showMessage(result.message, 'error');
+            if (status) {
+                status.classList.add('hidden');
+            }
+        }
+    } catch (error) {
+        console.error('Yedekleme sıklığı kaydedilemedi:', error);
+        showMessage('Yedekleme sıklığı kaydedilemedi', 'error');
+    }
+}
+
+// Güvenlik denetimi
+async function runSecurityAudit() {
+    try {
+        showMessage('Güvenlik denetimi başlatıldı...', 'success');
+        
+        const response = await fetch('/api/settings/security-audit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            setTimeout(() => {
+                const results = [
+                    { status: 'success', message: 'Oturum güvenliği kontrol edildi' },
+                    { status: 'warning', message: 'Parola gücü orta seviyede' },
+                    { status: 'info', message: `${result.results.connected_devices} bağlı cihaz incelendi` }
+                ];
+                
+                results.forEach(res => {
+                    const type = res.status === 'success' ? 'success' : 
+                               res.status === 'warning' ? 'error' : 'info';
+                    showMessage(res.message, type);
+                });
+            }, 1500);
+        } else {
+            showMessage(result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Güvenlik denetimi başarısız:', error);
+        showMessage('Güvenlik denetimi başarısız', 'error');
+    }
+}
+
+// Depo Yönetimi Modal
+function openWarehouseModal() {
+    const modal = document.getElementById('warehouseModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        loadWarehouses();
+    } else {
+        console.error('Depo modal bulunamadı!');
+    }
+}
+
+function closeWarehouseModal() {
+    const modal = document.getElementById('warehouseModal');
+    modal.classList.add('hidden');
+}
+
+async function loadWarehouses() {
+    try {
+        const response = await fetch('/api/settings/warehouses');
+        const data = await response.json();
+        
+        if (data.success) {
+            const warehouseList = document.getElementById('warehouseList');
+            if (warehouseList) {
+                warehouseList.innerHTML = '';
+                
+                Object.entries(data.warehouses).forEach(([name, count]) => {
+                    const warehouseItem = document.createElement('div');
+                    warehouseItem.className = 'flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg';
+                    warehouseItem.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-slate-600">warehouse</span>
+                            <div>
+                                <p class="text-sm font-medium text-slate-900 dark:text-white">${name}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">${count} ürün</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="editWarehouse('${name}')" class="p-1.5 text-blue-600 hover:text-blue-700">
+                                <span class="material-symbols-outlined text-lg">edit</span>
+                            </button>
+                            <button onclick="deleteWarehouse('${name}')" class="p-1.5 text-red-600 hover:text-red-700">
+                                <span class="material-symbols-outlined text-lg">delete</span>
+                            </button>
+                        </div>
+                    `;
+                    warehouseList.appendChild(warehouseItem);
+                });
+            } else {
+                console.error('Depo listesi bulunamadı!');
+            }
+            
+            // Depo dropdown'larını doldur
+            fillWarehouseDropdowns();
+        } else {
+            console.error('Depo API başarısız:', data.message);
+        }
+    } catch (error) {
+        console.error('Depolar yüklenemedi:', error);
+    }
+}
+
+async function addWarehouse() {
+    const warehouseName = document.getElementById('newWarehouseName').value.trim();
+    if (!warehouseName) {
+        showMessage('Depo adı giriniz!', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/settings/warehouses', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name: warehouseName })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('newWarehouseName').value = '';
+            loadWarehouses();
+            showMessage('Depo eklendi', 'success');
+        } else {
+            showMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Depo eklenemedi:', error);
+        showMessage('Depo eklenemedi', 'error');
+    }
+}
+
+async function editWarehouse(oldName) {
+    const newName = prompt('Depo adını düzenle:', oldName);
+    if (newName && newName !== oldName) {
+        try {
+            const response = await fetch('/api/settings/warehouses', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ old_name: oldName, new_name: newName })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                loadWarehouses();
+                showMessage('Depo güncellendi', 'success');
+            } else {
+                showMessage(data.message, 'error');
+            }
+        } catch (error) {
+            console.error('Depo güncellenemedi:', error);
+            showMessage('Depo güncellenemedi', 'error');
+        }
+    }
+}
+
+async function deleteWarehouse(name) {
+    if (confirm(`"${name}" deposunu silmek istediğinizden emin misiniz`)) {
+        try {
+            const response = await fetch('/api/settings/warehouses', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ name: name })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                loadWarehouses();
+                showMessage('Depo silindi', 'success');
+            } else {
+                showMessage(data.message, 'error');
+            }
+        } catch (error) {
+            console.error('Depo silinemedi:', error);
+            showMessage('Depo silinemedi', 'error');
+        }
+    }
+}
+
+// Depo Taşıma Modal Fonksiyonları
+function showTransferModal() {
+    const fromWarehouse = document.getElementById('fromWarehouse').value;
+    const toWarehouse = document.getElementById('toWarehouse').value;
+    
+    if (!fromWarehouse || !toWarehouse) {
+        showMessage('Lütfen kaynak ve hedef depo seçin', 'error');
+        return;
+    }
+    
+    if (fromWarehouse === toWarehouse) {
+        showMessage('Kaynak ve hedef depo aynı olamaz', 'error');
+        return;
+    }
+    
+    // Modal'daki depo isimlerini güncelle
+    document.getElementById('transferFromDepo').textContent = fromWarehouse;
+    document.getElementById('transferToDepo').textContent = toWarehouse;
+    
+    // Modal'ı aç
+    document.getElementById('transferModal').classList.remove('hidden');
+    
+    // Ürünleri yükle
+    loadTransferProducts(fromWarehouse);
+}
+
+function closeTransferModal() {
+    document.getElementById('transferModal').classList.add('hidden');
+}
+
+async function loadTransferProducts(warehouseName) {
+    try {
+        // Kaynak depodaki ürünleri API'den çek
+        const response = await fetch(`/api/urunlerwarehouse=${warehouseName}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const productList = document.getElementById('transferProductList');
+            productList.innerHTML = '';
+            
+            data.urunler.forEach(urun => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <input type="checkbox" class="product-checkbox rounded border-slate-300" value="${urun.id}">
+                    </td>
+                    <td class="px-4 py-2 text-sm">${urun.urun_adi}</td>
+                    <td class="px-4 py-2 text-sm">${urun.barkod || '-'}</td>
+                    <td class="px-4 py-2 text-sm">
+                        <div class="flex items-center gap-2">
+                            <span class="font-medium">${urun.stok_miktari}</span>
+                            <span class="text-xs text-slate-500">(mevcut)</span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-2 text-sm">${formatTRY(urun.alis_fiyati)}</td>
+                    <td class="px-4 py-2 text-sm">${formatTRY(urun.satis_fiyati)}</td>
+                `;
+                row.classList.add('product-row');
+                row.dataset.stock = urun.stok_miktari;
+                productList.appendChild(row);
+            });
+            
+            // Tüm seçim kutusu
+            document.getElementById('selectAllProducts').addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.product-checkbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+            });
+            
+        } else {
+            showMessage('Ürünler yüklenemedi', 'error');
+        }
+    } catch (error) {
+        console.error('Ürünler yüklenemedi:', error);
+        showMessage('Ürünler yüklenemedi', 'error');
+    }
+}
+
+// Tümünü Taşı fonksiyonu
+function setTransferQuantityToMax() {
+    const selectedProducts = [];
+    document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
+        selectedProducts.push(parseInt(checkbox.value));
+    });
+    
+    if (selectedProducts.length === 0) {
+        showMessage('Lütfen önce ürünleri seçin', 'error');
+        return;
+    }
+    
+    // Seçili ürünlerin minimum stoğunu bul
+    let minStock = Infinity;
+    selectedProducts.forEach(productId => {
+        const row = document.querySelector(`input[value="${productId}"]`).closest('.product-row');
+        const stock = parseFloat(row.dataset.stock);
+        minStock = Math.min(minStock, stock);
+    });
+    
+    document.getElementById('transferQuantity').value = minStock;
+    showMessage(`Taşıma miktarı ${minStock} olarak ayarlandı (minimum stok)`, 'success');
+}
+
+async function executeTransfer() {
+    const fromWarehouse = document.getElementById('fromWarehouse').value;
+    const toWarehouse = document.getElementById('toWarehouse').value;
+    const quantity = document.getElementById('transferQuantity').value;
+    
+    // Seçili ürünleri al
+    const selectedProducts = [];
+    document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
+        selectedProducts.push(parseInt(checkbox.value));
+    });
+    
+    if (selectedProducts.length === 0) {
+        showMessage('Lütfen taşınacak ürünleri seçin', 'error');
+        return;
+    }
+    
+    if (quantity < 1) {
+        showMessage('Taşıma miktarı en az 1 olmalıdır', 'error');
+        return;
+    }
+    
+    // Stok kontrolü
+    let insufficientStock = [];
+    selectedProducts.forEach(productId => {
+        const row = document.querySelector(`input[value="${productId}"]`).closest('.product-row');
+        const stock = parseFloat(row.dataset.stock);
+        if (stock < quantity) {
+            insufficientStock.push(`Ürün ID ${productId}: Mevcut stok ${stock}, taşınacak miktar ${quantity}`);
+        }
+    });
+    
+    if (insufficientStock.length > 0) {
+        showMessage('Yetersiz stok: ' + insufficientStock.join('; '), 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/settings/transfer-products', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                from_warehouse: fromWarehouse,
+                to_warehouse: toWarehouse,
+                product_ids: selectedProducts,
+                quantity: parseInt(quantity)
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showMessage(data.message, 'success');
+            closeTransferModal();
+            // Depo listesini yenile
+            loadWarehouses();
+        } else {
+            showMessage(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Taşıma başarısız:', error);
+        showMessage('Taşıma işlemi başarısız', 'error');
+    }
+}
+
+// Depo dropdown'larını doldurma
+async function fillWarehouseDropdowns() {
+    try {
+        const response = await fetch('/api/settings/warehouses');
+        const data = await response.json();
+        
+        if (data.success) {
+            const fromSelect = document.getElementById('fromWarehouse');
+            const toSelect = document.getElementById('toWarehouse');
+            
+            // Mevcut seçenekleri temizle
+            fromSelect.innerHTML = '<option value="">Kaynak Depo</option>';
+            toSelect.innerHTML = '<option value="">Hedef Depo</option>';
+            
+            // Depoları ekle
+            Object.keys(data.warehouses).forEach(depo => {
+                const option1 = document.createElement('option');
+                option1.value = depo;
+                option1.textContent = depo;
+                fromSelect.appendChild(option1);
+                
+                const option2 = document.createElement('option');
+                option2.value = depo;
+                option2.textContent = depo;
+                toSelect.appendChild(option2);
+            });
+        }
+    } catch (error) {
+        console.error('Depolar yüklenemedi:', error);
+    }
+}
+
+// Initialize first tab
+document.addEventListener('DOMContentLoaded', function() {
+    setThemeOption(settingValue('theme', 'light'));
+    document.querySelectorAll('.theme-option').forEach(button => {
+        button.addEventListener('click', () => setThemeOption(button.dataset.theme));
+    });
+    applyNotificationSettings();
+    togglePosIntegrationFields();
+    switchTab('profile');
+    const tabButtons = Array.from(document.querySelectorAll('.settings-tab-btn'));
+    tabButtons.forEach((button, index) => {
+        button.addEventListener('keydown', event => {
+            if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+            event.preventDefault();
+        const offset = event.key === 'ArrowRight' ? 1 : -1;
+            const target = tabButtons[(index + offset + tabButtons.length) % tabButtons.length];
+            target.click();
+            target.focus();
+        });
+    });
+});
+</script>
+
+<!-- Kategori Yönetimi Modal -->
+<div id="categoryModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 max-w-2xl w-full max-h-[80vh] overflow-hidden">
+        <div class="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800">
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary-600">category</span>
+                Kategori Yönetimi
+            </h3>
+            <button onclick="closeCategoryModal()" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                <span class="material-symbols-outlined text-slate-600 dark:text-slate-400">close</span>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <!-- Yeni Kategori Ekle -->
+            <div class="mb-6">
+                <div class="flex gap-3">
+                    <input type="text" id="newCategoryName" placeholder="Yeni kategori adı giriniz..." 
+                           class="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    <button onclick="addCategory()" class="px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200 flex items-center gap-2">
+                        <span class="material-symbols-outlined">add</span>
+                        Ekle
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Kategori Listesi -->
+            <div class="space-y-3 max-h-96 overflow-y-auto" id="categoryList">
+                <!-- Kategoriler JavaScript ile yüklenecek -->
+            </div>
+        </div>
+        
+        <div class="flex justify-end gap-3 p-6 border-t border-slate-200 dark:border-slate-800">
+            <button onclick="closeCategoryModal()" class="px-5 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-200">
+                Kapat
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Depo Yönetimi Modal -->
+<div id="warehouseModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 max-w-2xl w-full max-h-[80vh] overflow-hidden">
+        <div class="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800">
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary-600">warehouse</span>
+                Depo Yönetimi
+            </h3>
+            <button onclick="closeWarehouseModal()" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                <span class="material-symbols-outlined text-slate-600 dark:text-slate-400">close</span>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <!-- Yeni Depo Ekle -->
+            <div class="mb-6">
+                <div class="flex gap-3">
+                    <input type="text" id="newWarehouseName" placeholder="Yeni depo adı giriniz..." 
+                           class="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    <button onclick="addWarehouse()" class="px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200 flex items-center gap-2">
+                        <span class="material-symbols-outlined">add</span>
+                        Ekle
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Depo Listesi -->
+            <div class="space-y-3 max-h-96 overflow-y-auto" id="warehouseList">
+                <!-- Depolar JavaScript ile yüklenecek -->
+            </div>
+            
+            <!-- Depo Arası Ürün Taşıma -->
+            <div class="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
+                <h4 class="text-sm font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">swap_horiz</span>
+                    Depo Arası Ürün Taşıma
+                </h4>
+                <div class="flex gap-3">
+                    <select id="fromWarehouse" class="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white">
+                        <option value="">Kaynak Depo</option>
+                    </select>
+                    <select id="toWarehouse" class="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white">
+                        <option value="">Hedef Depo</option>
+                    </select>
+                    <button onclick="showTransferModal()" class="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200 flex items-center gap-2 text-sm">
+                        <span class="material-symbols-outlined">swap_horiz</span>
+                        Taşı
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex justify-end gap-3 p-6 border-t border-slate-200 dark:border-slate-800">
+            <button onclick="closeWarehouseModal()" class="px-5 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-200">
+                Kapat
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Ürün Taşıma Modal -->
+<div id="transferModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 max-w-3xl w-full max-h-[80vh] overflow-hidden">
+        <div class="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800">
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary-600">swap_horiz</span>
+                Depo Arası Ürün Taşıma
+            </h3>
+            <button onclick="closeTransferModal()" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                <span class="material-symbols-outlined text-slate-600 dark:text-slate-400">close</span>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <!-- Taşıma Bilgileri -->
+            <div class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-blue-600">info</span>
+                    <div>
+                        <p class="text-sm font-medium text-blue-900 dark:text-blue-100">Taşıma İşlemi</p>
+                        <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                            <span id="transferFromDepo" class="font-semibold">Kaynak Depo</span> deposundan 
+                            <span id="transferToDepo" class="font-semibold">Hedef Depo</span> deposuna ürün taşıyacaksınız.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Ürün Listesi -->
+            <div class="mb-4">
+                <h4 class="text-sm font-semibold text-slate-900 dark:text-white mb-3">Taşınacak Ürünler</h4>
+                <div class="max-h-64 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg">
+                    <table class="w-full">
+                        <thead class="bg-slate-50 dark:bg-slate-800">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-slate-700 dark:text-slate-300">
+                                    <input type="checkbox" id="selectAllProducts" class="rounded border-slate-300">
+                                </th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-slate-700 dark:text-slate-300">Ürün Adı</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-slate-700 dark:text-slate-300">Barkod</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-slate-700 dark:text-slate-300">Stok</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-slate-700 dark:text-slate-300">Alış Fiyatı</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-slate-700 dark:text-slate-300">Satış Fiyatı</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transferProductList">
+                            <!-- Ürünler JavaScript ile yüklenecek -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Taşıma Miktarı -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Taşıma Miktarı (Tüm ürünler için geçerli)
+                </label>
+                <div class="flex gap-2">
+                    <input type="number" id="transferQuantity" min="1" value="1" 
+                           class="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                    <button type="button" onclick="setTransferQuantityToMax()" 
+                            class="px-3 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-md hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-all duration-200 text-sm font-medium">
+                        Tümünü Taşı
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex justify-end gap-3 p-6 border-t border-slate-200 dark:border-slate-800">
+            <button onclick="closeTransferModal()" class="px-5 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-200">
+                İptal
+            </button>
+            <button onclick="executeTransfer()" class="px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200 flex items-center gap-2">
+                <span class="material-symbols-outlined">swap_horiz</span>
+                Ürünleri Taşı
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+

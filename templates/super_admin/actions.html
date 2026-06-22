@@ -1,0 +1,257 @@
+{% extends '_base.html' %}
+
+{% block title %}Aksiyon Merkezi - Super Admin{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-3">
+    <span class="material-symbols-outlined text-primary-600">task_alt</span>
+    <div>
+        <h1 class="text-xl font-bold text-slate-900 dark:text-white">Aksiyon Merkezi</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400">Operasyon öncelikleri, SLA takibi ve yenileme fırsatları.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('super_admin_dashboard') }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+    <span class="material-symbols-outlined text-lg">arrow_back</span>
+    Super Admin
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl space-y-5">
+    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+        {% set cards = [
+            ('priority_high', 'Açık', stats.open, 'takip bekliyor', 'primary'),
+            ('emergency_home', 'Kritik', stats.critical, 'öncelikli müdahale', 'rose'),
+            ('timer', 'Geciken', stats.overdue, 'SLA aşıldı', 'amber'),
+            ('today', 'Bugün', stats.due_today, 'son tarih bugün', 'blue'),
+            ('snooze', 'Ertelenen', stats.snoozed, 'takip tarihi var', 'slate'),
+            ('check_circle', 'Tamamlanan', stats.done, 'kapanmış aksiyon', 'emerald')
+        ] %}
+        {% for icon, label, value, hint, tone in cards %}
+        <div class="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ label }}</p>
+                    <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{{ value }}</p>
+                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ hint }}</p>
+                </div>
+                <span class="material-symbols-outlined rounded-lg p-2 {% if tone == 'rose' %}bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-300{% elif tone == 'amber' %}bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300{% elif tone == 'blue' %}bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300{% elif tone == 'emerald' %}bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300{% elif tone == 'slate' %}bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300{% else %}bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300{% endif %}">{{ icon }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </section>
+
+    <section class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div class="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                <div>
+                    <h2 class="text-base font-bold text-slate-900 dark:text-white">Operasyon kuyruğu</h2>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Aksiyonları hızlıca daraltın ve operasyon odağınızı koruyun.</p>
+                </div>
+            </div>
+
+            <div class="p-5">
+                <form method="get" action="{{ url_for('super_admin_actions') }}" class="space-y-4">
+                    <input type="hidden" name="status" value="{{ status }}">
+                    <label class="relative block">
+                        <span class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg text-slate-400">search</span>
+                        <input name="q" value="{{ query_text }}" placeholder="Firma, konu veya açıklama ara" class="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-primary-900/40">
+                    </label>
+
+                    <div class="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+                        <label class="space-y-1">
+                            <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Kaynak</span>
+                            <select name="source" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                                <option value="">Tüm kaynaklar</option>
+                                {% for value, label in source_labels.items() %}
+                                <option value="{{ value }}" {% if source == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label class="space-y-1">
+                            <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Önem</span>
+                            <select name="severity" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                                <option value="">Tüm önemler</option>
+                                {% for value, label in severity_labels.items() %}
+                                <option value="{{ value }}" {% if severity == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <div class="flex items-end gap-2">
+                            <button class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">
+                                <span class="material-symbols-outlined text-lg">filter_alt</span>
+                                Uygula
+                            </button>
+                            <a href="{{ url_for('super_admin_actions') }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">Sıfırla</a>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
+                    {% for value, label in status_labels.items() %}
+                    <a href="{{ url_for('super_admin_actions', status=value, source=source, severity=severity, q=query_text) }}" class="inline-flex items-center rounded-lg px-3 py-2 text-sm font-semibold transition-colors {{ 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' if status == value else 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800' }}">{{ label }}</a>
+                    {% endfor %}
+                    <a href="{{ url_for('super_admin_actions', status='', source=source, severity=severity, q=query_text) }}" class="inline-flex items-center rounded-lg px-3 py-2 text-sm font-semibold transition-colors {{ 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' if not status else 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800' }}">Tümü</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                <h2 class="text-base font-bold text-slate-900 dark:text-white">Dağılım</h2>
+                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Açık aksiyonların yoğunluğu.</p>
+            </div>
+            <div class="space-y-5 p-5">
+                <div>
+                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Kaynak</p>
+                    <div class="space-y-2">
+                        {% for value, label in source_labels.items() %}
+                        <a href="{{ url_for('super_admin_actions', status=status, source=value, severity=severity, q=query_text) }}" class="flex items-center justify-between rounded-lg border px-3 py-2 text-sm transition-colors {{ 'border-primary-200 bg-primary-50 text-primary-800 dark:border-primary-900/50 dark:bg-primary-950/30 dark:text-primary-200' if source == value else 'border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 dark:text-slate-300 dark:hover:border-slate-800 dark:hover:bg-slate-800' }}">
+                            <span>{{ label }}</span>
+                            <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ source_counts.get(value, 0) }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div>
+                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Önem</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        {% for value, label in severity_labels.items() %}
+                        <a href="{{ url_for('super_admin_actions', status=status, source=source, severity=value, q=query_text) }}" class="rounded-lg border px-3 py-2 text-sm transition-colors {{ 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900' if severity == value else 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800' }}">
+                            <span class="block text-xs font-medium">{{ label }}</span>
+                            <span class="mt-1 block text-lg font-bold">{{ severity_counts.get(value, 0) }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {% if next_action %}
+    <section class="rounded-xl border border-primary-200 bg-primary-50 p-4 dark:border-primary-900/50 dark:bg-primary-950/20">
+        <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wide text-primary-700 dark:text-primary-200">Sıradaki en yakın aksiyon</p>
+                <p class="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{{ next_action.title }}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">{{ next_action.organization.name if next_action.organization else 'Platform' }} · {{ next_action.due_at|datetime_tr if next_action.due_at else 'son tarih yok' }}</p>
+            </div>
+            {% if next_action.source_type == 'support' %}
+            <a href="{{ url_for('super_admin_support_ticket_detail', ticket_id=next_action.source_id) }}" class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">
+                <span class="material-symbols-outlined text-lg">open_in_new</span>
+                Talebe git
+            </a>
+            {% endif %}
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="space-y-3">
+        {% for action in actions.items %}
+        {% set overdue = action.due_at and action.due_at < now_utc and action.status == 'open' %}
+        <article class="rounded-xl border bg-white p-5 dark:bg-slate-900 {% if overdue %}border-rose-200 dark:border-rose-900/60{% else %}border-slate-200 dark:border-slate-800{% endif %}">
+            <div class="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="rounded-full px-2 py-1 text-xs font-semibold {% if action.severity == 'critical' %}bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200{% elif action.severity == 'high' %}bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200{% elif action.severity == 'low' %}bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200{% else %}bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200{% endif %}">{{ severity_labels.get(action.severity, action.severity) }}</span>
+                        <span class="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ source_labels.get(action.source_type, action.source_type) }}</span>
+                        <span class="rounded-full px-2 py-1 text-xs font-semibold {{ 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200' if overdue else 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' }}">{{ 'Gecikti' if overdue else status_labels.get(action.status, action.status) }}</span>
+                        <span class="text-xs text-slate-500 dark:text-slate-400">{{ action.organization.name if action.organization else 'Platform' }}</span>
+                    </div>
+                    <h2 class="mt-3 text-base font-bold text-slate-900 dark:text-white">{{ action.title }}</h2>
+                    <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{{ action.description }}</p>
+
+                    <div class="mt-4 grid gap-3 md:grid-cols-3">
+                        <div class="rounded-lg bg-slate-50 p-3 dark:bg-slate-950">
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Son tarih</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{{ action.due_at|datetime_tr if action.due_at else '-' }}</p>
+                        </div>
+                        <div class="rounded-lg bg-slate-50 p-3 dark:bg-slate-950">
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Güncelleme</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{{ action.updated_at|datetime_tr if action.updated_at else '-' }}</p>
+                        </div>
+                        <div class="rounded-lg bg-slate-50 p-3 dark:bg-slate-950">
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Kaynak ID</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{{ action.source_id or '-' }}</p>
+                        </div>
+                    </div>
+
+                    {% if action.ai_summary or action.ai_recommendation %}
+                    <div class="mt-4 rounded-lg border border-primary-100 bg-primary-50 p-3 dark:border-primary-900/50 dark:bg-primary-950/20">
+                        <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-primary-700 dark:text-primary-200">
+                            <span class="material-symbols-outlined text-base">auto_awesome</span>
+                            AI operasyon notu
+                        </div>
+                        {% if action.ai_summary %}
+                        <p class="mt-2 text-sm font-semibold text-slate-900 dark:text-white">{{ action.ai_summary }}</p>
+                        {% endif %}
+                        {% if action.ai_recommendation %}
+                        <p class="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200">{{ action.ai_recommendation }}</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="shrink-0 space-y-2 xl:w-52">
+                    {% if action.source_type == 'support' %}
+                    <a href="{{ url_for('super_admin_support_ticket_detail', ticket_id=action.source_id) }}" class="inline-flex w-full items-center justify-center gap-1 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900">
+                        <span class="material-symbols-outlined text-base">open_in_new</span>
+                        Talebe git
+                    </a>
+                    {% elif action.source_type == 'subscription' %}
+                    <a href="{{ url_for('super_admin_dashboard') }}#companies" class="inline-flex w-full items-center justify-center gap-1 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900">
+                        <span class="material-symbols-outlined text-base">domain</span>
+                        Firmaya git
+                    </a>
+                    {% endif %}
+                    <form method="post" action="{{ url_for('super_admin_refresh_action_ai', action_id=action.id) }}">
+                        <button class="inline-flex w-full items-center justify-center gap-1 rounded-lg border border-primary-200 px-3 py-2 text-xs font-semibold text-primary-700 hover:bg-primary-50 dark:border-primary-900 dark:text-primary-200 dark:hover:bg-primary-950/30">
+                            <span class="material-symbols-outlined text-base">auto_awesome</span>
+                            AI önerisini yenile
+                        </button>
+                    </form>
+                    {% if action.status != 'done' %}
+                    <form method="post" action="{{ url_for('super_admin_update_action', action_id=action.id) }}">
+                        <input type="hidden" name="operation" value="done">
+                        <button class="inline-flex w-full items-center justify-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">
+                            <span class="material-symbols-outlined text-base">check</span>
+                            Tamamla
+                        </button>
+                    </form>
+                    <div class="grid grid-cols-2 gap-2">
+                        {% for days in [1, 3] %}
+                        <form method="post" action="{{ url_for('super_admin_update_action', action_id=action.id) }}">
+                            <input type="hidden" name="operation" value="snooze">
+                            <input type="hidden" name="days" value="{{ days }}">
+                            <button class="inline-flex w-full items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">{{ days }} gün</button>
+                        </form>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <form method="post" action="{{ url_for('super_admin_update_action', action_id=action.id) }}">
+                        <input type="hidden" name="operation" value="open">
+                        <button class="inline-flex w-full items-center justify-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Yeniden aç</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </article>
+        {% else %}
+        <div class="rounded-xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+            Bu filtreye uygun aksiyon bulunmuyor.
+        </div>
+        {% endfor %}
+    </section>
+
+    {% if actions.pages > 1 %}
+    <div class="flex items-center justify-between">
+        <a href="{{ url_for('super_admin_actions', page=actions.prev_num, status=status, source=source, severity=severity, q=query_text) }}" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium dark:border-slate-700 {% if not actions.has_prev %}pointer-events-none opacity-40{% endif %}">Önceki</a>
+        <span class="text-sm text-slate-500 dark:text-slate-400">Sayfa {{ actions.page }} / {{ actions.pages }}</span>
+        <a href="{{ url_for('super_admin_actions', page=actions.next_num, status=status, source=source, severity=severity, q=query_text) }}" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium dark:border-slate-700 {% if not actions.has_next %}pointer-events-none opacity-40{% endif %}">Sonraki</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

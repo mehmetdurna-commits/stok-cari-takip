@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+
+<html lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>StokYönetimi SaaS - Kayıt Ol</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0440ae",
+                        "background-light": "#f5f6f8",
+                        "background-dark": "#0f1623",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark min-h-screen flex items-center justify-center p-0 sm:p-4 lg:p-8">
+<div class="max-w-[1200px] w-full bg-white dark:bg-gray-900 shadow-2xl rounded-xl overflow-hidden flex flex-col lg:flex-row min-h-[850px]">
+<!-- Left Side: Visual Illustration -->
+<div class="hidden lg:flex lg:w-5/12 bg-primary relative flex-col justify-between p-12 text-white overflow-hidden">
+<div class="absolute inset-0 opacity-20 pointer-events-none">
+<div class="absolute -top-24 -left-24 w-96 h-96 bg-white rounded-full mix-blend-overlay blur-3xl"></div>
+<div class="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-400 rounded-full mix-blend-overlay blur-3xl"></div>
+</div>
+<div class="relative z-10">
+<div class="flex items-center gap-3 mb-12">
+<div class="bg-white p-2 rounded-lg">
+<span class="material-symbols-outlined text-primary text-3xl">inventory_2</span>
+</div>
+<h1 class="text-2xl font-bold tracking-tight">StokYönetimi SaaS</h1>
+</div>
+<h2 class="text-4xl font-extrabold leading-tight mb-6">İşletmenizi Dijitalle Yönetin.</h2>
+<p class="text-lg text-blue-100 mb-8 leading-relaxed">Binlerce firma stoklarını, depolarını ve sevkiyatlarını tek platform üzerinden kolayca takip ediyor.</p>
+<ul class="space-y-4">
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-blue-300">check_circle</span>
+<span>Gerçek Zamanlı Stok Takibi</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-blue-300">check_circle</span>
+<span>Gelişmiş Raporlama Araçları</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-blue-300">check_circle</span>
+<span>Çoklu Depo Yönetimi</span>
+</li>
+</ul>
+</div>
+<div class="relative z-10 mt-12">
+<div class="rounded-xl overflow-hidden border-4 border-white/10 shadow-lg">
+<img class="w-full h-48 object-cover" data-alt="Otomatik sistemli modern yüksek teknoloji deposu" src="https://lh3.googleusercontent.com/aida-public/AB6AXuABUdGkzqon3nHfx2uYXF_u8PAec3F5PoblQyg-0JobIuG8xcs8GVzV-hbAXp_mtlIIVAPS7nqpLOl8Qw6ID8JSRPir2tBubus0KupKv3Z62mRvYIUAf3fcnYRvzfxeI12R-eczMO1UcXHHjnHY22wEIq4yabAFgiHhnaH1a0CVmh8d7X0egMxAeWDUKWYF3VgIB_zuzPNChMWWBM2ysYZ1EWwj8RGcAlVAURLKrD_zGhmOIG8udeArKnnf67jQnNuIZMRReh8qdgk"/>
+</div>
+<p class="text-xs text-blue-200 mt-4 text-center">Modern depolama çözümlerinde öncü platform.</p>
+</div>
+</div>
+<!-- Right Side: Registration Form -->
+<div class="w-full lg:w-7/12 p-6 sm:p-10 lg:p-16 flex flex-col">
+<!-- Header Mobile -->
+<div class="flex lg:hidden items-center gap-2 mb-8">
+<span class="material-symbols-outlined text-primary text-3xl">inventory_2</span>
+<h2 class="text-xl font-bold text-gray-900 dark:text-white">StokYönetimi</h2>
+</div>
+<!-- Stepper -->
+<div class="mb-10">
+<div class="flex items-center justify-between mb-4">
+<div class="flex flex-col items-center">
+<div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold mb-2 shadow-lg shadow-primary/30">1</div>
+<span class="text-xs font-semibold text-gray-900 dark:text-white">Firma Bilgileri</span>
+</div>
+<div class="flex-1 h-0.5 bg-gray-200 dark:bg-gray-700 mx-2 -mt-6"></div>
+<div class="flex flex-col items-center">
+<div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 flex items-center justify-center font-bold mb-2">2</div>
+<span class="text-xs font-medium text-gray-400">Hesap Oluştur</span>
+</div>
+<div class="flex-1 h-0.5 bg-gray-200 dark:bg-gray-700 mx-2 -mt-6"></div>
+<div class="flex flex-col items-center">
+<div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 flex items-center justify-center font-bold mb-2">3</div>
+<span class="text-xs font-medium text-gray-400">Plan Seçimi</span>
+</div>
+</div>
+</div>
+<!-- Step 1 Content -->
+<div class="flex-1">
+<div class="mb-8">
+<h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Firma Bilgileri</h3>
+<p class="text-gray-500 dark:text-gray-400">Lütfen işletmenize ait yasal bilgileri eksiksiz doldurunuz.</p>
+</div>
+<form class="space-y-6">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="md:col-span-2">
+<label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Firma Adı</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xl">business</span>
+<input class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-all outline-none" placeholder="Örn: ABC Lojistik A.Ş." type="text"/>
+</div>
+</div>
+<div>
+<label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Sektör</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xl">category</span>
+<select class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-all outline-none appearance-none">
+<option value="">Sektör Seçiniz</option>
+<option value="perakende">Perakende</option>
+<option value="e-ticaret">E-Ticaret</option>
+<option value="uretim">Üretim / Fabrika</option>
+<option value="lojistik">Lojistik &amp; Depolama</option>
+<option value="gida">Gıda &amp; İçecek</option>
+</select>
+</div>
+</div>
+<div>
+<label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Vergi Dairesi</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xl">account_balance</span>
+<input class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-all outline-none" placeholder="Şehir/Daire" type="text"/>
+</div>
+</div>
+<div class="md:col-span-2">
+<label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Vergi Numarası</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xl">pin</span>
+<input class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-all outline-none" placeholder="10 veya 11 haneli numara" type="text"/>
+</div>
+</div>
+</div>
+<div class="pt-8 flex flex-col sm:flex-row items-center gap-4">
+<button class="w-full sm:w-auto flex-1 bg-primary hover:bg-primary/90 text-white font-bold py-4 px-8 rounded-lg transition-all flex items-center justify-center gap-2 group" type="button">
+                            Sonraki Adım
+                            <span class="material-symbols-outlined transition-transform group-hover:translate-x-1">arrow_forward</span>
+</button>
+<a class="text-gray-500 hover:text-primary text-sm font-medium transition-colors" href="{{ url_for('giris') }}">
+                            Zaten hesabım var, <span class="font-bold underline">Giriş Yap</span>
+</a>
+</div>
+</form>
+</div>
+<!-- Footer Meta -->
+<div class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800 flex flex-wrap justify-center gap-6 text-xs text-gray-400">
+<a class="hover:text-primary transition-colors" href="#">Kullanım Koşulları</a>
+<a class="hover:text-primary transition-colors" href="#">Gizlilik Politikası</a>
+<a class="hover:text-primary transition-colors" href="#">KVKK Aydınlatma Metni</a>
+<span>© 2024 StokYönetimi SaaS</span>
+</div>
+</div>
+</div>
+<!-- Pricing (Invisible initially, but defined for the task requirements) -->
+<!-- This section represents what Step 3 would look like -->
+<template id="pricing-step-example">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Basic Plan -->
+<div class="p-6 rounded-xl border-2 border-gray-100 dark:border-gray-800 flex flex-col">
+<h4 class="text-xl font-bold mb-2">Basic</h4>
+<p class="text-3xl font-bold mb-6">0 TL <span class="text-sm font-normal text-gray-400">/ay</span></p>
+<ul class="space-y-3 mb-8 flex-1">
+<li class="flex items-center gap-2 text-sm"><span class="material-symbols-outlined text-green-500 text-sm">check</span> 100 Ürün</li>
+<li class="flex items-center gap-2 text-sm"><span class="material-symbols-outlined text-green-500 text-sm">check</span> 1 Depo</li>
+</ul>
+<button class="w-full py-2 border-2 border-primary text-primary font-bold rounded-lg hover:bg-primary/5">Seç</button>
+</div>
+<!-- Pro Plan -->
+<div class="p-6 rounded-xl border-2 border-primary bg-primary/5 flex flex-col relative">
+<div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">Popüler</div>
+<h4 class="text-xl font-bold mb-2">Pro</h4>
+<p class="text-3xl font-bold mb-6">499 TL <span class="text-sm font-normal text-gray-400">/ay</span></p>
+<ul class="space-y-3 mb-8 flex-1">
+<li class="flex items-center gap-2 text-sm"><span class="material-symbols-outlined text-green-500 text-sm">check</span> Sınırsız Ürün</li>
+<li class="flex items-center gap-2 text-sm"><span class="material-symbols-outlined text-green-500 text-sm">check</span> 5 Depo</li>
+<li class="flex items-center gap-2 text-sm"><span class="material-symbols-outlined text-green-500 text-sm">check</span> Gelişmiş Raporlama</li>
+</ul>
+<button class="w-full py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 shadow-lg shadow-primary/20">Seç</button>
+</div>
+<!-- Enterprise Plan -->
+<div class="p-6 rounded-xl border-2 border-gray-100 dark:border-gray-800 flex flex-col">
+<h4 class="text-xl font-bold mb-2">Enterprise</h4>
+<p class="text-3xl font-bold mb-6">Teklif Alın</p>
+<ul class="space-y-3 mb-8 flex-1">
+<li class="flex items-center gap-2 text-sm"><span class="material-symbols-outlined text-green-500 text-sm">check</span> Özel Çözümler</li>
+<li class="flex items-center gap-2 text-sm"><span class="material-symbols-outlined text-green-500 text-sm">check</span> 7/24 Destek</li>
+</ul>
+<button class="w-full py-2 border-2 border-gray-900 dark:border-gray-700 text-gray-900 dark:text-white font-bold rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">İletişime Geç</button>
+</div>
+</div>
+</template>
+</body></html>

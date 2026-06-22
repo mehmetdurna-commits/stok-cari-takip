@@ -1,0 +1,844 @@
+{% extends '_base.html' %}
+
+{% block title %}{{ personel.ad }} {{ personel.soyad }} - Personel Detay{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-4">
+    {% if personel.profil_foto %}
+    <img src="{{ url_for('static', filename='uploads/' + personel.profil_foto) }}" 
+         alt="{{ personel.ad }} {{ personel.soyad }}" 
+         class="w-12 h-12 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700">
+    {% else %}
+    <div class="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+        <span class="material-symbols-outlined text-slate-500">person</span>
+    </div>
+    {% endif %}
+    <div>
+        <h1 class="text-xl font-bold text-slate-900 dark:text-white">{{ personel.ad }} {{ personel.soyad }}</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400">{{ personel.pozisyon }}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<div class="hidden sm:flex items-center gap-2">
+    <a href="{{ url_for('personel_duzenle', id=personel.id) }}" 
+       class="px-3 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors flex items-center gap-2">
+        <span class="material-symbols-outlined text-lg">edit</span>
+        Düzenle
+    </a>
+    <a href="{{ url_for('personel_yonetimi') }}" 
+       class="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+        Geri
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+    <!-- Ana Bilgiler Kartı -->
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+        <div class="bg-gradient-to-r from-primary-600 to-primary-700 p-6">
+            <div class="flex items-center gap-4">
+                {% if personel.profil_foto %}
+                <img src="{{ url_for('static', filename='uploads/' + personel.profil_foto) }}" 
+                     alt="{{ personel.ad }} {{ personel.soyad }}" 
+                     class="w-20 h-20 rounded-full object-cover border-4 border-white/20">
+                {% else %}
+                <div class="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center border-4 border-white/20">
+                    <span class="material-symbols-outlined text-3xl text-white">person</span>
+                </div>
+                {% endif %}
+                <div class="flex-1">
+                    <h2 class="text-2xl font-bold text-white">{{ personel.ad }} {{ personel.soyad }}</h2>
+                    <p class="text-primary-100">{{ personel.pozisyon }}</p>
+                    <div class="flex items-center gap-4 mt-2">
+                        <span class="px-3 py-1 bg-white/20 rounded-full text-sm text-white">
+                            {{ personel.sicil_no }}
+                        </span>
+                        {% if personel.departman %}
+                        <span class="px-3 py-1 bg-white/20 rounded-full text-sm text-white">
+                            {{ personel.departman.ad }}
+                        </span>
+                        {% endif %}
+                        <span class="px-3 py-1 {% if personel.etkin_durum == 'Aktif' %}bg-green-500{% elif personel.etkin_durum == 'Pasif' %}bg-red-500{% else %}bg-amber-500{% endif %} rounded-full text-sm text-white">
+                            {{ personel.etkin_durum }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+        <nav class="flex flex-wrap gap-1 p-2" role="tablist" aria-label="Personel detay sekmeleri">
+            <button type="button" role="tab" aria-selected="true" aria-controls="personel-overview-content" onclick="personelSwitchTab('overview')" id="personel-overview-tab" class="personel-tab-btn active px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">dashboard</span>
+                Özet
+            </button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="personel-info-content" onclick="personelSwitchTab('info')" id="personel-info-tab" class="personel-tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">badge</span>
+                Bilgiler
+            </button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="personel-leaves-content" onclick="personelSwitchTab('leaves')" id="personel-leaves-tab" class="personel-tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">beach_access</span>
+                İzinler
+            </button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="personel-payments-content" onclick="personelSwitchTab('payments')" id="personel-payments-tab" class="personel-tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">payments</span>
+                Avans / Prim
+            </button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="personel-finance-content" onclick="personelSwitchTab('finance')" id="personel-finance-tab" class="personel-tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
+                <span class="material-symbols-outlined text-lg">account_balance</span>
+                Finans
+            </button>
+        </nav>
+    </div>
+
+    <div id="personel-overview-content" role="tabpanel" aria-labelledby="personel-overview-tab" class="personel-tab-content space-y-6">
+
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+        <div class="mb-5">
+            <p class="text-xs font-black uppercase tracking-widest text-primary-600">İşlem Merkezi</p>
+            <h3 class="mt-1 text-lg font-semibold text-slate-900 dark:text-white">Sık kullanılan personel işlemleri</h3>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Bordro, izin, avans, prim ve düzenleme işlemlerine özet ekrandan hızlıca ulaşın.</p>
+        </div>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <a href="{{ url_for('personel_bordro', id=personel.id, period=payroll_summary.period) }}"
+               class="group rounded-2xl border border-primary-100 bg-primary-50/70 p-5 transition hover:-translate-y-0.5 hover:shadow-lg dark:border-primary-900/30 dark:bg-primary-950/20">
+                <span class="material-symbols-outlined text-3xl text-primary-600">receipt_long</span>
+                <p class="mt-3 font-black text-slate-900 dark:text-white">Bordro Özeti</p>
+                <p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Dönem bordrosunu görüntüle ve yazdır.</p>
+            </a>
+            <button type="button" data-open-personel-detail-modal="personel-izin-modal"
+                    class="group rounded-2xl border border-blue-100 bg-blue-50/70 p-5 text-left transition hover:-translate-y-0.5 hover:shadow-lg dark:border-blue-900/30 dark:bg-blue-950/20">
+                <span class="material-symbols-outlined text-3xl text-blue-600">beach_access</span>
+                <p class="mt-3 font-black text-slate-900 dark:text-white">İzin Ekle</p>
+                <p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Tarih seç, gün hesabı otomatik oluşsun.</p>
+            </button>
+            <button type="button" data-open-personel-detail-modal="personel-avans-modal"
+                    class="group rounded-2xl border border-green-100 bg-green-50/70 p-5 text-left transition hover:-translate-y-0.5 hover:shadow-lg dark:border-green-900/30 dark:bg-green-950/20">
+                <span class="material-symbols-outlined text-3xl text-green-600">account_balance_wallet</span>
+                <p class="mt-3 font-black text-slate-900 dark:text-white">Avans Ekle</p>
+                <p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Maaştan kesilecek avans talebi oluştur.</p>
+            </button>
+            <button type="button" data-open-personel-detail-modal="personel-prim-modal"
+                    class="group rounded-2xl border border-amber-100 bg-amber-50/70 p-5 text-left transition hover:-translate-y-0.5 hover:shadow-lg dark:border-amber-900/30 dark:bg-amber-950/20">
+                <span class="material-symbols-outlined text-3xl text-amber-600">workspace_premium</span>
+                <p class="mt-3 font-black text-slate-900 dark:text-white">Prim Ekle</p>
+                <p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Döneme bağlı prim kaydı oluştur.</p>
+            </button>
+            <a href="{{ url_for('personel_duzenle', id=personel.id) }}" 
+               class="group rounded-2xl border border-purple-100 bg-purple-50/70 p-5 transition hover:-translate-y-0.5 hover:shadow-lg dark:border-purple-900/30 dark:bg-purple-950/20">
+                <span class="material-symbols-outlined text-3xl text-purple-600">edit</span>
+                <p class="mt-3 font-black text-slate-900 dark:text-white">Bilgileri Düzenle</p>
+                <p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Personel kimlik, iletişim ve maaş bilgileri.</p>
+            </a>
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+        <div class="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+                <p class="text-xs font-black uppercase tracking-widest text-primary-600">Bordro Ön İzleme</p>
+                <h3 class="mt-1 text-lg font-semibold text-slate-900 dark:text-white">{{ payroll_summary.period }} dönemi net ödeme özeti</h3>
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Maaş + dönem primleri - maaştan kesilecek avanslar üzerinden hesaplanır.</p>
+            </div>
+            <form method="GET" action="{{ url_for('personel_detay', id=personel.id) }}" class="flex items-center gap-2">
+                <input type="month" name="period" value="{{ payroll_summary.period }}"
+                       class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                <button type="submit" class="btn-secondary">
+                    <span class="material-symbols-outlined text-lg">refresh</span>
+                    Hesapla
+                </button>
+            </form>
+        </div>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/50">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Aylık Maaş</span>
+                <p class="mt-2 text-2xl font-black text-slate-900 dark:text-white">₺{{ payroll_summary.base_salary|tr_number }}</p>
+            </div>
+            <div class="rounded-xl border border-green-100 bg-green-50 p-4 dark:border-green-900/30 dark:bg-green-950/20">
+                <span class="text-xs font-bold uppercase tracking-wider text-green-700 dark:text-green-300">Bu Ay Prim</span>
+                <p class="mt-2 text-2xl font-black text-green-700 dark:text-green-300">₺{{ payroll_summary.total_primes|tr_number }}</p>
+            </div>
+            <div class="rounded-xl border border-amber-100 bg-amber-50 p-4 dark:border-amber-900/30 dark:bg-amber-950/20">
+                <span class="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">Avans Kesintisi</span>
+                <p class="mt-2 text-2xl font-black text-amber-700 dark:text-amber-300">₺{{ payroll_summary.total_advances|tr_number }}</p>
+            </div>
+            <div class="rounded-xl border border-blue-100 bg-blue-50 p-4 dark:border-blue-900/30 dark:bg-blue-950/20">
+                <span class="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300">Brüt Toplam</span>
+                <p class="mt-2 text-2xl font-black text-blue-700 dark:text-blue-300">₺{{ payroll_summary.gross_total|tr_number }}</p>
+            </div>
+            <div class="rounded-xl border border-primary-100 bg-primary-50 p-4 dark:border-primary-900/30 dark:bg-primary-950/20">
+                <span class="text-xs font-bold uppercase tracking-wider text-primary-700 dark:text-primary-300">Net Ödenecek</span>
+                <p class="mt-2 text-2xl font-black text-primary-700 dark:text-primary-300">₺{{ payroll_summary.net_pay|tr_number }}</p>
+            </div>
+        </div>
+        {% if payroll_summary.missing_bank_info %}
+        <div class="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:border-red-900/30 dark:bg-red-950/20 dark:text-red-300">
+            Banka ödeme listesi için bu personelin IBAN bilgisi eksik.
+        </div>
+        {% endif %}
+    </div>
+
+    </div>
+
+    <div id="personel-info-content" role="tabpanel" aria-labelledby="personel-info-tab" class="personel-tab-content hidden space-y-6">
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Kişisel Bilgiler -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary-600">person</span>
+                Kişisel Bilgiler
+            </h3>
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-sm text-slate-500 dark:text-slate-400">TC Kimlik</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">{{ personel.tc_kimlik or '-' }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-slate-500 dark:text-slate-400">Doğum Tarihi</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">
+                        {% if personel.dogum_tarihi %}{{ personel.dogum_tarihi|date_tr }}{% else %}-{% endif %}
+                    </span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-slate-500 dark:text-slate-400">Cinsiyet</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">{{ personel.cinsiyet or '-' }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-slate-500 dark:text-slate-400">Medeni Hal</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">{{ personel.medeni_hal or '-' }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-slate-500 dark:text-slate-400">Kan Grubu</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">{{ personel.kan_grubu or '-' }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-slate-500 dark:text-slate-400">Ehliyet</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">{{ personel.ehliyet or '-' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- İletişim Bilgileri -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary-600">contact_phone</span>
+                İletişim Bilgileri
+            </h3>
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-sm text-slate-500 dark:text-slate-400">Telefon</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">{{ personel.telefon or '-' }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-slate-500 dark:text-slate-400">E-posta</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">{{ personel.email or '-' }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-slate-500 dark:text-slate-400">Adres</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">{{ personel.adres or '-' }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-slate-500 dark:text-slate-400">Acil Durum Kişisi</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">{{ personel.acil_durum_kisi or '-' }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-slate-500 dark:text-slate-400">Acil Durum Telefon</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">{{ personel.acil_durum_telefon or '-' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- İş Bilgileri -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary-600">work</span>
+                İş Bilgileri
+            </h3>
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-sm text-slate-500 dark:text-slate-400">İşe Giriş</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">
+                        {% if personel.ise_giris_tarihi %}{{ personel.ise_giris_tarihi|date_tr }}{% else %}-{% endif %}
+                    </span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-slate-500 dark:text-slate-400">İşe Çıkış</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">
+                        {% if personel.ise_cikis_tarihi %}{{ personel.ise_cikis_tarihi|date_tr }}{% else %}-{% endif %}
+                    </span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-slate-500 dark:text-slate-400">Çalışma Süresi</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">
+                        {% if personel.ise_giris_tarihi %}
+                            {% set gunler = (datetime.now().date() - personel.ise_giris_tarihi).days %}
+                            {% if gunler < 30 %}
+                                {{ gunler }} gün
+                            {% elif gunler < 365 %}
+                                {{ (gunler // 30) }} ay
+                            {% else %}
+                                {{ (gunler // 365) }} yıl
+                            {% endif %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-slate-500 dark:text-slate-400">Maaş</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">₺{{ (personel.maas)|tr_number }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-slate-500 dark:text-slate-400">SGK No</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">{{ personel.sgk_no or '-' }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-slate-500 dark:text-slate-400">Vergi No</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">{{ personel.vergi_no or '-' }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Banka Bilgileri -->
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+        <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary-600">account_balance</span>
+            Banka Bilgileri
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+                <span class="text-sm text-slate-500 dark:text-slate-400">IBAN</span>
+                <p class="text-sm font-medium text-slate-900 dark:text-white">{{ personel.iban or '-' }}</p>
+            </div>
+            <div>
+                <span class="text-sm text-slate-500 dark:text-slate-400">Banka Adı</span>
+                <p class="text-sm font-medium text-slate-900 dark:text-white">{{ personel.banka_adi or '-' }}</p>
+            </div>
+            <div>
+                <span class="text-sm text-slate-500 dark:text-slate-400">Ehliyet No</span>
+                <p class="text-sm font-medium text-slate-900 dark:text-white">{{ personel.ehliyet_no or '-' }}</p>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+    <div id="personel-leaves-content" role="tabpanel" aria-labelledby="personel-leaves-tab" class="personel-tab-content hidden space-y-6">
+
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+        <div class="mb-4 flex items-center justify-between gap-3">
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary-600">beach_access</span>
+                İzin Geçmişi
+            </h3>
+            <button type="button" data-open-personel-detail-modal="personel-izin-modal" class="btn-secondary">
+                <span class="material-symbols-outlined text-lg">add</span>
+                İzin Ekle
+            </button>
+        </div>
+        {% if izin_gecmisi %}
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-slate-50 dark:bg-slate-800">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">Tür</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">Tarih</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">Gün</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">Durum</th>
+                        <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-500">İşlem</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                    {% for izin in izin_gecmisi %}
+                    <tr>
+                        <td class="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">{{ izin.izin_tipi }}</td>
+                        <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{{ izin.baslangic_tarihi|date_tr }} - {{ izin.bitis_tarihi|date_tr }}</td>
+                        <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{{ izin.gun_sayisi }}</td>
+                        <td class="px-4 py-3">
+                            {% if izin.onay_durumu == 'Onaylandı' %}
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">Onaylandı</span>
+                            {% elif izin.onay_durumu == 'Beklemede' %}
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400">Beklemede</span>
+                            {% elif izin.onay_durumu == 'Reddedildi' %}
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">Reddedildi</span>
+                            {% else %}
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">{{ izin.onay_durumu }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="flex items-center justify-end gap-2">
+                                {% if izin.onay_durumu == 'Beklemede' %}
+                                <form method="POST" action="{{ url_for('izin_onayla', id=izin.id) }}" class="inline" data-confirm="Bu izin talebi onaylansın mı" data-confirm-title="İzni onayla" data-confirm-ok="Onayla">
+                                    <input type="hidden" name="next" value="{{ url_for('personel_detay', id=personel.id, tab='leaves') }}">
+                                    <button type="submit" title="Onayla" class="rounded-lg p-1.5 text-green-600 hover:bg-green-50 hover:text-green-700 dark:hover:bg-green-950/30">
+                                        <span class="material-symbols-outlined text-lg">check_circle</span>
+                                    </button>
+                                </form>
+                                <button type="button" title="Reddet" data-open-personel-detail-modal="personel-izin-red-{{ izin.id }}" class="rounded-lg p-1.5 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30">
+                                    <span class="material-symbols-outlined text-lg">cancel</span>
+                                </button>
+                                {% elif izin.onay_durumu == 'Onaylandı' %}
+                                <button type="button" title="İptal et" data-open-personel-detail-modal="personel-izin-iptal-{{ izin.id }}" class="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white">
+                                    <span class="material-symbols-outlined text-lg">event_busy</span>
+                                </button>
+                                {% else %}
+                                <span class="text-xs text-slate-400">-</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+            Bu personel için henüz izin kaydı yok.
+        </div>
+        {% endif %}
+    </div>
+
+    </div>
+
+    <div id="personel-payments-content" role="tabpanel" aria-labelledby="personel-payments-tab" class="personel-tab-content hidden space-y-6">
+
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="mb-4 flex items-center justify-between gap-3">
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">account_balance_wallet</span>
+                    Avans Geçmişi
+                </h3>
+                <button type="button" data-open-personel-detail-modal="personel-avans-modal" class="btn-secondary">
+                    <span class="material-symbols-outlined text-lg">add</span>
+                    Avans
+                </button>
+            </div>
+            {% if avans_gecmisi %}
+            <div class="space-y-3">
+                {% for avans in avans_gecmisi %}
+                <div class="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="font-bold text-slate-900 dark:text-white">₺{{ avans.tutar|tr_number }}</p>
+                            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ avans.talep_tarihi|date_tr }} · {{ avans.kesinti_turu }} · {{ avans.taksit_sayisi }} taksit</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="rounded-full bg-blue-100 px-2 py-1 text-xs font-bold text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
+                                Kaydedildi
+                            </span>
+                            <form method="POST" action="{{ url_for('avans_sil', id=avans.id) }}" data-confirm="Bu avans kaydı silinsin mi" data-confirm-title="Avansı sil" data-confirm-ok="Sil">
+                                <input type="hidden" name="next" value="{{ url_for('personel_detay', id=personel.id, tab='payments') }}">
+                                <button type="submit" title="Sil" class="rounded-lg p-1.5 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30">
+                                    <span class="material-symbols-outlined text-lg">delete</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% if avans.aciklama %}
+                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">{{ avans.aciklama }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                Bu personel için avans kaydı yok.
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="mb-4 flex items-center justify-between gap-3">
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">workspace_premium</span>
+                    Prim Geçmişi
+                </h3>
+                <button type="button" data-open-personel-detail-modal="personel-prim-modal" class="btn-secondary">
+                    <span class="material-symbols-outlined text-lg">add</span>
+                    Prim
+                </button>
+            </div>
+            {% if prim_gecmisi %}
+            <div class="space-y-3">
+                {% for prim in prim_gecmisi %}
+                <div class="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="font-bold text-slate-900 dark:text-white">₺{{ prim.tutar|tr_number }}</p>
+                            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ prim.kayit_tarihi|date_tr }} · {{ prim.donem or 'Dönem yok' }}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="rounded-full bg-green-100 px-2 py-1 text-xs font-bold text-green-700">
+                                {{ prim.prim_tipi }}
+                            </span>
+                            <form method="POST" action="{{ url_for('prim_sil', id=prim.id) }}" data-confirm="Bu prim kaydı silinsin mi" data-confirm-title="Primi sil" data-confirm-ok="Sil">
+                                <input type="hidden" name="next" value="{{ url_for('personel_detay', id=personel.id, tab='payments') }}">
+                                <button type="submit" title="Sil" class="rounded-lg p-1.5 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30">
+                                    <span class="material-symbols-outlined text-lg">delete</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% if prim.aciklama %}
+                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">{{ prim.aciklama }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                Bu personel için prim kaydı yok.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    </div>
+
+    <div id="personel-finance-content" role="tabpanel" aria-labelledby="personel-finance-tab" class="personel-tab-content hidden space-y-6">
+
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+        <div class="mb-4 flex items-center justify-between gap-3">
+            <div>
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">account_balance</span>
+                    Finans Geçmişi
+                </h3>
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Maaş, avans ve prim hareketleri tek ekranda izlenir.</p>
+            </div>
+            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{{ finans_gecmisi|length }} hareket</span>
+        </div>
+        {% if finans_gecmisi %}
+        <div class="space-y-3">
+            {% for item in finans_gecmisi %}
+            {% set tx = item.transaction %}
+            <div class="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="flex min-w-0 items-start gap-3">
+                        <div class="size-10 shrink-0 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center dark:bg-primary-950/30">
+                            <span class="material-symbols-outlined text-xl">{{ item.icon }}</span>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <p class="font-black text-slate-900 dark:text-white">{{ item.type }}</p>
+                                <span class="rounded-full bg-red-50 px-2 py-1 text-xs font-bold text-red-700">Çıkış</span>
+                            </div>
+                            <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">{{ tx.aciklama or '-' }}</p>
+                            <p class="mt-1 text-xs text-slate-500">
+                                {{ tx.tarih|datetime_tr }} · {{ tx.account.name if tx.account else 'Hesap yok' }} · {{ tx.odeme_turu }}
+                            </p>
+                        </div>
+                    </div>
+                    <span class="shrink-0 text-lg font-black text-red-600">-₺{{ tx.tutar|tr_number }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+            Bu personel için henüz finans hareketi bulunmuyor.
+        </div>
+        {% endif %}
+    </div>
+
+    </div>
+
+    <div id="personel-izin-modal" class="personel-detail-modal hidden fixed inset-0 z-[130] items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+        <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div class="mb-5 flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-xs font-black uppercase tracking-widest text-blue-600">İzin Kaydı</p>
+                    <h3 class="mt-1 text-xl font-black text-slate-900 dark:text-white">İzin talebi oluştur</h3>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ personel.ad }} {{ personel.soyad }} için yeni izin kaydı.</p>
+                </div>
+                <button type="button" data-close-personel-detail-modal class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <form method="POST" action="{{ url_for('izin_ekle') }}" class="space-y-4">
+                <input type="hidden" name="personel_id" value="{{ personel.id }}">
+                <input type="hidden" name="next" value="{{ request.full_path }}">
+                <div>
+                    <label class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">İzin tipi</label>
+                    <select name="izin_tipi" required class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                        <option value="Yıllık İzin">Yıllık İzin</option>
+                        <option value="Mazeret İzni">Mazeret İzni</option>
+                        <option value="Hastalık İzni">Hastalık İzni</option>
+                        <option value="Ücretsiz İzin">Ücretsiz İzin</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Başlangıç</label>
+                        <input type="date" name="baslangic_tarihi" required class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                    </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Bitiş</label>
+                        <input type="date" name="bitis_tarihi" required class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                    </div>
+                </div>
+                <div>
+                    <label class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Açıklama</label>
+                    <textarea name="aciklama" rows="3" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white" placeholder="İsteğe bağlı not"></textarea>
+                </div>
+                <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <button type="button" data-close-personel-detail-modal class="btn-secondary justify-center">Vazgeç</button>
+                    <button type="submit" class="btn-primary justify-center">İzin Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="personel-avans-modal" class="personel-detail-modal hidden fixed inset-0 z-[130] items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+        <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div class="mb-5 flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-xs font-black uppercase tracking-widest text-green-600">Avans Kaydı</p>
+                    <h3 class="mt-1 text-xl font-black text-slate-900 dark:text-white">Avans kaydı oluştur</h3>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Maaş bordrosunda kesinti olarak izlenir.</p>
+                </div>
+                <button type="button" data-close-personel-detail-modal class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <form method="POST" action="{{ url_for('avans_ekle') }}" class="space-y-4">
+                <input type="hidden" name="personel_id" value="{{ personel.id }}">
+                <input type="hidden" name="next" value="{{ request.full_path }}">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Tutar</label>
+                        <input type="number" name="tutar" required min="0" step="0.01" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                    </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Taksit</label>
+                        <input type="number" name="taksit_sayisi" min="1" value="1" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                    </div>
+                </div>
+                <div>
+                    <label class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Kesinti türü</label>
+                    <select name="kesinti_turu" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                        <option value="Maaştan">Maaştan</option>
+                        <option value="Elden Tahsil">Elden Tahsil</option>
+                        <option value="Diğer">Diğer</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Açıklama</label>
+                    <textarea name="aciklama" rows="3" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white" placeholder="İsteğe bağlı not"></textarea>
+                </div>
+                <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <button type="button" data-close-personel-detail-modal class="btn-secondary justify-center">Vazgeç</button>
+                    <button type="submit" class="btn-primary justify-center bg-green-600 hover:bg-green-700">Avans Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="personel-prim-modal" class="personel-detail-modal hidden fixed inset-0 z-[130] items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+        <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div class="mb-5 flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-xs font-black uppercase tracking-widest text-amber-600">Prim Kaydı</p>
+                    <h3 class="mt-1 text-xl font-black text-slate-900 dark:text-white">Prim oluştur</h3>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Dönem bordrosuna eklenecek prim kaydı.</p>
+                </div>
+                <button type="button" data-close-personel-detail-modal class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <form method="POST" action="{{ url_for('prim_ekle') }}" class="space-y-4">
+                <input type="hidden" name="personel_id" value="{{ personel.id }}">
+                <input type="hidden" name="next" value="{{ request.full_path }}">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Prim tipi</label>
+                        <select name="prim_tipi" required class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                            <option value="Performans Primi">Performans Primi</option>
+                            <option value="Satış Primi">Satış Primi</option>
+                            <option value="Mesai Primi">Mesai Primi</option>
+                            <option value="Diğer Prim">Diğer Prim</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Tutar</label>
+                        <input type="number" name="tutar" required min="0" step="0.01" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                    </div>
+                </div>
+                <div>
+                    <label class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Dönem</label>
+                    <input type="month" name="donem" value="{{ payroll_summary.period }}" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                </div>
+                <div>
+                    <label class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Açıklama</label>
+                    <textarea name="aciklama" rows="3" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white" placeholder="İsteğe bağlı not"></textarea>
+                </div>
+                <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <button type="button" data-close-personel-detail-modal class="btn-secondary justify-center">Vazgeç</button>
+                    <button type="submit" class="btn-primary justify-center bg-amber-600 hover:bg-amber-700">Prim Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% for izin in izin_gecmisi %}
+    {% if izin.onay_durumu == 'Beklemede' %}
+    <div id="personel-izin-red-{{ izin.id }}" class="personel-detail-modal hidden fixed inset-0 z-[130] items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+        <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div class="mb-5 flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-xs font-black uppercase tracking-widest text-red-600">İzin Reddi</p>
+                    <h3 class="mt-1 text-xl font-black text-slate-900 dark:text-white">İzin talebini reddet</h3>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ izin.izin_tipi }} · {{ izin.baslangic_tarihi|date_tr }} - {{ izin.bitis_tarihi|date_tr }}</p>
+                </div>
+                <button type="button" data-close-personel-detail-modal class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <form method="POST" action="{{ url_for('izin_reddet', id=izin.id) }}" class="space-y-4">
+                <input type="hidden" name="next" value="{{ url_for('personel_detay', id=personel.id, tab='leaves') }}">
+                <div>
+                    <label class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Red açıklaması</label>
+                    <textarea name="karar_notu" rows="3" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white" placeholder="İsteğe bağlı not"></textarea>
+                </div>
+                <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <button type="button" data-close-personel-detail-modal class="btn-secondary justify-center">Vazgeç</button>
+                    <button type="submit" class="btn-primary justify-center bg-red-600 hover:bg-red-700">Reddet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% elif izin.onay_durumu == 'Onaylandı' %}
+    <div id="personel-izin-iptal-{{ izin.id }}" class="personel-detail-modal hidden fixed inset-0 z-[130] items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+        <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div class="mb-5 flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">İzin İptali</p>
+                    <h3 class="mt-1 text-xl font-black text-slate-900 dark:text-white">Onaylı izni iptal et</h3>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ izin.izin_tipi }} · {{ izin.baslangic_tarihi|date_tr }} - {{ izin.bitis_tarihi|date_tr }}</p>
+                </div>
+                <button type="button" data-close-personel-detail-modal class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <form method="POST" action="{{ url_for('izin_iptal', id=izin.id) }}" class="space-y-4">
+                <input type="hidden" name="next" value="{{ url_for('personel_detay', id=personel.id, tab='leaves') }}">
+                <div>
+                    <label class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">İptal açıklaması</label>
+                    <textarea name="karar_notu" rows="3" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white" placeholder="İsteğe bağlı not"></textarea>
+                </div>
+                <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <button type="button" data-close-personel-detail-modal class="btn-secondary justify-center">Vazgeç</button>
+                    <button type="submit" class="btn-primary justify-center bg-slate-700 hover:bg-slate-800">İptal Et</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.personel-tab-btn {
+    color: rgb(71 85 105);
+}
+
+.personel-tab-btn:hover {
+    background: rgb(241 245 249);
+    color: rgb(15 23 42);
+}
+
+.dark .personel-tab-btn {
+    color: rgb(148 163 184);
+}
+
+.dark .personel-tab-btn:hover {
+    background: rgb(30 41 59);
+    color: rgb(248 250 252);
+}
+
+.personel-tab-btn.active {
+    background: rgb(239 246 255);
+    color: rgb(37 99 235);
+}
+
+.dark .personel-tab-btn.active {
+    background: rgb(30 64 175 / 0.2);
+    color: rgb(96 165 250);
+}
+
+.personel-tab-content {
+    animation: personelTabFade 0.24s ease-out;
+}
+
+@keyframes personelTabFade {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+
+<script>
+function personelSwitchTab(tabName) {
+    document.querySelectorAll('.personel-tab-content').forEach((content) => {
+        content.classList.toggle('hidden', content.id !== `personel-${tabName}-content`);
+    });
+    document.querySelectorAll('.personel-tab-btn').forEach((button) => {
+        const active = button.id === `personel-${tabName}-tab`;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-selected', String(active));
+        button.tabIndex = active ? 0 : -1;
+    });
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tabName);
+    window.history.replaceState({}, '', url);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const requestedTab = new URLSearchParams(window.location.search).get('tab') || 'overview';
+    const hasTab = document.getElementById(`personel-${requestedTab}-tab`);
+    personelSwitchTab(hasTab ? requestedTab : 'overview');
+});
+
+function closePersonelDetailModal(modal) {
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+document.addEventListener('click', (event) => {
+    const openButton = event.target.closest('[data-open-personel-detail-modal]');
+    if (openButton) {
+        const modal = document.getElementById(openButton.dataset.openPersonelDetailModal);
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            modal.querySelector('input:not([type="hidden"]), select, textarea, button').focus();
+        }
+        return;
+    }
+
+    const closeButton = event.target.closest('[data-close-personel-detail-modal]');
+        const backdrop = event.target.classList.contains('personel-detail-modal') ? event.target : null;
+    closePersonelDetailModal(closeButton.closest('.personel-detail-modal') || backdrop);
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    document.querySelectorAll('.personel-detail-modal.flex').forEach(closePersonelDetailModal);
+});
+</script>
+{% endblock %}

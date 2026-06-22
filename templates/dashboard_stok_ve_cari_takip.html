@@ -1,0 +1,678 @@
+{% extends '_base.html' %}
+
+{% block title %}İşletme Paneli - Stok ve Cari Takip{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-4">
+    <span class="material-symbols-outlined text-primary-600 font-bold">dashboard</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">İşletme Paneli</h1>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<!-- Header actions removed -->
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-8">
+    <!-- First Impression Panel -->
+    <section class="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="absolute right-0 top-0 h-48 w-48 translate-x-16 -translate-y-16 rounded-full bg-primary-100 blur-3xl dark:bg-primary-900/30"></div>
+        <div class="relative grid grid-cols-1 gap-6 xl:grid-cols-[1.3fr_0.7fr]">
+            <div>
+                <div class="inline-flex items-center gap-2 rounded-full bg-primary-50 px-3 py-1 text-xs font-bold text-primary-700 dark:bg-primary-900/20 dark:text-primary-300">
+                    <span class="material-symbols-outlined text-sm">storefront</span>
+                    Bugünün işletme özeti
+                </div>
+                <h2 class="mt-4 text-3xl font-black tracking-tight text-slate-900 dark:text-white">Hoş geldiniz, {{ current_user.firma_adi or 'Kullanıcı' }}.</h2>
+                <p class="mt-2 max-w-2xl text-base leading-7 text-slate-500 dark:text-slate-400">Satış, stok, cari ve ödeme akışlarını tek ekrandan takip edin. Önce hızlı işlem yapın, sonra detaylı raporlara inin.</p>
+
+                <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <a href="{{ url_for('pos') }}" class="inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-primary-700">
+                        <span class="material-symbols-outlined text-lg">point_of_sale</span>
+                        Satış Yap
+                    </a>
+                    <a href="{{ url_for('urun_ekle') }}" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 transition hover:border-primary-300 hover:text-primary-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                        <span class="material-symbols-outlined text-lg">add_box</span>
+                        Ürün Ekle
+                    </a>
+                    <a href="{{ url_for('cari_ekle') }}" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 transition hover:border-primary-300 hover:text-primary-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                        <span class="material-symbols-outlined text-lg">person_add</span>
+                        Cari Ekle
+                    </a>
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-800/60">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Bugünün Özeti</p>
+                        <h3 class="mt-1 text-lg font-black text-slate-900 dark:text-white">Anlık durum</h3>
+                    </div>
+                    <span class="material-symbols-outlined rounded-xl bg-white p-2 text-primary-600 dark:bg-slate-900">monitoring</span>
+                </div>
+                <div class="mt-5 grid grid-cols-2 gap-3">
+                    <div class="rounded-xl bg-white p-4 dark:bg-slate-900">
+                        <p class="text-xs font-bold text-slate-400">Bugünkü satış</p>
+                        <p class="mt-2 text-xl font-black text-slate-900 dark:text-white">₺{{ (bugunku_satis or 0)|tr_number }}</p>
+                    </div>
+                    <div class="rounded-xl bg-white p-4 dark:bg-slate-900">
+                        <p class="text-xs font-bold text-slate-400">Haftalık satış</p>
+                        <p class="mt-2 text-xl font-black text-slate-900 dark:text-white">₺{{ (haftalik_satis or 0)|tr_number }}</p>
+                    </div>
+                    <div class="rounded-xl bg-white p-4 dark:bg-slate-900">
+                        <p class="text-xs font-bold text-slate-400">Kritik stok</p>
+                        <p class="mt-2 text-xl font-black {{ 'text-red-600' if kritik_stok and kritik_stok > 0 else 'text-slate-900 dark:text-white' }}">{{ kritik_stok or 0 }}</p>
+                    </div>
+                    <div class="rounded-xl bg-white p-4 dark:bg-slate-900">
+                        <p class="text-xs font-bold text-slate-400">Cari kayıt</p>
+                        <p class="mt-2 text-xl font-black text-slate-900 dark:text-white">{{ toplam_cari or 0 }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- Başlangıç Rehberi -->
+    <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-5">
+            <div>
+                <div class="inline-flex items-center gap-2 rounded-full bg-primary-50 px-3 py-1 text-xs font-bold text-primary-700 dark:bg-primary-900/20 dark:text-primary-300 mb-3">
+                    <span class="material-symbols-outlined text-sm">rocket_launch</span>
+                    5 dakikalık başlangıç
+                </div>
+                <h2 class="text-xl font-black text-slate-900 dark:text-white">Başlangıç Rehberi</h2>
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Ürün ekle, ilk satışını yap ve tahsilat akışını öğren.</p>
+            </div>
+            <div class="min-w-[180px]">
+                <div class="flex items-center justify-between text-xs font-bold text-slate-500 mb-2">
+                    <span>{{ onboarding_completed or 0 }}/{{ onboarding_steps|length }} adım tamamlandı</span>
+                    <span>%{{ onboarding_progress or 0 }}</span>
+                </div>
+                <div class="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div class="h-full rounded-full bg-primary-600 transition-all" style="width: {{ onboarding_progress or 0 }}%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {% for step in onboarding_steps %}
+            <article class="rounded-xl border {{ 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/40 dark:bg-emerald-950/10' if step.done else 'border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-800/40' }} p-4">
+                <div class="flex items-start gap-3">
+                    <div class="size-11 rounded-xl flex items-center justify-center {{ 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' if step.done else 'bg-white text-primary-600 dark:bg-slate-900 dark:text-primary-300' }}">
+                        <span class="material-symbols-outlined">{{ 'check_circle' if step.done else step.icon }}</span>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <h3 class="text-sm font-black text-slate-900 dark:text-white">{{ step.title }}</h3>
+                        <p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{{ step.description }}</p>
+                        <div class="mt-4">
+                            {% if step.done %}
+                            <span class="inline-flex items-center gap-1 rounded-lg bg-emerald-100 px-3 py-2 text-xs font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                                <span class="material-symbols-outlined text-sm">done</span>
+                                Tamamlandı
+                            </span>
+                            {% else %}
+                            <a href="{{ step.url }}" class="inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-2 text-xs font-bold text-white hover:bg-primary-700 transition-colors">
+                                {{ step.action }}
+                                <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- Operation Center -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <a href="{{ url_for('urunler') }}" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 hover:border-amber-400 transition-colors">
+            <div class="flex items-start gap-4">
+                <div class="size-11 bg-amber-50 dark:bg-amber-900/20 rounded-lg flex items-center justify-center text-amber-600">
+                    <span class="material-symbols-outlined">warning</span>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-sm font-bold text-slate-900 dark:text-white">Stok aksiyonlari</p>
+                    <p class="text-xs text-slate-500 mt-1">{{ kritik_stok or 0 }} kritik urun takip bekliyor.</p>
+                </div>
+            </div>
+        </a>
+        <a href="{{ url_for('cariler') }}" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 hover:border-red-400 transition-colors">
+            <div class="flex items-start gap-4">
+                <div class="size-11 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-center justify-center text-red-600">
+                    <span class="material-symbols-outlined">account_balance_wallet</span>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-sm font-bold text-slate-900 dark:text-white">Cari risk</p>
+                    <p class="text-xs text-slate-500 mt-1">Riskli bakiye: ₺{{ (cari_risk_analizi.toplam_riskli_borc or 0)|tr_number }}</p>
+                </div>
+            </div>
+        </a>
+        <a href="{{ url_for('teklif_yonetimi') }}" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 hover:border-blue-400 transition-colors">
+            <div class="flex items-start gap-4">
+                <div class="size-11 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center text-blue-600">
+                    <span class="material-symbols-outlined">description</span>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-sm font-bold text-slate-900 dark:text-white">Teklif hattı</p>
+                    <p class="text-xs text-slate-500 mt-1">{{ toplam_teklif or 0 }} teklif kaydi uzerinden takip.</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- KPI Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Toplam Ürün -->
+        <div class="card p-6 group hover:border-primary-500/50 transition-all duration-300">
+            <div class="flex items-center justify-between mb-4">
+                <div class="size-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
+                    <span class="material-symbols-outlined text-2xl">inventory_2</span>
+                </div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Toplam Ürün</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-3xl font-bold text-slate-900 dark:text-white">{{ toplam_urun or 0 }}</h3>
+                <span class="text-slate-500 text-sm font-medium">Kalem</span>
+            </div>
+        </div>
+
+        <!-- Toplam Cari -->
+        <div class="card p-6 group hover:border-green-500/50 transition-all duration-300">
+            <div class="flex items-center justify-between mb-4">
+                <div class="size-12 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center text-green-600 dark:text-green-400 group-hover:scale-110 transition-transform">
+                    <span class="material-symbols-outlined text-2xl">group</span>
+                </div>
+                <span class="stat-label">Toplam Cari</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <div class="stat-value">{{ toplam_cari or 0 }}</div>
+                <span class="text-xs font-medium text-slate-500">Kişi/Firma</span>
+            </div>
+        </div>
+
+        <!-- Kritik Stok -->
+        <a href="{{ url_for('urunler') }}" class="card p-6 group hover:border-red-500/50 transition-all duration-300 block">
+            <div class="flex items-center justify-between mb-4">
+                <div class="size-12 {% if kritik_stok and kritik_stok > 0 %}bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400{% else %}bg-slate-50 dark:bg-slate-800 text-slate-400{% endif %} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <span class="material-symbols-outlined text-2xl">warning</span>
+                </div>
+                <span class="stat-label">Kritik Stok</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <div class="stat-value {% if kritik_stok and kritik_stok > 0 %}text-red-600{% else %}text-slate-900 dark:text-white{% endif %}">{{ kritik_stok or 0 }}</div>
+                <span class="text-xs font-medium text-slate-500">Ürün</span>
+            </div>
+        </a>
+
+        <!-- Bugünkü Satış -->
+        <div class="card p-6 group hover:border-purple-500/50 transition-all duration-300">
+            <div class="flex items-center justify-between mb-4">
+                <div class="size-12 bg-purple-50 dark:bg-purple-900/20 rounded-xl flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
+                    <span class="material-symbols-outlined text-2xl">payments</span>
+                </div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Bugünkü Satış</span>
+            </div>
+            <div class="flex items-baseline gap-1">
+                <span class="text-slate-500 text-lg font-bold">₺</span>
+                <h3 class="text-3xl font-bold text-slate-900 dark:text-white">{{ (bugunku_satis or 0)|tr_number }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🚀 World-Class Analytics Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Sales Trend Chart -->
+        <div class="card p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">trending_up</span>
+                    Satış Trendi (Son 6 Ay)
+                </h3>
+                <span class="text-xs font-bold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
+                    {% if aylik_trend and aylik_trend|length > 0 %}
+                        {% set aylar = aylik_trend.values()|list %}
+                        {% set son_ay = aylar|last if aylar else 0 %}
+                        {% set onceki_ay = aylar[-2] if aylar|length > 1 else 0 %}
+                        {% set artis = ((son_ay - onceki_ay) / onceki_ay * 100) if onceki_ay > 0 else 0 %}
+                        +%{{ "%.1f"|format(artis) }}
+                    {% else %}
+                        +0%
+                    {% endif %}
+                </span>
+            </div>
+            
+            <!-- Simple Bar Chart -->
+            <div class="space-y-3">
+                {% for ay, tutar in aylik_trend.items() %}
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-medium text-slate-600 dark:text-slate-400 w-16">{{ ay.split('-')[1] }}.ay</span>
+                    <div class="flex-1 bg-slate-100 dark:bg-slate-800 rounded-full h-6 relative overflow-hidden">
+                        {% set max_tutar = aylik_trend.values()|list|max %}
+                        {% set yuzde = (tutar / max_tutar * 100) if max_tutar > 0 else 0 %}
+                        <div class="absolute inset-y-0 left-0 bg-gradient-to-r from-primary-500 to-primary-600 rounded-full transition-all duration-1000"
+                             style="width: {{ "%.1f"|format(yuzde) }}%"></div>
+                    </div>
+                    <span class="text-xs font-bold text-slate-900 dark:text-white w-20 text-right">₺{{ (tutar)|tr_number(0) }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Top Performing Products -->
+        <div class="card p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">star</span>
+                    En Çok Satan Ürünler
+                </h3>
+                <a href="{{ url_for('raporlar') }}" class="text-xs text-primary hover:text-primary-600 transition-colors">Tümünü Gör</a>
+            </div>
+            
+            <div class="space-y-3">
+                {% for urun in en_cok_satan_urunler[:5] %}
+                <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                    <div class="flex items-center gap-3">
+                        <div class="size-8 bg-primary/10 rounded-full flex items-center justify-center">
+                            <span class="material-symbols-outlined text-primary text-sm">inventory_2</span>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-slate-900 dark:text-white">{{ urun.urun_adi }}</p>
+                            <p class="text-xs text-slate-500">{{ (urun.adet)|tr_number(0) }} adet</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm font-bold text-slate-900 dark:text-white">₺{{ (urun.tutar)|tr_number }}</p>
+                        <p class="text-xs text-slate-500">Toplam</p>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-8 text-slate-400">
+                    <span class="material-symbols-outlined text-4xl mb-2">bar_chart</span>
+                    <p class="text-sm">Henüz satış verisi yok</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Risk Analysis & Stock Efficiency -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Cari Risk Analysis -->
+        <div class="card p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span class="material-symbols-outlined text-orange-600">warning</span>
+                    Cari Risk Analizi
+                </h3>
+                <span class="text-xs font-bold text-orange-600 bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded-full">
+                    {{ cari_risk_analizi.yuksek_risk|length }} Yüksek
+                </span>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-600 dark:text-slate-400">Düşük Risk</span>
+                    <span class="text-sm font-bold text-green-600">{{ cari_risk_analizi.dusuk_risk|length }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-600 dark:text-slate-400">Orta Risk</span>
+                    <span class="text-sm font-bold text-yellow-600">{{ cari_risk_analizi.orta_risk|length }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-600 dark:text-slate-400">Yüksek Risk</span>
+                    <span class="text-sm font-bold text-red-600">{{ cari_risk_analizi.yuksek_risk|length }}</span>
+                </div>
+                <div class="pt-4 border-t border-slate-100 dark:border-slate-700">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-slate-900 dark:text-white">Toplam Riskli Borç</span>
+                        <span class="text-sm font-bold text-red-600">₺{{ (cari_risk_analizi.toplam_riskli_borc)|tr_number }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stock Efficiency -->
+        <div class="card p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span class="material-symbols-outlined text-blue-600">speed</span>
+                    Stok Verimliliği
+                </h3>
+                <span class="text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-full">
+                    {% set toplam_urun = stok_verimlilik.hareketli_urunler + stok_verimlilik.yavas_urunler %}
+                    {% set verimlilik_yuzde = (stok_verimlilik.hareketli_urunler / toplam_urun * 100) if toplam_urun > 0 else 0 %}
+                    {{ "%.1f"|format(verimlilik_yuzde) }}%
+                </span>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm text-slate-600 dark:text-slate-400">Hareketli Ürünler</span>
+                        <span class="text-sm font-bold text-green-600">{{ stok_verimlilik.hareketli_urunler }}</span>
+                    </div>
+                    <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2">
+                        {% set toplam_urun = stok_verimlilik.hareketli_urunler + stok_verimlilik.yavas_urunler %}
+                        {% set hareketli_yuzde = (stok_verimlilik.hareketli_urunler / toplam_urun * 100) if toplam_urun > 0 else 0 %}
+                        <div class="bg-green-500 h-2 rounded-full" style="width: {{ "%.1f"|format(hareketli_yuzde) }}%"></div>
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm text-slate-600 dark:text-slate-400">Yavaş Ürünler</span>
+                        <span class="text-sm font-bold text-orange-600">{{ stok_verimlilik.yavas_urunler }}</span>
+                    </div>
+                    <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2">
+                        {% set yavas_yuzde = (stok_verimlilik.yavas_urunler / toplam_urun * 100) if toplam_urun > 0 else 0 %}
+                        <div class="bg-orange-500 h-2 rounded-full" style="width: {{ "%.1f"|format(yavas_yuzde) }}%"></div>
+                    </div>
+                </div>
+                
+                <div class="pt-4 border-t border-slate-100 dark:border-slate-700">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-slate-900 dark:text-white">Stok Değeri</span>
+                        <span class="text-sm font-bold text-blue-600">₺{{ (stok_verimlilik.toplam_stok_degeri)|tr_number }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Performance -->
+        <div class="card p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span class="material-symbols-outlined text-purple-600">category</span>
+                    Kategori Performansı
+                </h3>
+                <span class="text-xs font-bold text-purple-600 bg-purple-50 dark:bg-purple-900/20 px-2 py-1 rounded-full">
+                    {{ kategori_performans|length }} Kategori
+                </span>
+            </div>
+            
+            <div class="space-y-3 max-h-64 overflow-y-auto">
+                {% for kategori, veri in kategori_performans.items() %}
+                <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-slate-900 dark:text-white">{{ kategori }}</span>
+                        <span class="text-xs font-bold text-purple-600">{{ veri.urun_sayisi }} ürün</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <span class="text-slate-500">Stok:</span>
+                            <span class="font-medium text-slate-900 dark:text-white">₺{{ (veri.stok_degeri)|tr_number(0) }}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-500">Satış:</span>
+                            <span class="font-medium text-green-600">₺{{ (veri.satis_tutari)|tr_number(0) }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Grid: Actions & Recent Activity -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Left: Quick Actions -->
+        <div class="space-y-6">
+            <div class="card p-6">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">bolt</span>
+                    Hızlı İşlemler
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="openUrunModal()" class="flex flex-col items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-all group">
+                        <div class="size-10 bg-white dark:bg-slate-700 rounded-lg shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <span class="material-symbols-outlined text-primary-600">add_box</span>
+                        </div>
+                        <span class="text-sm font-semibold tracking-tight">Yeni Ürün</span>
+                    </button>
+                    <a href="{{ url_for('pos') }}" class="flex flex-col items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-all group">
+                        <div class="size-10 bg-white dark:bg-slate-700 rounded-lg shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <span class="material-symbols-outlined text-primary-600">shopping_cart</span>
+                        </div>
+                        <span class="text-sm font-semibold tracking-tight">Yeni Satış</span>
+                    </a>
+                    <button onclick="openCariModal()" class="flex flex-col items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-all group">
+                        <div class="size-10 bg-white dark:bg-slate-700 rounded-lg shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <span class="material-symbols-outlined text-primary-600">person_add</span>
+                        </div>
+                        <span class="text-sm font-semibold tracking-tight">Yeni Cari</span>
+                    </button>
+                    <a href="{{ url_for('urun_ekle') }}" class="flex flex-col items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-all group">
+                        <div class="size-10 bg-white dark:bg-slate-700 rounded-lg shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <span class="material-symbols-outlined text-green-600">move_to_inbox</span>
+                        </div>
+                        <span class="text-sm font-semibold tracking-tight text-green-700 dark:text-green-400">Stok Girişi</span>
+                    </a>
+                    <a href="{{ url_for('raporlar') }}" class="flex flex-col items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-all group">
+                        <div class="size-10 bg-white dark:bg-slate-700 rounded-lg shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <span class="material-symbols-outlined text-primary-600">analytics</span>
+                        </div>
+                        <span class="text-sm font-semibold tracking-tight">Raporlar</span>
+                    </a>
+                    <a href="{{ url_for('stok_cikis') }}" class="flex flex-col items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-all group">
+                        <div class="size-10 bg-white dark:bg-slate-700 rounded-lg shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <span class="material-symbols-outlined text-red-600">outbox</span>
+                        </div>
+                        <span class="text-sm font-semibold tracking-tight text-red-700 dark:text-red-400">Stok Çıkışı</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Financial Summary Widget -->
+            <div class="card overflow-hidden">
+                <div class="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                    <h3 class="font-bold text-slate-900 dark:text-white">Finansal Özet</h3>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Canlı</span>
+                </div>
+                <div class="divide-y divide-slate-100 dark:divide-slate-700">
+                    <div class="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <div class="flex items-center gap-4">
+                            <div class="size-8 bg-green-50 dark:bg-green-900/20 rounded-full flex items-center justify-center text-green-600 dark:text-green-400">
+                                <span class="material-symbols-outlined text-sm">trending_up</span>
+                            </div>
+                            <span class="text-sm font-medium text-slate-600 dark:text-slate-400">Toplam Alacak</span>
+                        </div>
+                        <span class="font-bold text-green-600">₺{{ (toplam_alacak or 0)|tr_number }}</span>
+                    </div>
+                    <div class="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <div class="flex items-center gap-4">
+                            <div class="size-8 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center text-red-600 dark:text-red-400">
+                                <span class="material-symbols-outlined text-sm">trending_down</span>
+                            </div>
+                            <span class="text-sm font-medium text-slate-600 dark:text-slate-400">Toplam Borç</span>
+                        </div>
+                        <span class="font-bold text-red-600">₺{{ (toplam_borc or 0)|tr_number }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Recent Activity Table -->
+        <div class="lg:col-span-2">
+            <div class="card h-full flex flex-col">
+                <div class="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary-600">history</span>
+                        Son İşlemler
+                    </h3>
+                    <a href="{{ url_for('gunluk_satislar') }}" class="text-sm font-bold text-primary-600 hover:text-primary-700 hover:underline">Tümünü Gör</a>
+                </div>
+                
+                <div class="flex-1 overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50/50 dark:bg-slate-800/50">
+                            <tr>
+                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">İşlem / Tarih</th>
+                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Tutar</th>
+                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Durum</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                            {% if son_hareketler %}
+                                {% for hareket in son_hareketler %}
+                                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center gap-4">
+                                            <div class="size-10 rounded-xl bg-{{ hareket.renk }}-50 dark:bg-{{ hareket.renk }}-900/20 flex items-center justify-center text-{{ hareket.renk }}-600 dark:text-{{ hareket.renk }}-400">
+                                                <span class="material-symbols-outlined">{{ hareket.icon }}</span>
+                                            </div>
+                                            <div>
+                                                <p class="font-bold text-slate-900 dark:text-white">{{ hareket.baslik }}</p>
+                                                <p class="text-xs text-slate-500 font-medium">{{ hareket.tarih|datetime_tr('%d %B, %H:%M') if hareket.tarih else '-' }}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-right">
+                                        <span class="font-bold text-slate-900 dark:text-white">₺{{ (hareket.tutar or 0)|tr_number }}</span>
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-{{ hareket.renk }}-100 text-{{ hareket.renk }}-700 dark:bg-{{ hareket.renk }}-900/30 dark:text-{{ hareket.renk }}-400 uppercase tracking-tighter">
+                                            Tamamlandı
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="3" class="px-6 py-12 text-center">
+                                        <div class="flex flex-col items-center gap-3">
+                                            <div class="size-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-300">
+                                                <span class="material-symbols-outlined text-4xl">inbox</span>
+                                            </div>
+                                            <p class="text-slate-500 font-medium">Henüz bir hareket bulunmuyor.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Product Modal (Simple example, can be expanded) -->
+<div id="urunModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeUrunModal()"></div>
+    <div class="card w-full max-w-lg relative z-10 shadow-2xl animate-in zoom-in-95 duration-200">
+        <form action="{{ url_for('urun_ekle') }}" method="POST" class="p-8">
+            <div class="space-y-5">
+                <div>
+                    <label class="form-label">Ürün Adı</label>
+                    <input type="text" name="urun_adi" required class="form-input" placeholder="Örn: iPhone 15 Pro Max">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="form-label">Alış Fiyatı</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₺</span>
+                            <input type="number" step="0.01" name="alis_fiyati" required class="form-input pl-8" placeholder="0.00">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label">Satış Fiyatı</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₺</span>
+                            <input type="number" step="0.01" name="satis_fiyati" required class="form-input pl-8" placeholder="0.00">
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="form-label">Mevcut Stok</label>
+                        <input type="number" name="stok_miktari" required class="form-input" value="0">
+                    </div>
+                    <div>
+                        <label class="form-label">Kategori</label>
+                        <input type="text" name="kategori" class="form-input" placeholder="Kategori adı">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-8 flex gap-3">
+                <button type="button" onclick="closeUrunModal()" class="btn-secondary flex-1 py-3 font-bold">Vazgeç</button>
+                <button type="submit" class="btn-primary flex-1 py-3 font-bold shadow-lg shadow-primary-500/20">Ürünü Kaydet</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Cari Modal -->
+<div id="cariModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeCariModal()"></div>
+    <div class="card w-full max-w-lg relative z-10 shadow-2xl animate-in zoom-in-95 duration-200">
+        <form action="{{ url_for('cari_ekle') }}" method="POST" class="p-8">
+            <div class="flex items-center justify-between mb-8">
+                <h3 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Hızlı Cari Ekle</h3>
+                <button type="button" onclick="closeCariModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            
+            <div class="space-y-5">
+                <div>
+                    <label class="form-label">Ad Soyad / Firma Adı</label>
+                    <input type="text" name="ad_soyad" required class="form-input" placeholder="Örn: Ahmet Yılmaz veya ABC Ltd. Şti.">
+                </div>
+                <div>
+                    <label class="form-label">Telefon</label>
+                    <input type="tel" name="telefon" class="form-input" placeholder="05XX XXX XX XX">
+                </div>
+                <div>
+                    <label class="form-label">E-posta</label>
+                    <input type="email" name="email" class="form-input" placeholder="ahmet@example.com">
+                </div>
+            </div>
+            
+            <div class="mt-8 flex gap-3">
+                <button type="button" onclick="closeCariModal()" class="btn-secondary flex-1 py-3 font-bold">Vazgeç</button>
+                <button type="submit" class="btn-primary flex-1 py-3 font-bold shadow-lg shadow-primary-500/20">Cariyi Kaydet</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function openUrunModal() {
+        const modal = document.getElementById('urunModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+    
+    function closeUrunModal() {
+        const modal = document.getElementById('urunModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    function openCariModal() {
+        const modal = document.getElementById('cariModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+    
+    function closeCariModal() {
+        const modal = document.getElementById('cariModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    // Escape key to close modals
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeUrunModal();
+            closeCariModal();
+        }
+    });
+</script>
+{% endblock %}

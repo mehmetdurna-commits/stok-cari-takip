@@ -1,0 +1,265 @@
+{% extends "_base.html" %}
+
+{% block title %}Cari Ekstresi - {{ cari.unvan }}{% endblock %}
+
+{% block head %}
+<style>
+  .print-ekstre-header {
+    display: none;
+  }
+
+  @media print {
+    @page {
+      size: A4;
+      margin: 12mm;
+    }
+
+    html,
+    body {
+      width: auto !important;
+      height: auto !important;
+      overflow: visible !important;
+      background: #ffffff !important;
+      color: #0f172a !important;
+    }
+
+    body * {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    aside,
+    header,
+    nav,
+    #sidebar,
+    #toast-container,
+    #app-confirm,
+    .no-print,
+    .fixed,
+    .sticky {
+      display: none !important;
+    }
+
+    #mainContent,
+    .app-content,
+    .ekstre-print-page {
+      display: block !important;
+      width: 100% !important;
+      max-width: none !important;
+      height: auto !important;
+      min-height: auto !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: visible !important;
+      background: #ffffff !important;
+      box-shadow: none !important;
+    }
+
+    .print-ekstre-header {
+      display: block !important;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #cbd5e1;
+    }
+
+    .print-ekstre-header h1 {
+      font-size: 20px !important;
+      font-weight: 800 !important;
+      margin: 0 0 4px 0 !important;
+    }
+
+    .print-ekstre-header p {
+      font-size: 11px !important;
+      color: #475569 !important;
+      margin: 0 !important;
+    }
+
+    .ekstre-print-page {
+      font-size: 11px !important;
+      line-height: 1.35 !important;
+    }
+
+    .ekstre-print-page .rounded-2xl {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      border: 1px solid #cbd5e1 !important;
+      border-radius: 10px !important;
+      box-shadow: none !important;
+      background: #ffffff !important;
+    }
+
+    .ekstre-print-page table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      font-size: 10px !important;
+    }
+
+    .ekstre-print-page th,
+    .ekstre-print-page td {
+      padding: 6px 8px !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+    }
+
+    .ekstre-print-page .text-2xl {
+      font-size: 16px !important;
+      line-height: 1.2 !important;
+    }
+
+    .ekstre-print-page .p-5 {
+      padding: 10px !important;
+    }
+
+    .ekstre-print-page .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+      margin-top: 12px !important;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set movement_labels = {
+  'satis': 'Veresiye Satış',
+  'tahsilat': 'Tahsilat',
+  'odeme': 'Ödeme',
+  'iade': 'İade',
+  'satis_iptal': 'Satış İptali'
+} %}
+<div class="ekstre-print-page max-w-6xl mx-auto space-y-6">
+  <div class="print-ekstre-header">
+    <h1>{{ cari.unvan }} - Cari Ekstresi</h1>
+    <p>{{ current_user.firma_adi if current_user.is_authenticated else 'Firma' }} · Yazdırma tarihi: {{ generated_at|datetime_tr }}</p>
+  </div>
+
+  <div class="no-print flex items-start justify-between gap-4">
+    <div>
+      <div class="flex items-center gap-2 text-sm">
+        <a class="font-bold text-primary-600 hover:text-primary-700" href="{{ url_for('cari_detay', id=cari.id) }}">Cari</a>
+        <span class="text-slate-400">/</span>
+        <span class="font-bold text-slate-700 dark:text-slate-200">Cari Ekstresi</span>
+      </div>
+      <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white mt-2">{{ cari.unvan }}</h1>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Hazırlanma tarihi: {{ generated_at|datetime_tr }}</p>
+    </div>
+
+    <div class="no-print flex items-center gap-2">
+      <a class="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-800 font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+         href="{{ url_for('cari_ekstre_csv', id=cari.id, **{'from': date_from, 'to': date_to}) }}">
+        Excel/CSV İndir
+      </a>
+      <a class="px-4 py-2 rounded-lg bg-slate-900 text-white dark:bg-primary-700 font-bold"
+         href="{{ url_for('cari_ekstre_yazdir', id=cari.id, **{'from': date_from, 'to': date_to}) }}"
+         target="_blank" rel="noopener">
+        Yazdır
+      </a>
+    </div>
+  </div>
+
+  <div class="no-print bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
+    <form method="get" class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+      <div class="md:col-span-2">
+        <label class="block text-xs font-bold text-slate-500 mb-1">Tarih Aralığı</label>
+        <div class="grid grid-cols-2 gap-2">
+          <input type="date" name="from" value="{{ date_from }}" class="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-950">
+          <input type="date" name="to" value="{{ date_to }}" class="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-950">
+        </div>
+      </div>
+      <div class="md:col-span-4 flex justify-end gap-2">
+        <a href="{{ url_for('cari_ekstre', id=cari.id) }}" class="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-800 font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">Filtreyi Temizle</a>
+        <button class="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-bold">Ekstreyi Göster</button>
+      </div>
+    </form>
+  </div>
+
+  {% if has_balance_mismatch %}
+  <div class="no-print rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
+    <div class="flex items-start gap-3">
+      <span class="material-symbols-outlined text-amber-600">warning</span>
+      <div>
+        <p class="font-bold">Cari bakiyesi ile hareket ekstresi arasında fark var.</p>
+        <p class="mt-1 text-sm">Cari kartında görünen bakiye `₺{{ current_cari_balance|abs|tr_number }}`, ekstre sonunda oluşan bakiye `₺{{ closing_balance|abs|tr_number }}`.</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+      <div class="text-[11px] font-bold text-slate-500 uppercase">Dönem Başı Bakiye</div>
+      <div class="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">₺{{ (opening_balance|abs)|tr_number }}</div>
+      <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+        {% if opening_balance > 0 %}
+        Tahsil edilecek
+        {% elif opening_balance < 0 %}
+        Ödenecek
+        {% else %}
+        Kapalı
+        {% endif %}
+      </div>
+    </div>
+    <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+      <div class="text-[11px] font-bold text-slate-500 uppercase">Veresiye Satışlar</div>
+      <div class="text-2xl font-extrabold text-emerald-600 mt-1">₺{{ (total_plus)|tr_number }}</div>
+      <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">Genelde veresiye satışlar</div>
+    </div>
+    <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+      <div class="text-[11px] font-bold text-slate-500 uppercase">Tahsilatlar</div>
+      <div class="text-2xl font-extrabold text-rose-600 mt-1">₺{{ (total_minus)|tr_number }}</div>
+      <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">Tahsilat, ödeme ve iadeler</div>
+    </div>
+    <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+      <div class="text-[11px] font-bold text-slate-500 uppercase">Dönem Sonu Bakiye</div>
+      <div class="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">₺{{ (closing_balance|abs)|tr_number }}</div>
+      <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+        {% if closing_balance > 0 %}
+        Tahsil edilecek
+        {% elif closing_balance < 0 %}
+        Ödenecek
+        {% else %}
+        Kapalı
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+    <div class="p-5">
+      <h2 class="text-sm font-bold text-slate-900 dark:text-white">Cari Hareketleri</h2>
+      <p class="text-xs text-slate-500 mt-1">Veresiye satış açık bakiyeyi artırır. Tahsilat, ödeme ve iade açık bakiyeyi azaltır.</p>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+        <thead class="bg-slate-50 dark:bg-slate-900/50">
+          <tr>
+            <th class="px-4 py-3 text-left">Tarih</th>
+            <th class="px-4 py-3 text-left">İşlem</th>
+            <th class="px-4 py-3 text-left">Ödeme</th>
+            <th class="px-4 py-3 text-left">Açıklama</th>
+            <th class="px-4 py-3 text-right">Satışlar</th>
+            <th class="px-4 py-3 text-right">Tahsilatlar</th>
+            <th class="px-4 py-3 text-right">Kalan Bakiye</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50 dark:divide-slate-800/50">
+          {% for r in rows %}
+            {% set h = r.hareket %}
+            <tr class="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+              <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">{{ h.tarih|datetime_tr if h.tarih else '-' }}</td>
+              <td class="px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white">{{ movement_labels.get(h.islem_tipi, h.islem_tipi or '-') }}</td>
+              <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{{ h.odeme_turu or '-' }}</td>
+              <td class="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">{{ h.aciklama or '-' }}</td>
+              <td class="px-4 py-3 text-right text-sm font-bold text-emerald-600">{% if r.signed >= 0 %}₺{{ (r.signed)|tr_number }}{% endif %}</td>
+              <td class="px-4 py-3 text-right text-sm font-bold text-rose-600">{% if r.signed < 0 %}₺{{ ((-1*r.signed))|tr_number }}{% endif %}</td>
+              <td class="px-4 py-3 text-right text-sm font-extrabold">
+                <div class="{{ 'text-emerald-600' if r.balance > 0 else 'text-rose-600' if r.balance < 0 else 'text-slate-900 dark:text-white' }}">₺{{ (r.balance|abs)|tr_number }}</div>
+              </td>
+            </tr>
+          {% endfor %}
+          {% if rows|length == 0 %}
+            <tr><td class="px-4 py-10 text-center text-slate-500" colspan="7">Seçilen tarih aralığında hareket yok.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

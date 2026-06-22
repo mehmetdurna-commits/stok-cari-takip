@@ -1,0 +1,53 @@
+{% extends '_base.html' %}
+
+{% block title %}İzin Talebi Ekle{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-4">
+    <span class="material-symbols-outlined text-primary-600 font-bold">beach_access</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">İzin Talebi Ekle</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <form method="POST" class="space-y-8">
+        <input type="hidden" name="next" value="{{ next_url or '' }}">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6">İzin Bilgileri</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Personel *</label>
+                    <select name="personel_id" required class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white">
+                        <option value="">Personel seçin</option>
+                        {% for personel in personeller %}
+                        <option value="{{ personel.id }}" {% if selected_personel_id == personel.id|string %}selected{% endif %}>{{ personel.ad }} {{ personel.soyad }} - {{ personel.pozisyon or '-' }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">İzin Tipi *</label>
+                    <input type="text" name="izin_tipi" required class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Başlangıç Tarihi *</label>
+                    <input type="date" name="baslangic_tarihi" required class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Bitiş Tarihi *</label>
+                    <input type="date" name="bitis_tarihi" required class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Açıklama</label>
+                    <textarea name="aciklama" rows="4" class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="app-form-actions">
+            <a href="{{ next_url or url_for('izinler') }}" class="btn-secondary">İptal</a>
+            <button type="submit" class="btn-primary">Kaydet</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

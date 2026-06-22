@@ -1,0 +1,338 @@
+{% extends '_base.html' %}
+{% block title %}Günlük Satışlar - Stok ve Cari Takip{% endblock %}
+{% block top_bar %}
+<div class="flex items-center gap-4">
+    <span class="material-symbols-outlined text-primary-600 font-bold">receipt_long</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Günlük Satışlar</h1>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    function normalizeSaleSearch(value) {
+        return String(value || '')
+            .toLocaleLowerCase('tr-TR')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim();
+    }
+
+    async function printDailySaleReceipt(saleId) {
+        try {
+            const response = await fetch(`/satis/${saleId}/fisautoprint=1`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            if (!response.ok) {
+                if (window.showToast) window.showToast('Fiş yazdırma sayfası hazırlanamadı.', 'error', 4500);
+                return;
+            }
+
+            const html = await response.text();
+            const frame = document.createElement('iframe');
+            frame.setAttribute('title', 'Günlük satış fiş yazdırma');
+            frame.style.position = 'fixed';
+            frame.style.right = '0';
+            frame.style.bottom = '0';
+            frame.style.width = '0';
+            frame.style.height = '0';
+            frame.style.border = '0';
+            document.body.appendChild(frame);
+
+            const cleanupPrintedFrame = (event) => {
+                if (event.data.type !== 'receipt-print-finished') return;
+                window.removeEventListener('message', cleanupPrintedFrame);
+                setTimeout(() => frame.remove(), 300);
+            };
+            window.addEventListener('message', cleanupPrintedFrame);
+
+            const doc = frame.contentWindow.document;
+            doc.open();
+            doc.write(html);
+            doc.close();
+        } catch (error) {
+            console.error('Günlük satış fiş yazdırma hatası:', error);
+            if (window.showToast) window.showToast('Fiş yazdırma sırasında hata oluştu.', 'error', 4500);
+        }
+    }
+
+    function filterDailySales() {
+        const input = document.getElementById('dailySalesSearchInput');
+        const filterSelect = document.getElementById('dailySalesStatusFilter');
+        const emptyState = document.getElementById('dailySalesSearchEmpty');
+        const resultCount = document.getElementById('dailySalesVisibleCount');
+        const query = normalizeSaleSearch(input.value || '');
+        const activeFilter = String(filterSelect.value || 'all');
+        const cards = Array.from(document.querySelectorAll('[data-sale-card]'));
+        let visibleCount = 0;
+
+        cards.forEach((card) => {
+            const haystack = normalizeSaleSearch(card.dataset.search || '');
+            const matchesSearch = !query || haystack.includes(query);
+            const statusValue = String(card.dataset.status || '');
+            const paymentValue = String(card.dataset.payment || '');
+            const matchesFilter = activeFilter === 'all' || statusValue === activeFilter || paymentValue === activeFilter;
+            const isVisible = matchesSearch && matchesFilter;
+            card.classList.toggle('hidden', !isVisible);
+            if (isVisible) visibleCount += 1;
+        });
+
+        if (resultCount) {
+            resultCount.textContent = `${visibleCount} kayıt`;
+        }
+        if (emptyState) {
+            emptyState.classList.toggle('hidden', visibleCount !== 0);
+        }
+    }
+</script>
+{% endblock %}
+{% set active_page = 'gunluk_satislar' %}
+{% block content %}
+{% set tamamlanan_satis = satislar|selectattr('durum', 'equalto', 'tamamlandi')|list %}
+{% set iptal_satis = satislar|selectattr('durum', 'equalto', 'iptal')|list %}
+{% set toplam_ciro = tamamlanan_satis|map(attribute='genel_toplam')|sum %}
+
+<div class="mx-auto max-w-7xl space-y-6">
+    <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div class="min-w-0">
+                <p class="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Satış Akışı</p>
+                <h2 class="mt-1 text-2xl font-black tracking-tight text-slate-900 dark:text-white">Günün satışlarını tek ekranda takip et</h2>
+                <p class="mt-2 max-w-3xl text-sm text-slate-500 dark:text-slate-400">POS sonrası oluşan kayıtları, ödeme tiplerini, fiş yazdırma ve satış iptal akışını sade biçimde yönet.</p>
+            </div>
+
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <form method="get" action="{{ url_for('gunluk_satislar') }}" class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
+                    <span class="material-symbols-outlined text-slate-400">calendar_today</span>
+                    <input type="date" name="tarih" value="{{ secili_tarih.strftime('%Y-%m-%d') }}" class="min-w-0 bg-transparent text-sm font-semibold text-slate-900 focus:ring-0 dark:text-white" onchange="this.form.submit()">
+                </form>
+                <a href="{{ url_for('pos') }}" class="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-primary-700">
+                    <span class="material-symbols-outlined text-base">point_of_sale</span>
+                    POS'a Dön
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wide text-slate-400">Toplam Satış</p>
+                    <p class="mt-2 text-3xl font-black tracking-tight text-slate-900 dark:text-white">{{ satislar|length }}</p>
+                </div>
+                <span class="material-symbols-outlined rounded-2xl bg-primary-50 p-3 text-primary-600 dark:bg-primary-900/20 dark:text-primary-300">receipt</span>
+            </div>
+        </article>
+
+        <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wide text-slate-400">Tamamlanan</p>
+                    <p class="mt-2 text-3xl font-black tracking-tight text-emerald-600">{{ tamamlanan_satis|length }}</p>
+                </div>
+                <span class="material-symbols-outlined rounded-2xl bg-emerald-100 p-3 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-300">check_circle</span>
+            </div>
+        </article>
+
+        <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wide text-slate-400">İptal Edilen</p>
+                    <p class="mt-2 text-3xl font-black tracking-tight text-rose-600">{{ iptal_satis|length }}</p>
+                </div>
+                <span class="material-symbols-outlined rounded-2xl bg-rose-100 p-3 text-rose-600 dark:bg-rose-900/20 dark:text-rose-300">cancel</span>
+            </div>
+        </article>
+
+        <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wide text-slate-400">Toplam Ciro</p>
+                    <p class="mt-2 text-3xl font-black tracking-tight text-amber-600">₺{{ toplam_ciro|tr_number }}</p>
+                </div>
+                <span class="material-symbols-outlined rounded-2xl bg-amber-100 p-3 text-amber-600 dark:bg-amber-900/20 dark:text-amber-300">payments</span>
+            </div>
+        </article>
+    </section>
+
+    <section class="rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+            <div class="flex flex-col gap-3">
+                <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm font-black text-slate-900 dark:text-white">Satış listesi</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">{{ secili_tarih.strftime('%d.%m.%Y') }} tarihli tüm kayıtlar</p>
+                    </div>
+                    <span id="dailySalesVisibleCount" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{{ satislar|length }} kayıt</span>
+                </div>
+                <div>
+                    <div class="flex flex-col gap-3 lg:flex-row">
+                        <div class="relative min-w-0 flex-1">
+                            <span class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                            <input id="dailySalesSearchInput" type="text" placeholder="Fatura no, cari, ürün veya ödeme tipi ara..." oninput="filterDailySales()" class="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm font-medium text-slate-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                        </div>
+                        <div class="relative w-full lg:w-64">
+                            <span class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">tune</span>
+                            <select id="dailySalesStatusFilter" onchange="filterDailySales()" class="w-full appearance-none rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-10 text-sm font-semibold text-slate-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                                <option value="all">Tümü</option>
+                                <option value="tamamlandi">Tamamlanan</option>
+                                <option value="iptal">İptal Edilen</option>
+                                <option value="Nakit">Nakit</option>
+                                <option value="Kredi Kartı">Kart</option>
+                                <option value="Veresiye">Veresiye</option>
+                            </select>
+                            <span class="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">expand_more</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if satislar %}
+        <div class="space-y-4 p-4 sm:p-5">
+            {% for satis in satislar %}
+            {% set odeme_turu = payment_methods.get(satis.id, 'Peşin') %}
+            <article data-sale-card data-status="{{ satis.durum }}" data-payment="{{ odeme_turu }}" data-search="{{ satis.fatura_no }} {{ satis.cari.unvan if satis.cari else 'Peşin satış' }} {{ odeme_turu }} {{ satis.depo or 'Ana Depo' }} {% for kalem in satis.kalemler %}{{ kalem.urun_adi }} {{ kalem.birim }} {% endfor %}" class="rounded-3xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950/30 dark:hover:border-slate-700 {{ 'opacity-70' if satis.durum == 'iptal' }}">
+                <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div class="min-w-0 flex-1 space-y-4">
+                        <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-slate-400">receipt</span>
+                                    <h3 class="truncate text-base font-black text-slate-900 dark:text-white">{{ satis.fatura_no }}</h3>
+                                    {% if satis.durum == 'tamamlandi' %}
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300">
+                                        <span class="material-symbols-outlined text-sm">check_circle</span>
+                                        Tamamlandı
+                                    </span>
+                                    {% else %}
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-bold text-rose-700 dark:bg-rose-900/20 dark:text-rose-300">
+                                        <span class="material-symbols-outlined text-sm">cancel</span>
+                                        İptal
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
+                                    <span class="inline-flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-base">schedule</span>
+                                        {{ satis.tarih|datetime_tr }}
+                                    </span>
+                                    <span class="inline-flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-base">inventory_2</span>
+                                        {{ satis.depo or 'Ana Depo' }}
+                                    </span>
+                                    <span class="inline-flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-base">person</span>
+                                        {{ satis.cari.unvan if satis.cari else 'Peşin satış' }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold {{ 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200' if satis.durum == 'iptal' else ('bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' if odeme_turu == 'Veresiye' else 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300') }}">
+                                    <span class="material-symbols-outlined text-sm">{{ 'person' if odeme_turu == 'Veresiye' else ('credit_card' if odeme_turu == 'Kredi Kartı' else 'payments') }}</span>
+                                    {{ odeme_turu }}
+                                </span>
+                                <span class="rounded-2xl bg-slate-900 px-3 py-2 text-sm font-black text-white dark:bg-slate-800">₺{{ satis.genel_toplam|tr_number }}</span>
+                            </div>
+                        </div>
+
+                        <div class="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(260px,0.7fr)]">
+                            <div class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                                <p class="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">Ürün Kalemleri</p>
+                                <div class="space-y-2">
+                                    {% for kalem in satis.kalemler %}
+                                    <div class="flex items-start justify-between gap-3 rounded-2xl bg-slate-50 px-3 py-2.5 dark:bg-slate-800/70">
+                                        <div class="min-w-0">
+                                            <p class="truncate text-sm font-bold text-slate-900 dark:text-white">{{ kalem.urun_adi }}</p>
+                                            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ kalem.miktar|int }} {{ kalem.birim }} × ₺{{ kalem.birim_fiyat|tr_number }}</p>
+                                        </div>
+                                        <span class="whitespace-nowrap text-sm font-black text-primary-600">₺{{ kalem.toplam|tr_number }}</span>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <div class="space-y-3">
+                                <div class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                                    <p class="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">Tutar Özeti</p>
+                                    <div class="space-y-2 text-sm">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-slate-500 dark:text-slate-400">Ara toplam</span>
+                                            <span class="font-bold text-slate-900 dark:text-white">₺{{ satis.ara_toplam|tr_number }}</span>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-slate-500 dark:text-slate-400">KDV</span>
+                                            <span class="font-bold text-slate-900 dark:text-white">₺{{ satis.kdv_tutar|tr_number }}</span>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-slate-500 dark:text-slate-400">İskonto</span>
+                                            <span class="font-bold text-slate-900 dark:text-white">₺{{ (satis.iskonto or 0)|tr_number }}</span>
+                                        </div>
+                                        <div class="flex items-center justify-between rounded-2xl bg-slate-900 px-3 py-2 text-white dark:bg-slate-800">
+                                            <span class="text-xs font-bold uppercase tracking-wide text-primary-200">Genel toplam</span>
+                                            <span class="text-base font-black">₺{{ satis.genel_toplam|tr_number }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                                    <p class="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">İşlemler</p>
+                                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                        {% if satis.durum == 'tamamlandi' %}
+                                        <button type="button" onclick="printDailySaleReceipt({{ satis.id }})" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
+                                            <span class="material-symbols-outlined text-base">print</span>
+                                            Fişi Yazdır
+                                        </button>
+                                        <form method="post" action="{{ url_for('gunluk_satislar') }}" data-confirm="{{ satis.fatura_no }} numaralı satışı iptal etmek istediğinize emin misiniz Stoklar geri eklenecektir." data-confirm-title="Satışı iptal et" data-confirm-ok="İptal et">
+                                            <input type="hidden" name="satis_id" value="{{ satis.id }}">
+                                            <button type="submit" class="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-bold text-rose-700 transition hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300 dark:hover:bg-rose-950/30">
+                                                <span class="material-symbols-outlined text-base">undo</span>
+                                                Satışı İptal Et
+                                            </button>
+                                        </form>
+                                        {% else %}
+                                        <div class="sm:col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500">
+                                            <span class="material-symbols-outlined text-base">block</span>
+                                            Bu kayıt iptal edildi
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+            <div id="dailySalesSearchEmpty" class="hidden rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-sm font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+                Aramaya uygun satış kaydı bulunamadı.
+            </div>
+        </div>
+        {% else %}
+        <div class="app-empty-state">
+            <span class="material-symbols-outlined app-empty-icon">receipt_long</span>
+            <h3 class="app-empty-title">Bugün henüz satış yapılmadı</h3>
+            <p class="app-empty-description">Kasiyer akışı POS ekranından başlar. Ürünleri sepete ekleyin, ödeme tipini seçin ve satış tamamlanınca fiş/yazdırma akışına geçin.</p>
+            <div class="app-empty-steps">
+                <span class="app-empty-step"><span class="material-symbols-outlined text-sm">looks_one</span>POS'u aç</span>
+                <span class="app-empty-step"><span class="material-symbols-outlined text-sm">looks_two</span>Ürün okut/seç</span>
+                <span class="app-empty-step"><span class="material-symbols-outlined text-sm">looks_3</span>Ödemeyi tamamla</span>
+            </div>
+            <div class="app-empty-actions">
+                <a href="{{ url_for('pos') }}" class="btn-primary">
+                    <span class="material-symbols-outlined">point_of_sale</span>
+                    POS'ta Satış Yap
+                </a>
+                <a href="{{ url_for('urun_ekle') }}" class="btn-secondary">
+                    <span class="material-symbols-outlined">add_box</span>
+                    Ürün Ekle
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends '_base.html' %}
+
+{% block title %}Destek Talepleri - Stok ve Cari Takip{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-3">
+    <span class="material-symbols-outlined text-primary-600">support_agent</span>
+    <div>
+        <h1 class="text-xl font-bold text-slate-900 dark:text-white">Destek Talepleri</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400">Sorularinizi ve teknik destek ihtiyaclarinizi buradan takip edin.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="mx-auto grid max-w-7xl gap-5 xl:grid-cols-[1fr_420px]">
+    <section class="space-y-4">
+        <div class="grid gap-3 sm:grid-cols-3">
+            <div class="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Toplam</p>
+                <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{{ tickets|length }}</p>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Acik</p>
+                <p class="mt-2 text-2xl font-bold text-primary-600">{{ open_count }}</p>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Kullanici</p>
+                <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{{ requester_count }}</p>
+            </div>
+        </div>
+
+        <div class="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                <h2 class="text-base font-bold text-slate-900 dark:text-white">Talep gecmisi</h2>
+            </div>
+            <div class="divide-y divide-slate-200 dark:divide-slate-800">
+                {% for ticket in tickets %}
+                <a href="{{ url_for('support_ticket_detail', ticket_id=ticket.id) }}" class="block px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-bold text-slate-900 dark:text-white">#{{ ticket.id }} {{ ticket.subject }}</p>
+                            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ category_labels.get(ticket.category, ticket.category) }} · {{ ticket.updated_at|datetime_tr if ticket.updated_at else '-' }}</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ priority_labels.get(ticket.priority, ticket.priority) }}</span>
+                            <span class="rounded-full bg-primary-50 px-2 py-1 text-xs font-semibold text-primary-700 dark:bg-primary-950/40 dark:text-primary-200">{{ status_labels.get(ticket.status, ticket.status) }}</span>
+                        </div>
+                    </div>
+                </a>
+                {% else %}
+                <p class="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">Henuz destek talebi yok.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <div class="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+        <h2 class="text-base font-bold text-slate-900 dark:text-white">Yeni destek talebi</h2>
+        <form method="post" enctype="multipart/form-data" class="mt-5 space-y-4">
+            <label class="block">
+                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Konu</span>
+                <input name="subject" required maxlength="180" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+            </label>
+            <div class="grid gap-3 sm:grid-cols-2">
+                <label class="block">
+                    <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Kategori</span>
+                    <select name="category" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                        {% for value, label in category_labels.items() %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Oncelik</span>
+                    <select name="priority" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                        {% for value, label in priority_labels.items() %}
+                        <option value="{{ value }}" {% if value == 'normal' %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+            </div>
+            <label class="block">
+                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Aciklama</span>
+                <textarea name="message" required rows="6" maxlength="4000" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-white"></textarea>
+            </label>
+            <label class="block rounded-lg border border-dashed border-slate-300 p-3 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                <span class="mb-2 flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">
+                    <span class="material-symbols-outlined text-lg">image</span>
+                    Ekran görüntüsü
+                </span>
+                <input type="file" name="screenshot" accept="image/png,image/jpeg,image/webp,image/gif" class="w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-primary-50 file:px-3 file:py-2 file:font-semibold file:text-primary-700">
+                <span class="mt-2 block text-xs text-slate-500">PNG, JPG, WEBP veya GIF. En fazla 5 MB.</span>
+            </label>
+            <button class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">
+                <span class="material-symbols-outlined text-lg">send</span>
+                Talep olustur
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

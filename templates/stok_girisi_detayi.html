@@ -1,0 +1,859 @@
+{% extends '_base.html' %}
+
+{% block title %}Stok Girişi - Stok ve Cari Takip{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-3">
+    <span class="material-symbols-outlined text-primary-600">move_to_inbox</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Stok Girişi</h1>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<div class="flex items-center gap-2">
+    <button onclick="showImportModal()" class="btn-secondary text-blue-700 dark:text-blue-300">
+        <span class="material-symbols-outlined">upload_file</span>
+        Toplu Stok
+    </button>
+    <button onclick="showBatchModal()" class="btn-secondary text-purple-700 dark:text-purple-300">
+        <span class="material-symbols-outlined">format_list_bulleted</span>
+        Toplu Giriş
+    </button>
+    <a href="{{ url_for('stok_cikis') }}" class="btn-secondary text-red-700 dark:text-red-300">
+        <span class="material-symbols-outlined">outbox</span>
+        Stok Çıkışı
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<datalist id="warehouseOptions">
+    {% for depo in depolar %}
+    <option value="{{ depo }}"></option>
+    {% endfor %}
+</datalist>
+<div class="max-w-6xl mx-auto space-y-6">
+    <!-- Header Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+            <div class="flex items-center gap-3">
+                <div class="size-12 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center">
+                    <span class="material-symbols-outlined text-green-600 text-2xl">inventory_2</span>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Toplam Ürün</p>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ toplam_urun or 0 }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+            <div class="flex items-center gap-3">
+                <div class="size-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
+                    <span class="material-symbols-outlined text-blue-600 text-2xl">trending_up</span>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Toplam Stok</p>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ toplam_stok or 0 }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+            <div class="flex items-center gap-3">
+                <div class="size-12 bg-orange-50 dark:bg-orange-900/20 rounded-xl flex items-center justify-center">
+                    <span class="material-symbols-outlined text-orange-600 text-2xl">warning</span>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Kritik Stok</p>
+                    <p class="text-2xl font-bold text-orange-600 dark:text-orange-400">{{ kritik_stok or 0 }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+            <div class="flex items-center gap-3">
+                <div class="size-12 bg-purple-50 dark:bg-purple-900/20 rounded-xl flex items-center justify-center">
+                    <span class="material-symbols-outlined text-purple-600 text-2xl">attach_money</span>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Stok Değeri</p>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-white">₺{{ (toplam_deger or 0)|tr_number }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl p-6 text-white">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-2xl font-bold mb-2">Hızlı Stok Girişi</h2>
+                <p class="text-primary-100 opacity-90">Barkod okutarak veya manuel olarak hızlı stok girişi yapın</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="{{ url_for('urun_ekle') }}" class="px-4 py-2 bg-white text-primary-600 rounded-lg font-medium hover:bg-primary-50 transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined">add</span>
+                    Ürün Ekle
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced Search and Filters -->
+    {% if not (import_preview and import_preview.rows) %}
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+        <form id="stockFiltersForm" method="get" class="flex flex-col lg:flex-row gap-4">
+            <!-- Search -->
+            <div class="flex-1">
+                <div class="relative">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                    <input type="text" id="searchInput" placeholder="Ürün adı, barkod veya kategori ara..." name="search" value="{{ search_query or '' }}"
+                           class="w-full pl-10 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500">
+                </div>
+            </div>
+            
+            <!-- Filters -->
+            <div class="flex gap-3">
+                <select id="categoryFilter" name="category" class="px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500/20">
+                    <option value="all" {% if (selected_category or 'all') == 'all' %}selected{% endif %}>Tüm Kategoriler</option>
+                    {% for category in kategoriler %}
+                    <option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>{{ category }}</option>
+                    {% endfor %}
+                </select>
+                
+                <select id="stockFilter" name="stock" class="px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500/20">
+                    <option value="all" {% if (selected_stock_status or 'all') == 'all' %}selected{% endif %}>Tüm Stoklar</option>
+                    <option value="critical" {% if selected_stock_status == 'critical' %}selected{% endif %}>Kritik Stok</option>
+                    <option value="low" {% if selected_stock_status == 'low' %}selected{% endif %}>Düşük Stok</option>
+                    <option value="normal" {% if selected_stock_status == 'normal' %}selected{% endif %}>Normal Stok</option>
+                    <option value="out" {% if selected_stock_status == 'out' %}selected{% endif %}>Stok Yok</option>
+                </select>
+                
+                <a href="{{ url_for('stok_giris') }}" class="px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors inline-flex items-center gap-2">
+                    <span class="material-symbols-outlined">refresh</span>
+                    Sıfırla
+                </a>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if import_preview and import_preview.rows %}
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+        <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Toplu Stok Ön İzleme</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    {{ import_preview.file_name or 'Yüklenen dosya' }} · {{ import_preview.rows|length }} satır inceleniyor
+                </p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button type="button" id="commitSelectedImportRowsBtn" class="btn-secondary text-emerald-700 dark:text-emerald-300">
+                    <span class="material-symbols-outlined">done_all</span>
+                    Seçilenleri Yükle
+                </button>
+                <button type="button" id="commitAllImportRowsBtn" class="btn-secondary text-blue-700 dark:text-blue-300">
+                    <span class="material-symbols-outlined">upload</span>
+                    Tümünü Yükle
+                </button>
+                <button type="button" id="clearImportPreviewBtn" class="btn-secondary text-rose-700 dark:text-rose-300">
+                    <span class="material-symbols-outlined">delete</span>
+                    Ön İzlemeyi Temizle
+                </button>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b border-slate-200 dark:border-slate-700">
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">
+                            <input type="checkbox" id="selectAllImportRows" class="rounded border-slate-300">
+                        </th>
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Satır</th>
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Ürün</th>
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Barkod</th>
+                        <th class="text-right py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Miktar</th>
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Depo</th>
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">İşlem</th>
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Durum</th>
+                        <th class="text-center py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Yükle</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                    {% for row in import_preview.rows %}
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors" data-import-row-id="{{ row.row_id }}">
+                        <td class="py-3 px-4">
+                            {% if row.valid %}
+                            <input type="checkbox" class="import-row-checkbox rounded border-slate-300" value="{{ row.row_id }}" checked>
+                            {% else %}
+                            <span class="material-symbols-outlined text-rose-500 text-base">block</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4 text-sm text-slate-500 dark:text-slate-400">#{{ row.source_row }}</td>
+                        <td class="py-3 px-4">
+                            <div class="space-y-1">
+                                <p class="font-medium text-slate-800 dark:text-slate-200">{{ row.urun_adi or '-' }}</p>
+                                {% if row.kategori %}
+                                <p class="text-xs text-slate-500 dark:text-slate-400">{{ row.kategori }}</p>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="py-3 px-4 text-sm text-slate-500 dark:text-slate-400">{{ row.barkod or '-' }}</td>
+                        <td class="py-3 px-4 text-right font-semibold text-slate-800 dark:text-slate-200">{{ row.miktar|tr_number }}</td>
+                        <td class="py-3 px-4 text-sm text-slate-600 dark:text-slate-300">{{ row.depo }}</td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium {% if row.action == 'create' %}bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300{% else %}bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300{% endif %}">
+                                {{ row.action_label }}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4">
+                            {% if row.valid %}
+                            <div class="space-y-1 text-xs text-slate-500 dark:text-slate-400">
+                                {% if row.product_id %}
+                                <p>Eşleşen ürün: {{ row.matched_product_name }}</p>
+                                {% endif %}
+                                <p>Yüklenecek stok: {{ row.miktar|tr_number }}</p>
+                            </div>
+                            {% else %}
+                            <span class="text-xs font-medium text-rose-600 dark:text-rose-300">{{ row.error }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            {% if row.valid %}
+                            <button type="button" onclick="commitSingleImportRow('{{ row.row_id }}')" class="p-2 text-primary-600 hover:text-primary-700 transition-colors" title="Bu satırı yükle">
+                                <span class="material-symbols-outlined text-base">upload</span>
+                            </button>
+                            {% else %}
+                            <span class="text-xs text-slate-400">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center">
+        <div class="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800">
+            <span class="material-symbols-outlined text-2xl text-slate-500 dark:text-slate-300">upload_file</span>
+        </div>
+        <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Toplu stok ön izleme alanı hazır</h3>
+        <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
+            Şablonu indirip doldurduktan sonra yükleyin. Yüklenen satırlar burada görünsün, sonra seçerek uygulamaya aktarın.
+        </p>
+        <div class="mt-5 flex justify-center">
+            <button type="button" onclick="showImportModal()" class="btn-primary">
+                <span class="material-symbols-outlined">upload</span>
+                Toplu Stok Yükle
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Batch Actions -->
+    <div id="batchActions" class="hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 z-40">
+        <div class="flex items-center gap-3">
+            <span class="text-sm text-slate-600 dark:text-slate-400">
+                <span id="selectedCount">0</span> ürün seçildi
+            </span>
+            <button onclick="showBatchModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center gap-2">
+                <span class="material-symbols-outlined">add</span>
+                Toplu Stok Ekle
+            </button>
+            <button onclick="clearSelection()" class="px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                Temizle
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Add Modal -->
+<div id="quickAddModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white dark:bg-slate-900 rounded-xl p-6 max-w-md w-full mx-4">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Hızlı Stok Ekle</h3>
+            <button onclick="closeQuickAddModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <form id="quickAddForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Ürün</label>
+                <input type="text" id="quickProductName" readonly class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Mevcut Stok</label>
+                <input type="text" id="quickCurrentStock" readonly class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Eklenecek Miktar *</label>
+                <input type="number" id="quickQuantity" step="0.01" min="0.01" required class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Depo</label>
+                <input type="text" id="quickDepot" list="warehouseOptions" value="{{ depolar[0] if depolar else '' }}" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Açıklama</label>
+                <textarea id="quickDescription" rows="3" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"></textarea>
+            </div>
+            <div class="flex gap-3 pt-4">
+                <button type="button" onclick="closeQuickAddModal()" class="flex-1 px-4 py-3 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    İptal
+                </button>
+                <button type="submit" class="flex-1 px-4 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors">
+                    Ekle
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Batch Add Modal -->
+<div id="batchAddModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white dark:bg-slate-900 rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Toplu Stok Ekle</h3>
+            <button onclick="closeBatchModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Seçili Ürünler</label>
+                <div id="selectedProductsList" class="max-h-40 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg p-3">
+                    <p class="text-slate-500 dark:text-slate-400">Henüz ürün seçilmedi</p>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Eklenecek Miktar *</label>
+                <input type="number" id="batchQuantity" step="0.01" min="0.01" required class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Depo</label>
+                <input type="text" id="batchDepot" list="warehouseOptions" value="{{ depolar[0] if depolar else '' }}" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Açıklama</label>
+                <textarea id="batchDescription" rows="3" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"></textarea>
+            </div>
+            <div class="flex gap-3 pt-4">
+                <button type="button" onclick="closeBatchModal()" class="flex-1 px-4 py-3 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    İptal
+                </button>
+                <button onclick="processBatchAdd()" class="flex-1 px-4 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors">
+                    Toplu Ekle
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Modal -->
+<div id="importModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white dark:bg-slate-900 rounded-xl p-6 max-w-md w-full mx-4">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Toplu Stok Yükleme</h3>
+            <button onclick="closeImportModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="space-y-4">
+            <div>
+                <div class="flex items-center justify-between gap-3 mb-2">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Dosya Seçin (CSV)</label>
+                    <a href="{{ url_for('stok_giris_sablon_csv') }}" download="stok-giris-sablonu.csv" data-skip-loading="true" class="text-sm text-primary-600 dark:text-primary-300 hover:underline">
+                        Şablonu İndir
+                    </a>
+                </div>
+                <div class="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-6 text-center">
+                    <span class="material-symbols-outlined text-4xl text-slate-400 mb-2">upload_file</span>
+                    <p class="text-slate-600 dark:text-slate-400 mb-2">Şablonu indirip Excel’de doldurun, CSV olarak kaydedip yükleyin</p>
+                    <input type="file" accept=".csv" class="hidden" id="importFile">
+                    <button type="button" onclick="document.getElementById('importFile').click()" class="px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors">
+                        Dosya Seç
+                    </button>
+                    <p id="importFileName" class="mt-3 text-sm text-slate-500 dark:text-slate-400">Henüz dosya seçilmedi</p>
+                </div>
+            </div>
+            <div class="text-xs text-slate-500 dark:text-slate-400">
+                <p>Şablon; barkod, ürün adı, kategori, birim, miktar, fiyatlar, kritik stok, depo ve açıklama alanlarını destekler.</p>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="closeImportModal()" class="flex-1 px-4 py-3 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    İptal
+                </button>
+                <button type="button" onclick="processImportFile()" class="flex-1 px-4 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors">
+                    Ön İzlemeyi Hazırla
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let selectedProducts = new Set();
+    let currentProductId = null;
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        setupEventListeners();
+        updateBatchActionsVisibility();
+    });
+
+    function setupEventListeners() {
+        const filtersForm = document.getElementById('stockFiltersForm');
+        const searchInput = document.getElementById('searchInput');
+        const categoryFilter = document.getElementById('categoryFilter');
+        const stockFilter = document.getElementById('stockFilter');
+        if (filtersForm && searchInput && categoryFilter && stockFilter) {
+            const submitFilters = debounce(() => {
+                filtersForm.requestSubmit();
+            }, 250);
+
+            searchInput.addEventListener('input', submitFilters);
+            categoryFilter.addEventListener('change', () => {
+                filtersForm.requestSubmit();
+            });
+            stockFilter.addEventListener('change', () => {
+                filtersForm.requestSubmit();
+            });
+        }
+        
+        // Select all checkbox
+        const selectAll = document.getElementById('selectAll');
+        if (selectAll) {
+            selectAll.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.product-checkbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                    const productId = checkbox.value;
+                    if (this.checked) {
+                        selectedProducts.add(productId);
+                    } else {
+                        selectedProducts.delete(productId);
+                    }
+                });
+                updateBatchActionsVisibility();
+            });
+        }
+        
+        // Individual checkboxes
+        document.querySelectorAll('.product-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const productId = this.value;
+                if (this.checked) {
+                    selectedProducts.add(productId);
+                } else {
+                    selectedProducts.delete(productId);
+                }
+                updateBatchActionsVisibility();
+                updateSelectAllCheckbox();
+            });
+        });
+
+        const selectAllImportRows = document.getElementById('selectAllImportRows');
+        if (selectAllImportRows) {
+            selectAllImportRows.addEventListener('change', function() {
+                document.querySelectorAll('.import-row-checkbox').forEach((checkbox) => {
+                    checkbox.checked = this.checked;
+                });
+            });
+        }
+
+        const commitSelectedButton = document.getElementById('commitSelectedImportRowsBtn');
+        if (commitSelectedButton) {
+            commitSelectedButton.addEventListener('click', function(event) {
+                event.preventDefault();
+                commitSelectedImportRows();
+            });
+        }
+
+        const commitAllButton = document.getElementById('commitAllImportRowsBtn');
+        if (commitAllButton) {
+            commitAllButton.addEventListener('click', function(event) {
+                event.preventDefault();
+                commitAllImportRows();
+            });
+        }
+
+        const clearPreviewButton = document.getElementById('clearImportPreviewBtn');
+        if (clearPreviewButton) {
+            clearPreviewButton.addEventListener('click', function(event) {
+                event.preventDefault();
+                clearImportPreview();
+            });
+        }
+        
+        // Quick add form
+        const quickAddForm = document.getElementById('quickAddForm');
+        if (quickAddForm) {
+            quickAddForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                processQuickAdd();
+            });
+        }
+
+        const importFile = document.getElementById('importFile');
+        if (importFile) {
+            importFile.addEventListener('change', function() {
+            const selectedFile = this.files && this.files[0] ? this.files[0].name : 'Henüz dosya seçilmedi';
+                document.getElementById('importFileName').textContent = selectedFile;
+            });
+        }
+    }
+
+    function debounce(callback, delay) {
+        let timeoutId;
+        return (...args) => {
+            window.clearTimeout(timeoutId);
+            timeoutId = window.setTimeout(() => callback(...args), delay);
+        };
+    }
+
+    async function fetchJson(url, options = {}) {
+        const response = await fetch(url, options);
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            const text = await response.text();
+            throw new Error(text || 'Sunucu JSON yerine farklı bir yanıt döndürdü.');
+        }
+        return response.json();
+    }
+
+    function toggleView() {
+        const tableView = document.getElementById('tableView');
+        const cardView = document.getElementById('cardView');
+        const viewToggle = document.getElementById('viewToggle');
+        
+        if (tableView.classList.contains('hidden')) {
+            tableView.classList.remove('hidden');
+            cardView.classList.add('hidden');
+            viewToggle.textContent = 'view_list';
+        } else {
+            tableView.classList.add('hidden');
+            cardView.classList.remove('hidden');
+            viewToggle.textContent = 'grid_view';
+        }
+    }
+
+    function quickAddStock(productId, productName, currentStock) {
+        currentProductId = productId;
+        document.getElementById('quickProductName').value = productName;
+        const unit = currentStock == 1 ? 'Adet' : 'Birim';
+        document.getElementById('quickCurrentStock').value = currentStock + ' ' + unit;
+        document.getElementById('quickQuantity').value = '';
+        document.getElementById('quickQuantity').focus();
+        
+        document.getElementById('quickAddModal').classList.remove('hidden');
+    }
+
+    function closeQuickAddModal() {
+        document.getElementById('quickAddModal').classList.add('hidden');
+        currentProductId = null;
+    }
+
+    function processQuickAdd() {
+        const quantity = parseFloat(document.getElementById('quickQuantity').value);
+        const depot = document.getElementById('quickDepot').value;
+        const description = document.getElementById('quickDescription').value;
+        
+        if (!quantity || quantity <= 0) {
+            showMessage('Geçerli bir miktar giriniz!', 'error');
+            return;
+        }
+        
+        // API call to add stock
+        fetch('/api/stock/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                product_id: currentProductId,
+                quantity: quantity,
+                depot: depot,
+                description: description
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                queueToastAfterReload('Stok başarıyla eklendi!', 'success');
+                closeQuickAddModal();
+                location.reload();
+            } else {
+                showNotification(data.message || 'Hata oluştu!', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('İşlem sırasında hata oluştu!', 'error');
+        });
+    }
+
+    function updateBatchActionsVisibility() {
+        const batchActions = document.getElementById('batchActions');
+        const selectedCount = document.getElementById('selectedCount');
+        if (!batchActions || !selectedCount) {
+            return;
+        }
+        
+        if (selectedProducts.size > 0) {
+            batchActions.classList.remove('hidden');
+            selectedCount.textContent = selectedProducts.size;
+        } else {
+            batchActions.classList.add('hidden');
+        }
+    }
+
+    function updateSelectAllCheckbox() {
+        const selectAll = document.getElementById('selectAll');
+        if (!selectAll) {
+            return;
+        }
+        const checkboxes = document.querySelectorAll('.product-checkbox');
+        const checkedCount = document.querySelectorAll('.product-checkbox:checked').length;
+        
+        selectAll.checked = checkboxes.length === checkedCount && checkedCount > 0;
+        selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+    }
+
+    function clearSelection() {
+        selectedProducts.clear();
+        document.querySelectorAll('.product-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        document.getElementById('selectAll').checked = false;
+        updateBatchActionsVisibility();
+    }
+
+    function showBatchModal() {
+        updateSelectedProductsList();
+        document.getElementById('batchAddModal').classList.remove('hidden');
+    }
+
+    function closeBatchModal() {
+        document.getElementById('batchAddModal').classList.add('hidden');
+    }
+
+    function updateSelectedProductsList() {
+        const list = document.getElementById('selectedProductsList');
+        if (selectedProducts.size === 0) {
+            list.innerHTML = '<p class="text-slate-500 dark:text-slate-400">Henüz ürün seçilmedi</p>';
+        } else {
+            const products = Array.from(selectedProducts).map(id => {
+                const row = document.querySelector(`[data-id="${id}"]`);
+        return row ? row.dataset.name : id;
+            });
+            list.innerHTML = products.join(', ');
+        }
+    }
+
+    function processBatchAdd() {
+        const quantity = parseFloat(document.getElementById('batchQuantity').value);
+        const depot = document.getElementById('batchDepot').value;
+        const description = document.getElementById('batchDescription').value;
+        
+        if (!quantity || quantity <= 0) {
+            showMessage('Geçerli bir miktar giriniz!', 'error');
+            return;
+        }
+        
+        if (selectedProducts.size === 0) {
+            showMessage('En az bir ürün seçmelisiniz!', 'error');
+            return;
+        }
+        
+        // API call for batch add
+        fetch('/api/stock/batch-add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                product_ids: Array.from(selectedProducts),
+                quantity: quantity,
+                depot: depot,
+                description: description
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                queueToastAfterReload(`${selectedProducts.size} ürün için stok başarıyla eklendi!`, 'success');
+                closeBatchModal();
+                clearSelection();
+                location.reload();
+            } else {
+                showNotification(data.message || 'Hata oluştu!', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('İşlem sırasında hata oluştu!', 'error');
+        });
+    }
+
+    function showImportModal() {
+        document.getElementById('importModal').classList.remove('hidden');
+    }
+
+    function closeImportModal() {
+        document.getElementById('importModal').classList.add('hidden');
+    }
+
+    function processImportFile() {
+        const input = document.getElementById('importFile');
+        const file = input.files && input.files[0];
+
+        if (!file) {
+            showNotification('Önce bir CSV dosyası seçin.', 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        fetchJson('/api/stock/import/preview', {
+            method: 'POST',
+            body: formData
+        })
+        .then(data => {
+            if (data.success) {
+                let message = `${data.preview_count || 0} satır ön izlemeye alındı.`;
+                if (data.invalid_count) {
+                    message += ` ${data.invalid_count} satır düzeltme istiyor.`;
+                }
+                queueToastAfterReload(message, 'success');
+                closeImportModal();
+                location.reload();
+            } else {
+                showNotification(data.message || 'İçe aktarma sırasında hata oluştu.', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Import error:', error);
+            showNotification('İçe aktarma sırasında hata oluştu.', 'error');
+        });
+    }
+
+    function getSelectedImportRows() {
+        return Array.from(document.querySelectorAll('.import-row-checkbox:checked')).map((checkbox) => checkbox.value);
+    }
+
+    function commitSelectedImportRows() {
+        const selectedRows = getSelectedImportRows();
+        if (!selectedRows.length) {
+            showNotification('Lütfen önce yüklenecek satırları işaretleyin.', 'error');
+            return;
+        }
+        commitImportRows(selectedRows);
+    }
+
+    function commitAllImportRows() {
+        const allRows = Array.from(document.querySelectorAll('.import-row-checkbox')).map((checkbox) => checkbox.value);
+        if (!allRows.length) {
+            showNotification('Yüklenecek geçerli satır bulunamadı.', 'error');
+            return;
+        }
+        commitImportRows(allRows);
+    }
+
+    function commitSingleImportRow(rowId) {
+        commitImportRows([rowId]);
+    }
+
+    function commitImportRows(rowIds) {
+        fetchJson('/api/stock/import/commit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ row_ids: rowIds })
+        })
+        .then(data => {
+            if (data.success) {
+                const message = `${data.created_count || 0} yeni, ${data.updated_count || 0} mevcut ürün yüklendi.`;
+                queueToastAfterReload(message, 'success');
+                location.reload();
+            } else {
+                showNotification(data.message || 'Toplu stok yüklenemedi.', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Commit error:', error);
+            showNotification('Toplu stok yüklenirken hata oluştu.', 'error');
+        });
+    }
+
+    function clearImportPreview() {
+        fetchJson('/api/stock/import/clear', {
+            method: 'POST'
+        })
+        .then(data => {
+            if (data.success) {
+                queueToastAfterReload(data.message || 'Ön izleme temizlendi.', 'success');
+                location.reload();
+            } else {
+                showNotification(data.message || 'Ön izleme temizlenemedi.', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Clear preview error:', error);
+            showNotification('Ön izleme temizlenirken hata oluştu.', 'error');
+        });
+    }
+
+    function editProduct(productId) {
+        window.location.href = `/urun/${productId}/duzenle`;
+    }
+
+    function viewHistory(productId) {
+        window.location.href = `/urun/${productId}`;
+    }
+
+    // Note: Use global showMessage() from _base.html for notifications
+
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Ignore when typing in input fields
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            return;
+        }
+        
+        // Ctrl+A to select all
+        if (e.ctrlKey && e.key === 'a') {
+            e.preventDefault();
+            const selectAll = document.getElementById('selectAll');
+            if (selectAll) {
+                selectAll.click();
+            }
+        }
+        
+        // Ctrl+I to import
+        if (e.ctrlKey && e.key === 'i') {
+            e.preventDefault();
+            showImportModal();
+        }
+        
+        // Ctrl+B to batch add
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (selectedProducts.size > 0) {
+                showBatchModal();
+            }
+        }
+        
+        // Escape to close modals
+        if (e.key === 'Escape') {
+            closeQuickAddModal();
+            closeBatchModal();
+            closeImportModal();
+        }
+    });
+</script>
+{% endblock %}
+

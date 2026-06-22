@@ -1,0 +1,2480 @@
+<!DOCTYPE html>
+<html lang="tr" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% set _site = site_config() %}
+    {% set site_name = _site.get('name', 'StokCari') %}
+    {% set platform_name = _site.get('platform_name', site_name) %}
+    {% set site_description = _site.get('description', '') %}
+    {% set canonical_base = (_site.get('url') or request.host_url.rstrip('/')) %}
+    {% set canonical_url = canonical_base ~ request.path %}
+    {% set og_image = (_site.get('og_image') or (canonical_base ~ '/static/og.svg')) %}
+    {# Pilot launch: keep pages out of search indexes until SEO is enabled. #}
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="canonical" href="{{ canonical_url }}">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+    <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+    <meta name="description" content="{{ site_description }}">
+    <meta property="og:site_name" content="{{ site_name }}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ canonical_url }}">
+    <meta property="og:title" content="{% block og_title %}{{ self.title()|striptags }}{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}{{ site_description }}{% endblock %}">
+    <meta property="og:image" content="{{ og_image }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ self.title()|striptags }}">
+    <meta name="twitter:description" content="{{ site_description }}">
+    <meta name="twitter:image" content="{{ og_image }}">
+    <title>{% block title %}{{ platform_name }}{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                            950: '#172554',
+                        },
+                        'background-light': '#f5f6f8',
+                        'background-dark': '#0f1623',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        [xl-cloak] { display: none !important; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .active-nav {
+            background-color: #eff6ff;
+            color: #2563eb;
+            border-right: 4px solid #2563eb !important;
+            position: relative;
+            font-weight: 600 !important;
+            box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.1);
+        }
+        .dark .active-nav {
+            background-color: rgba(30, 58, 138, 0.2);
+            color: #60a5fa;
+            border-right: 4px solid #2563eb !important;
+            font-weight: 600 !important;
+            box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.2);
+        }
+        /* Ensure active nav is visible in collapsed sidebar */
+        .sidebar-collapsed .active-nav {
+            background-color: #eff6ff !important;
+            color: #2563eb !important;
+            border-right: 4px solid #2563eb !important;
+            font-weight: 600 !important;
+            box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.1) !important;
+        }
+        .dark .sidebar-collapsed .active-nav {
+            background-color: rgba(30, 58, 138, 0.2) !important;
+            color: #60a5fa !important;
+            border-right: 4px solid #2563eb !important;
+            font-weight: 600 !important;
+            box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.2) !important;
+        }
+        /* Additional enhancement for better visibility */
+        .nav-item.active-nav:hover {
+            background-color: #dbeafe !important;
+        }
+        .dark .nav-item.active-nav:hover {
+            background-color: rgba(30, 58, 138, 0.3) !important;
+        }
+        /* Teklif Formu Baz Alınarak Optimize Font Standardizasyonu */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-feature-settings: 'kern', 'liga', 'calt';
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* Optimize Karakter Standardizasyonu */
+        body {
+            font-variant-numeric: tabular-nums;
+            font-variant-ligatures: common-ligatures;
+            letter-spacing: 0em;
+            line-height: 1.5;
+        }
+        
+        /* Optimize Başlık Standardizasyonu */
+        h1 { font-size: 2rem; font-weight: 700; line-height: 1.2; }
+        h2 { font-size: 1.5rem; font-weight: 600; line-height: 1.3; }
+        h3 { font-size: 1.25rem; font-weight: 600; line-height: 1.4; }
+        h4 { font-size: 1.125rem; font-weight: 600; line-height: 1.4; }
+        h5 { font-size: 1rem; font-weight: 500; line-height: 1.5; }
+        h6 { font-size: 0.875rem; font-weight: 500; line-height: 1.5; }
+        
+        /* Optimize Metin Standardizasyonu */
+        p { font-size: 0.875rem; font-weight: 400; line-height: 1.5; }
+        .text-xs { font-size: 0.75rem; font-weight: 400; line-height: 1.4; }
+        .text-sm { font-size: 0.875rem; font-weight: 400; line-height: 1.5; }
+        .text-base { font-size: 1rem; font-weight: 400; line-height: 1.5; }
+        .text-lg { font-size: 1.125rem; font-weight: 400; line-height: 1.5; }
+        .text-xl { font-size: 1.25rem; font-weight: 400; line-height: 1.5; }
+        .text-2xl { font-size: 1.5rem; font-weight: 400; line-height: 1.4; }
+        .text-3xl { font-size: 1.875rem; font-weight: 400; line-height: 1.3; }
+        
+        /* Optimize Form Element Standardizasyonu */
+        button, .btn, input, select, textarea {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-weight: 400;
+            letter-spacing: 0em;
+        }
+        
+        /* Optimize Tablo Metin Standardizasyonu */
+        th { font-weight: 600; font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; }
+        td { font-weight: 400; font-size: 0.875rem; letter-spacing: 0em; }
+        
+        /* Optimize Form Element Standardizasyonu */
+        input, select, textarea {
+            font-size: 0.875rem;
+            line-height: 1.5;
+            letter-spacing: 0em;
+        }
+        
+        /* Material Symbols Standardizasyonu */
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            letter-spacing: normal;
+        }
+        
+        /* Optimize Rakam ve Fiyat Standardizasyonu */
+        .price, .amount, .quantity, .number {
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: 'tnum';
+            letter-spacing: 0em;
+        }
+        
+        .price {
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+        
+        .amount {
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+        
+        .quantity {
+            font-weight: 400;
+            font-size: 0.875rem;
+        }
+        
+        /* Optimize Para Birimi Standardizasyonu */
+        .currency {
+            font-weight: 400;
+            font-size: 0.75rem;
+            opacity: 0.8;
+            margin-left: 0.125rem;
+        }
+        
+        /* Optimize Tarih ve Saat Standardizasyonu */
+        .date, .time, .datetime {
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: 'tnum';
+            font-weight: 400;
+            font-size: 0.75rem;
+            letter-spacing: 0em;
+        }
+        
+        /* Optimize İstatistik ve Metrik Standardizasyonu */
+        .stat-value {
+            font-variant-numeric: tabular-nums;
+            font-weight: 700;
+            font-size: 1.5rem;
+            letter-spacing: 0em;
+        }
+        
+        .stat-label {
+            font-weight: 400;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            opacity: 0.7;
+        }
+        
+        /* Optimize Telefon ve ID Standardizasyonu */
+        .phone, .id-number {
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: 'tnum';
+            font-weight: 400;
+            font-size: 0.875rem;
+            letter-spacing: 0em;
+        }
+        
+        /* Optimize Barkod Standardizasyonu */
+        .barcode {
+            font-family: 'Courier New', monospace;
+            font-variant-numeric: tabular-nums;
+            font-weight: 600;
+            font-size: 0.875rem;
+            letter-spacing: 0.05em;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .card { 
+            background-color: white; 
+            border-radius: 0.75rem; 
+            border: 1px solid #e2e8f0; 
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        .dark .card {
+            background-color: #1e293b;
+            border-color: #334155;
+        }
+        .btn-primary { 
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background-color: #2563eb;
+            color: white;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover { background-color: #1d4ed8; }
+        .btn-primary:active { transform: scale(0.95); }
+
+        .btn-secondary { 
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background-color: white;
+            border: 1px solid #e2e8f0;
+            color: #334155;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .dark .btn-secondary {
+            background-color: #1e293b;
+            border-color: #334155;
+            color: #cbd5e1;
+        }
+        .btn-secondary:hover { background-color: #f8fafc; }
+        .dark .btn-secondary:hover { background-color: #334155; }
+
+        .toast {
+            min-width: 220px;
+            max-width: 320px;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 18px 50px rgba(15, 23, 42, 0.15);
+            color: #fff;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateY(-10px);
+            animation: toast-slide-in 0.32s ease-out forwards;
+        }
+
+        .toast-info { background-color: #2563eb; }
+        .toast-success { background-color: #16a34a; }
+        .toast-error { background-color: #dc2626; }
+        .toast-warning { background-color: #d97706; }
+
+        @keyframes toast-slide-in {
+            from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .toast-hide {
+            animation: toast-slide-out 0.28s ease-in forwards;
+        }
+
+        @keyframes toast-slide-out {
+            from { opacity: 1; transform: translateY(0) scale(1); }
+            to { opacity: 0; transform: translateY(-12px) scale(0.98); }
+        }
+
+        .form-input { 
+            width: 100%;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #cbd5e1;
+            background-color: white;
+            color: #0f172a;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .dark .form-input {
+            border-color: #334155;
+            background-color: #1e293b;
+            color: white;
+        }
+        .form-input:focus {
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+        }
+        .form-label { 
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 0.375rem;
+        }
+        .dark .form-label { color: #cbd5e1; }
+
+        /* Unified application design system (normal app screens only) */
+        .app-shell-standard {
+            --app-radius: 1rem;
+            --app-radius-sm: 0.75rem;
+            --app-border: #e2e8f0;
+            --app-surface: rgba(255, 255, 255, 0.96);
+            --app-surface-soft: rgba(248, 250, 252, 0.86);
+            --app-text-muted: #64748b;
+            --app-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+            --app-shadow-hover: 0 18px 45px rgba(15, 23, 42, 0.10);
+        }
+
+        .dark .app-shell-standard {
+            --app-border: #1e293b;
+            --app-surface: rgba(15, 23, 42, 0.96);
+            --app-surface-soft: rgba(30, 41, 59, 0.64);
+            --app-text-muted: #94a3b8;
+            --app-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+            --app-shadow-hover: 0 22px 48px rgba(0, 0, 0, 0.30);
+        }
+
+        .app-shell-standard .app-content {
+            animation: app-page-in 0.22s ease-out both;
+        }
+
+        .app-shell-standard.page-leaving .app-content {
+            opacity: 0;
+            transform: translateY(6px);
+            transition: opacity 0.16s ease, transform 0.16s ease;
+        }
+
+        .app-shell-standard.is-loading .app-content {
+            filter: saturate(0.96);
+        }
+
+        .app-shell-standard .app-page-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 130;
+            width: 100%;
+            height: 3px;
+            pointer-events: none;
+            overflow: hidden;
+            background: transparent;
+            opacity: 0;
+            transition: opacity 160ms ease;
+        }
+
+        .app-shell-standard .app-page-progress.is-active {
+            opacity: 1;
+        }
+
+        .app-shell-standard .app-page-progress::before {
+            content: '';
+            display: block;
+            width: 38%;
+            height: 100%;
+            border-radius: 9999px;
+            background: linear-gradient(90deg, transparent, #2563eb, #38bdf8);
+            animation: app-progress-slide 920ms cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            box-shadow: 0 0 18px rgba(37, 99, 235, 0.45);
+        }
+
+        @keyframes app-progress-slide {
+            from { transform: translateX(-110%); }
+            to { transform: translateX(270%); }
+        }
+
+        @keyframes app-page-in {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .app-shell-standard .card,
+        .app-shell-standard [class*="rounded-xl"][class*="border"][class*="bg-white"],
+        .app-shell-standard [class*="rounded-2xl"][class*="border"][class*="bg-white"] {
+            border-color: var(--app-border) !important;
+            background: var(--app-surface) !important;
+            border-radius: var(--app-radius) !important;
+            box-shadow: var(--app-shadow);
+        }
+
+        .app-shell-standard .card:hover,
+        .app-shell-standard [class*="rounded-xl"][class*="border"][class*="bg-white"]:hover,
+        .app-shell-standard [class*="rounded-2xl"][class*="border"][class*="bg-white"]:hover {
+            box-shadow: var(--app-shadow-hover);
+        }
+
+        .app-shell-standard .btn-primary,
+        .app-shell-standard a.btn-primary,
+        .app-shell-standard button.btn-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            min-height: 2.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            font-weight: 700;
+            box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
+        }
+
+        .app-shell-standard .btn-secondary,
+        .app-shell-standard a.btn-secondary,
+        .app-shell-standard button.btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            min-height: 2.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            font-weight: 700;
+            background: var(--app-surface);
+            border-color: var(--app-border);
+        }
+
+        .app-shell-standard .app-header-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.5rem;
+            min-width: 0;
+        }
+
+        .app-shell-standard .app-header-actions > * {
+            flex: 0 0 auto;
+        }
+
+        @media (max-width: 640px) {
+            .app-shell-standard .app-header-actions .btn-primary,
+            .app-shell-standard .app-header-actions .btn-secondary {
+                min-height: 2.25rem;
+                padding: 0.5rem 0.75rem;
+                font-size: 0.8125rem;
+            }
+
+            .app-shell-standard .app-header-actions .material-symbols-outlined {
+                font-size: 1.125rem;
+            }
+        }
+
+        .app-shell-standard .btn-danger {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            min-height: 2.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            background: #fff1f2;
+            color: #be123c;
+            border: 1px solid #fecdd3;
+            font-weight: 700;
+            transition: all 0.18s ease;
+        }
+
+        .dark .app-shell-standard .btn-danger {
+            background: rgba(136, 19, 55, 0.18);
+            color: #fda4af;
+            border-color: rgba(244, 63, 94, 0.25);
+        }
+
+        .app-shell-standard .form-input,
+        .app-shell-standard input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+        .app-shell-standard select,
+        .app-shell-standard textarea {
+            border-radius: 0.75rem !important;
+            border-color: #cbd5e1;
+            background: rgba(255, 255, 255, 0.96);
+            color: var(--app-text);
+            min-height: 2.5rem;
+            transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, transform 0.16s ease;
+        }
+
+        .dark .app-shell-standard .form-input,
+        .dark .app-shell-standard input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+        .dark .app-shell-standard select,
+        .dark .app-shell-standard textarea {
+            background: rgba(15, 23, 42, 0.92);
+            border-color: #334155;
+            color: #f8fafc;
+        }
+
+        .app-shell-standard textarea {
+            min-height: 6rem;
+            resize: vertical;
+        }
+
+        .app-shell-standard input::placeholder,
+        .app-shell-standard textarea::placeholder {
+            color: #94a3b8;
+        }
+
+        .app-shell-standard label:not(.relative):not(.cursor-pointer):not([class*="peer-checked"]) {
+            color: #334155;
+            font-size: 0.875rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        .dark .app-shell-standard label:not(.relative):not(.cursor-pointer):not([class*="peer-checked"]) {
+            color: #cbd5e1;
+        }
+
+        .app-shell-standard label .material-symbols-outlined {
+            color: #2563eb;
+            font-size: 1.125rem;
+        }
+
+        .app-shell-standard label .text-red-500,
+        .app-shell-standard label:has(+ input[required])::after,
+        .app-shell-standard label:has(+ select[required])::after,
+        .app-shell-standard label:has(+ textarea[required])::after {
+            color: #e11d48;
+        }
+
+        .app-shell-standard input:focus,
+        .app-shell-standard select:focus,
+        .app-shell-standard textarea:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16) !important;
+            outline: none !important;
+        }
+
+        .app-shell-standard input:disabled,
+        .app-shell-standard select:disabled,
+        .app-shell-standard textarea:disabled,
+        .app-shell-standard input[readonly],
+        .app-shell-standard textarea[readonly] {
+            background: #f1f5f9;
+            color: #64748b;
+            cursor: not-allowed;
+        }
+
+        .dark .app-shell-standard input:disabled,
+        .dark .app-shell-standard select:disabled,
+        .dark .app-shell-standard textarea:disabled,
+        .dark .app-shell-standard input[readonly],
+        .dark .app-shell-standard textarea[readonly] {
+            background: rgba(30, 41, 59, 0.78);
+            color: #94a3b8;
+        }
+
+        .app-shell-standard form [class*="border-t"][class*="pt-"],
+        .app-shell-standard .form-actions {
+            border-color: var(--app-border) !important;
+        }
+
+        .app-shell-standard .app-form-actions {
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 0.75rem;
+            padding-top: 1.5rem;
+            margin-top: 1.5rem;
+            border-top: 1px solid var(--app-border);
+        }
+
+        .app-shell-standard .app-form-actions .btn-primary,
+        .app-shell-standard .app-form-actions .btn-secondary,
+        .app-shell-standard .app-form-actions button[type="submit"],
+        .app-shell-standard .app-form-actions a {
+            justify-content: center;
+            min-height: 2.875rem;
+        }
+
+        @media (min-width: 640px) {
+            .app-shell-standard .app-form-actions {
+                flex-direction: row;
+                justify-content: flex-end;
+                align-items: center;
+            }
+
+            .app-shell-standard .app-form-actions .btn-primary,
+            .app-shell-standard .app-form-actions .btn-secondary,
+            .app-shell-standard .app-form-actions button[type="submit"],
+            .app-shell-standard .app-form-actions a {
+                min-width: 10rem;
+            }
+        }
+
+        .app-shell-standard form button[type="submit"]:not(.btn-primary):not(.btn-secondary):not(.btn-danger),
+        .app-shell-standard form a[href]:has(+ button[type="submit"]),
+        .app-shell-standard form button[type="button"]:has(+ button[type="submit"]) {
+            min-height: 2.5rem;
+            border-radius: 0.75rem;
+            font-weight: 700;
+        }
+
+        .app-shell-standard form button[type="submit"]:not(.btn-primary):not(.btn-secondary):not(.btn-danger) {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            background: #2563eb;
+            color: #ffffff;
+            box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
+        }
+
+        .app-shell-standard .app-filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            border-bottom: 1px solid var(--app-border);
+            background: linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(255, 255, 255, 0.72));
+        }
+
+        .dark .app-shell-standard .app-filter-bar {
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.54));
+        }
+
+        .app-shell-standard .app-filter-search {
+            position: relative;
+            min-width: min(100%, 18rem);
+            flex: 1 1 18rem;
+        }
+
+        .app-shell-standard .app-filter-search .material-symbols-outlined {
+            pointer-events: none;
+            color: #94a3b8;
+            font-size: 1.125rem;
+        }
+
+        .app-shell-standard .app-filter-controls {
+            display: flex;
+            flex: 0 1 auto;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .app-shell-standard .app-filter-controls select,
+        .app-shell-standard .app-filter-controls input,
+        .app-shell-standard .app-filter-controls button,
+        .app-shell-standard .app-filter-controls a {
+            min-height: 2.5rem;
+        }
+
+        @media (max-width: 640px) {
+            .app-shell-standard .app-filter-bar {
+                align-items: stretch;
+            }
+
+            .app-shell-standard .app-filter-search,
+            .app-shell-standard .app-filter-controls,
+            .app-shell-standard .app-filter-controls > * {
+                width: 100%;
+            }
+        }
+
+        .app-shell-standard .overflow-x-auto:has(> table) {
+            border-radius: var(--app-radius);
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 transparent;
+        }
+
+        .app-shell-standard table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            color: var(--app-text);
+            font-size: 0.875rem;
+        }
+
+        .app-shell-standard thead {
+            background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(241, 245, 249, 0.92));
+        }
+
+        .dark .app-shell-standard thead {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.92));
+        }
+
+        .app-shell-standard th,
+        .app-shell-standard table th {
+            border-bottom: 1px solid var(--app-border);
+            color: var(--app-text-muted) !important;
+            font-size: 0.75rem !important;
+            font-weight: 800 !important;
+            letter-spacing: 0.04em;
+            line-height: 1.2;
+            padding: 0.875rem 1rem !important;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .app-shell-standard td,
+        .app-shell-standard table td {
+            border-bottom: 1px solid rgba(226, 232, 240, 0.86);
+            padding: 0.95rem 1rem !important;
+            vertical-align: middle;
+        }
+
+        .dark .app-shell-standard td,
+        .dark .app-shell-standard table td {
+            border-bottom-color: rgba(51, 65, 85, 0.82);
+        }
+
+        .app-shell-standard tbody tr {
+            transition: background 0.16s ease, box-shadow 0.16s ease;
+        }
+
+        .app-shell-standard tbody tr:hover {
+            background: rgba(59, 130, 246, 0.045);
+        }
+
+        .dark .app-shell-standard tbody tr:hover {
+            background: rgba(59, 130, 246, 0.09);
+        }
+
+        .app-shell-standard tbody tr:last-child > td {
+            border-bottom-color: transparent;
+        }
+
+        .app-shell-standard td:first-child,
+        .app-shell-standard th:first-child {
+            padding-left: 1.25rem !important;
+        }
+
+        .app-shell-standard td:last-child,
+        .app-shell-standard th:last-child {
+            padding-right: 1.25rem !important;
+        }
+
+        .app-shell-standard table .material-symbols-outlined {
+            vertical-align: middle;
+        }
+
+        .app-shell-standard td[colspan] {
+            color: var(--app-text-muted);
+            font-weight: 600;
+        }
+
+        .app-shell-standard .status-pill,
+        .app-shell-standard [class*="rounded-full"][class*="text-xs"] {
+            font-weight: 800;
+            letter-spacing: -0.01em;
+        }
+
+        .app-shell-standard .app-empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 18rem;
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--app-text-muted);
+            border-radius: 1rem;
+            background:
+                radial-gradient(circle at top, rgba(59, 130, 246, 0.08), transparent 34rem),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 250, 252, 0.72));
+        }
+
+        .dark .app-shell-standard .app-empty-state {
+            background:
+                radial-gradient(circle at top, rgba(59, 130, 246, 0.14), transparent 34rem),
+                linear-gradient(180deg, rgba(15, 23, 42, 0.86), rgba(2, 6, 23, 0.55));
+        }
+
+        .app-shell-standard .app-empty-state--compact {
+            min-height: 0;
+            padding: 2.25rem 1rem;
+        }
+
+        .app-shell-standard .app-empty-state .material-symbols-outlined:first-child,
+        .app-shell-standard .app-empty-icon {
+            display: inline-flex;
+            width: 3.5rem;
+            height: 3.5rem;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            background: #f1f5f9;
+            color: #94a3b8;
+            font-size: 2rem;
+        }
+
+        .dark .app-shell-standard .app-empty-state .material-symbols-outlined:first-child,
+        .dark .app-shell-standard .app-empty-icon {
+            background: #1e293b;
+            color: #64748b;
+        }
+
+        .app-shell-standard .app-empty-title {
+            margin-top: 1rem;
+            color: #0f172a;
+            font-size: 1rem;
+            font-weight: 900;
+            letter-spacing: -0.02em;
+        }
+
+        .dark .app-shell-standard .app-empty-title {
+            color: #f8fafc;
+        }
+
+        .app-shell-standard .app-empty-description {
+            margin-top: 0.5rem;
+            max-width: 28rem;
+            color: var(--app-text-muted);
+            font-size: 0.875rem;
+            line-height: 1.6;
+        }
+
+        .app-shell-standard .app-empty-actions {
+            margin-top: 1.25rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .app-shell-standard .app-empty-steps {
+            margin-top: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.5rem;
+            max-width: 42rem;
+        }
+
+        .app-shell-standard .app-empty-step {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            border-radius: 9999px;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            background: rgba(255, 255, 255, 0.78);
+            padding: 0.4rem 0.7rem;
+            color: #475569;
+            font-size: 0.75rem;
+            font-weight: 800;
+        }
+
+        .dark .app-shell-standard .app-empty-step {
+            border-color: rgba(51, 65, 85, 0.9);
+            background: rgba(15, 23, 42, 0.72);
+            color: #cbd5e1;
+        }
+
+        .app-confirm-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 120;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: rgb(15 23 42 / 0.62);
+            backdrop-filter: blur(8px);
+        }
+
+        .app-confirm-backdrop.is-open {
+            display: flex;
+        }
+
+        .app-confirm-dialog {
+            width: min(100%, 28rem);
+            border-radius: 1.25rem;
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            box-shadow: 0 24px 80px rgb(15 23 42 / 0.28);
+            transform: translateY(0.5rem) scale(0.98);
+            opacity: 0;
+            transition: transform 180ms ease, opacity 180ms ease;
+        }
+
+        .app-confirm-backdrop.is-open .app-confirm-dialog {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+
+        .dark .app-confirm-dialog {
+            border-color: #1e293b;
+            background: #0f172a;
+        }
+
+        .app-confirm-icon {
+            display: inline-flex;
+            width: 3rem;
+            height: 3rem;
+            align-items: center;
+            justify-content: center;
+            border-radius: 1rem;
+            background: #fff7ed;
+            color: #ea580c;
+        }
+
+        .dark .app-confirm-icon {
+            background: rgb(154 52 18 / 0.22);
+            color: #fb923c;
+        }
+
+        .app-shell-standard .app-section-title {
+            color: #0f172a;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+
+        .dark .app-shell-standard .app-section-title {
+            color: #f8fafc;
+        }
+
+        .app-shell-standard .nav-item,
+        .app-shell-standard a,
+        .app-shell-standard button {
+            transition-duration: 180ms;
+        }
+
+        /* Collapsible Sidebar Styles */
+        .sidebar-collapsed {
+            width: 5rem !important;
+            overflow-x: hidden;
+        }
+        .sidebar-collapsed .sidebar-text {
+            opacity: 0;
+            visibility: hidden;
+        }
+        .sidebar-collapsed .sidebar-logo-text {
+            opacity: 0;
+            visibility: hidden;
+            display: none;
+        }
+        .sidebar-collapsed .nav-item {
+            justify-content: center;
+        }
+        .sidebar-collapsed .sidebar-nav {
+            overflow-x: hidden;
+        }
+        .sidebar-collapsed .nav-item span:not(.material-symbols-outlined) {
+            display: none;
+        }
+        .sidebar-collapsed .user-info {
+            display: none;
+        }
+        .sidebar-collapsed .sidebar-toggle {
+            justify-content: center;
+        }
+        .sidebar-collapsed .sidebar-header {
+            justify-content: center;
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+        }
+        .sidebar-collapsed .sidebar-logo-container {
+            display: none;
+        }
+        
+        /* Smooth transitions for sidebar text */
+        .sidebar-text, .sidebar-logo-text {
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        
+        .nav-item {
+            transition: all 0.3s ease-in-out;
+        }
+        
+        /* Loading States */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+        
+        .dark .skeleton {
+            background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+        
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        .skeleton-text {
+            height: 1rem;
+            border-radius: 0.25rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .skeleton-title {
+            height: 1.5rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+        }
+        
+        .skeleton-card {
+            height: 6rem;
+            border-radius: 0.5rem;
+        }
+        
+        .skeleton-button {
+            height: 2.5rem;
+            border-radius: 0.5rem;
+            width: 8rem;
+        }
+        
+        /* Loading Spinner */
+        .loading-spinner {
+            width: 2rem;
+            height: 2rem;
+            border: 3px solid #e5e7eb;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        .dark .loading-spinner {
+            border-color: #4b5563;
+            border-top-color: #60a5fa;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Button Loading State */
+        .btn-loading {
+            position: relative;
+            color: transparent !important;
+            pointer-events: none;
+        }
+        
+        .btn-loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 1rem;
+            height: 1rem;
+            margin: -0.5rem 0 0 -0.5rem;
+            border: 2px solid currentColor;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.6s linear infinite;
+        }
+        
+        /* Page Loading Overlay */
+        .page-loading {
+            position: fixed;
+            inset: 0;
+            background: rgba(248, 250, 252, 0.72);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 125;
+            opacity: 0;
+            animation: app-loading-in 180ms ease forwards;
+        }
+        
+        .dark .page-loading {
+            background: rgba(2, 6, 23, 0.72);
+        }
+
+        .page-loading-card {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+            border: 1px solid var(--app-border);
+            border-radius: 1rem;
+            background: var(--app-surface);
+            padding: 0.875rem 1rem;
+            box-shadow: var(--app-shadow-hover);
+            color: #334155;
+        }
+
+        .dark .page-loading-card {
+            color: #cbd5e1;
+        }
+
+        @keyframes app-loading-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .app-shell-standard .app-content,
+            .app-shell-standard.page-leaving .app-content,
+            .app-shell-standard .app-page-progress::before,
+            .page-loading {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+        
+        /* Keyboard Shortcuts */
+        .keyboard-shortcuts-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        
+        .keyboard-shortcuts-content {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        
+        .dark .keyboard-shortcuts-content {
+            background: #1e293b;
+        }
+        
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .dark .shortcut-item {
+            border-bottom-color: #374151;
+        }
+        
+        .shortcut-item:last-child {
+            border-bottom: none;
+        }
+        
+        .shortcut-keys {
+            display: flex;
+            gap: 0.25rem;
+        }
+        
+        .shortcut-key {
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            padding: 0.25rem 0.5rem;
+            font-family: monospace;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #374151;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        
+        .dark .shortcut-key {
+            background: #374151;
+            border-color: #4b5563;
+            color: #e5e7eb;
+        }
+        
+        .shortcut-key.modifier {
+            background: #3b82f6;
+            color: white;
+            border-color: #2563eb;
+        }
+        
+        .dark .shortcut-key.modifier {
+            background: #2563eb;
+            border-color: #1d4ed8;
+        }
+        
+        /* Tooltip for collapsed sidebar */
+        .sidebar-collapsed .nav-item {
+            position: relative;
+        }
+        
+        .sidebar-collapsed .nav-item::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+            margin-left: 0.5rem;
+            background: #1e293b;
+            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .sidebar-collapsed .sidebar-nav .nav-item::after {
+            display: none;
+        }
+        
+        .sidebar-collapsed .nav-item:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
+
+    {% if config.get('WTF_CSRF_ENABLED', True) %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script>
+        (function () {
+            function getCsrfToken() {
+                var el = document.querySelector('meta[name="csrf-token"]');
+                return el ? el.getAttribute('content') : null;
+            }
+
+            function ensureFormTokens() {
+                var token = getCsrfToken();
+                if (!token) return;
+                document.querySelectorAll('form').forEach(function (form) {
+                    var method = (form.getAttribute('method') || 'get').toLowerCase();
+                    if (method !== 'post') return;
+                    if (form.querySelector('input[name="csrf_token"]')) return;
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'csrf_token';
+                    input.value = token;
+                    form.appendChild(input);
+                });
+            }
+
+            function patchFetch() {
+                if (!window.fetch) return;
+                var originalFetch = window.fetch.bind(window);
+                window.fetch = function (input, init) {
+                    init = init || {};
+                    var method = (init.method || (input && input.method) || 'GET').toUpperCase();
+                    if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+                        var token = getCsrfToken();
+                        if (token) {
+                            init.headers = init.headers || {};
+                            if (init.headers instanceof Headers) {
+                                if (!init.headers.has('X-CSRFToken')) init.headers.set('X-CSRFToken', token);
+                            } else if (Array.isArray(init.headers)) {
+                                init.headers.push(['X-CSRFToken', token]);
+                            } else {
+                                if (!init.headers['X-CSRFToken']) init.headers['X-CSRFToken'] = token;
+                            }
+                        }
+                    }
+                    return originalFetch(input, init);
+                };
+            }
+
+            function patchXhr() {
+                if (!window.XMLHttpRequest) return;
+                var open = XMLHttpRequest.prototype.open;
+                var send = XMLHttpRequest.prototype.send;
+                XMLHttpRequest.prototype.open = function (method) {
+                    this.__csrfMethod = (method || 'GET').toUpperCase();
+                    return open.apply(this, arguments);
+                };
+                XMLHttpRequest.prototype.send = function () {
+                    try {
+                        if (this.__csrfMethod && this.__csrfMethod !== 'GET' && this.__csrfMethod !== 'HEAD' && this.__csrfMethod !== 'OPTIONS') {
+                            var token = getCsrfToken();
+                            if (token) this.setRequestHeader('X-CSRFToken', token);
+                        }
+                    } catch (e) {}
+                    return send.apply(this, arguments);
+                };
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                ensureFormTokens();
+                patchFetch();
+                patchXhr();
+            });
+        })();
+    </script>
+    {% endif %}
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 antialiased {{ 'app-shell-standard' if not ((request.endpoint or '').startswith('super_admin')) else '' }}">
+    {% set is_auth = current_user.is_authenticated %}
+    <div class="flex h-screen overflow-hidden">
+        {% if is_auth %}
+        <!-- Sidebar -->
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 overflow-x-hidden bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
+            <div class="flex flex-col h-full">
+                <!-- Logo -->
+                <div class="sidebar-header h-16 flex items-center justify-between px-6 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                    <div class="sidebar-logo-container flex items-center gap-3">
+                        <div class="size-9 bg-primary-600 rounded-lg flex items-center justify-center shadow-lg shadow-primary-500/30">
+                            <span class="material-symbols-outlined text-white text-xl">inventory_2</span>
+                        </div>
+                        <span class="sidebar-logo-text text-xl font-bold tracking-tight text-slate-900 dark:text-white">{{ platform_name }}</span>
+                    </div>
+                    <!-- Toggle Button -->
+                    <button id="sidebarToggle" type="button" aria-label="Kenar menüyü daralt veya genişlet" aria-controls="sidebar" class="sidebar-toggle p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                        <span class="material-symbols-outlined text-slate-600 dark:text-slate-400">menu_open</span>
+                    </button>
+                </div>
+
+                <!-- Navigation -->
+                <nav class="sidebar-nav flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 space-y-1">
+                    {% set nav_items = [
+                        ('dashboard', 'dashboard', 'Ana Panel'),
+                        ('urunler', 'inventory_2', 'Ürünler (Stok)'),
+                        ('cariler', 'group', 'Cariler'),
+                        ('pos', 'point_of_sale', 'Hızlı Satış (POS)'),
+                        ('nakit_yonetimi', 'payments', 'Nakit Yönetimi'),
+                        ('onmuhasebe_hesaplar', 'account_balance', 'Ön Muhasebe'),
+                        ('teklif_yonetimi', 'description', 'Teklifler'),
+                        ('personel_yonetimi', 'people', 'Personel Yönetimi'),
+                        ('iade', 'assignment_return', 'İade İşlemleri'),
+                        ('gunluk_satislar', 'receipt_long', 'Günlük Satışlar'),
+                        ('raporlar', 'bar_chart', 'Raporlar'),
+                        ('support_tickets', 'support_agent', 'Destek Talepleri'),
+                        ('settings', 'settings', 'Ayarlar')
+                    ] %}
+                    
+                    {% if false and current_user.paket_tipi == 'profesyonel' %}
+                        {% set nav_items = nav_items + [
+                            ('admin_panel', 'admin_panel_settings', 'Sistem Yönetimi'),
+                            ('audit_logs', 'history', 'Audit Logları'),
+                            ('backup_management', 'backup', 'Yedekleme'),
+                            ('system_settings', 'tune', 'Sistem Ayarları')
+                        ] %}
+                    {% endif %}
+                    {% if current_user.is_platform_admin %}
+                        {% set nav_items = nav_items + [
+                            ('super_admin_dashboard', 'shield_person', 'Süper Admin')
+                        ] %}
+                    {% endif %}
+                    
+                    {# Map endpoints to related endpoints so active state works on detail/edit pages too #}
+                    {% set nav_map = {
+                        'dashboard': ['dashboard'],
+                        'urunler': ['urunler','urun_ekle','urun_duzenle','urun_detay','stok_giris','stok_cikis','toplu_fiyat_guncelleme','urun_sil'],
+                        'cariler': ['cariler','cari_detay','cari_ekle','cari_duzenle','cari_sil'],
+                        'pos': ['pos','pos_odeme','pos_satis'],
+                        'nakit_yonetimi': ['nakit_yonetimi', 'nakit'],
+                        'onmuhasebe_hesaplar': ['onmuhasebe_hesaplar', 'onmuhasebe_hesap_detay', 'onmuhasebe_mutabakat', 'onmuhasebe_raporlar'],
+                        'teklif_yonetimi': ['teklif_yonetimi','teklifler','teklif_ekle','teklif_duzenle','teklif_detay','teklif_sil'],
+                        'personel_yonetimi': ['personel_yonetimi','personel_ekle','personel_duzenle','personel_detay','personel_bordro','toplu_maas_bordrosu','toplu_maas_odeme','toplu_maas_banka_listesi_csv','maas_bordro_kayitlari','personel_sil','departmanlar','departman_ekle','departman_duzenle','departman_sil','izinler','izin_ekle','izin_onayla','avanslar','avans_ekle','avans_ode','primler','prim_ekle','prim_ode','api_personel_detay'],
+                        'iade': ['iade'],
+                        'gunluk_satislar': ['gunluk_satislar', 'gunluk-satislar'],
+                        'raporlar': ['raporlar'],
+                        'support_tickets': ['support_tickets','support_ticket_detail','support_ticket_create'],
+                        'settings': ['settings','ayarlar'],
+                        'admin_panel': ['admin_panel','audit_logs','backup_management','system_settings'],
+                        'super_admin_dashboard': ['super_admin_dashboard','super_admin_update_organization','super_admin_organization_detail','super_admin_add_subscription_payment','super_admin_create_platform_team_member','super_admin_update_platform_team_member','super_admin_update_user','super_admin_maintenance','super_admin_update_system_controls','super_admin_run_self_test','super_admin_run_workflow_test','super_admin_upload_release','super_admin_update_settings','super_admin_logs','super_admin_backups','super_admin_download_backup','super_admin_run_auto_backups','super_admin_support_tickets','super_admin_support_ticket_detail','super_admin_actions','super_admin_update_action','super_admin_refresh_action_ai','super_admin_impersonate']
+                    } %}
+
+                    {% for endpoint, icon, label in nav_items %}
+                    {% set related = nav_map.get(endpoint, [endpoint]) %}
+                    {% set is_active = request.endpoint in related %}
+                    <a href="{{ url_for(endpoint) }}" 
+                       data-nav-key="{{ endpoint }}"
+                       data-tooltip="{{ label }}"
+                       aria-current="{{ 'page' if is_active else 'false' }}"
+                       class="nav-item pjax-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all {{ 'active-nav' if is_active else 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
+                        <span class="material-symbols-outlined text-[22px]">{{ icon }}</span>
+                        <span class="sidebar-text">{{ label }}</span>
+                    </a>
+                    {% endfor %}
+                </nav>
+
+            </div>
+        </aside>
+
+        <!-- Overlay for mobile -->
+        <div id="sidebar-overlay" class="fixed inset-0 bg-slate-900/50 z-40 lg:hidden hidden" onclick="toggleSidebar()" aria-hidden="true"></div>
+        {% endif %}
+
+        <!-- Main Content Area -->
+        <main id="mainContent" class="flex-1 flex flex-col min-w-0 {{ 'lg:ml-64' if is_auth else '' }} relative transition-all duration-300 ease-in-out">
+            {% if is_auth %}
+            {% if session.get('platform_admin_id') %}
+            <div class="bg-amber-500 text-white px-4 lg:px-8 py-2 text-sm font-semibold flex items-center justify-between gap-4">
+                <span class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-lg">support_agent</span>
+                    Destek modu aktif. Bir firma hesabını uygulama sahibi olarak görüntülüyorsunuz.
+                </span>
+                <form method="POST" action="{{ url_for('super_admin_exit_impersonation') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="underline underline-offset-2 whitespace-nowrap">Süper admin'e dön</button>
+                </form>
+            </div>
+            {% endif %}
+            {% if platform_setting_bool('global_notice_enabled', False) and platform_setting('global_notice_message', '') %}
+            <div class="bg-slate-900 px-4 py-2 text-sm font-semibold text-white dark:bg-primary-700 lg:px-8">
+                <span class="inline-flex items-center gap-2">
+                    <span class="material-symbols-outlined text-lg">campaign</span>
+                    {{ platform_setting('global_notice_message', '') }}
+                </span>
+            </div>
+            {% endif %}
+            <!-- Header / Top Bar -->
+            <header class="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 lg:px-8 shrink-0 z-30 sticky top-0">
+                <div class="flex items-center gap-4">
+                    <button type="button" class="p-2 lg:hidden text-slate-600" onclick="toggleSidebar()" aria-label="Menüyü aç" aria-controls="sidebar">
+                        <span class="material-symbols-outlined">menu</span>
+                    </button>
+                    {% block top_bar %}{% endblock %}
+                </div>
+                
+                <div class="flex items-center gap-2 lg:gap-4">
+                    <div class="app-header-actions">
+                        {% block header_actions %}{% endblock %}
+                    </div>
+                    
+                    <div class="relative">
+                        <button type="button" onclick="toggleNotifications()" aria-label="Bildirimleri aç" aria-controls="notification-dropdown" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors relative">
+                            <span class="material-symbols-outlined">notifications</span>
+                            <span id="notification-badge" class="hidden absolute top-2 right-2 min-w-4 h-4 px-1 bg-red-500 rounded-full ring-2 ring-white dark:ring-slate-900 text-[10px] leading-4 text-white text-center font-bold"></span>
+                        </button>
+                        
+                        <!-- Notification Dropdown -->
+                        <div id="notification-dropdown" class="hidden absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 z-50 overflow-hidden">
+                            <div class="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                                <h3 class="font-bold text-slate-900 dark:text-white text-sm">Bildirimler</h3>
+                                <span id="notification-status" class="text-[10px] font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/20 px-2 py-0.5 rounded-full">Canli</span>
+                            </div>
+                            <div id="notification-list" class="max-h-96 overflow-y-auto divide-y divide-slate-50 dark:divide-slate-800/50">
+                                <div class="p-4 text-sm text-slate-500">Bildirimler yukleniyor...</div>
+                            </div>
+                            <a href="{{ (url_for('super_admin_dashboard') ~ '#platform-actions') if current_user.is_platform_admin else url_for('dashboard') }}" class="block p-3 text-center text-[11px] font-bold text-slate-400 hover:text-primary-600 bg-slate-50/50 dark:bg-slate-800/30 transition-colors border-t border-slate-100 dark:border-slate-800">
+                                Islem merkezine git
+                            </a>
+                        </div>
+                    </div>
+                    <button type="button" onclick="showKeyboardShortcuts()" aria-label="Klavye kısayollarını göster" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors group relative" title="Klavye Kısayolları">
+                        <span class="material-symbols-outlined text-lg group-hover:text-primary-600 transition-colors">help</span>
+                        <span class="absolute -top-1 -right-1 w-5 h-5 bg-primary-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center group-hover:bg-primary-700 transition-colors"></span>
+                    </button>
+                    <button id="theme-toggle" type="button" aria-label="Renk temasını değiştir" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                        <span class="material-symbols-outlined dark:hidden">dark_mode</span>
+                        <span class="material-symbols-outlined hidden dark:block text-yellow-400">light_mode</span>
+                    </button>
+                    <div class="relative">
+                        <button id="profile-menu-toggle" type="button" onclick="toggleProfileMenu()" aria-label="Kullanıcı menüsünü aç" aria-controls="profile-menu-dropdown" aria-expanded="false" class="size-10 rounded-full bg-primary-600 text-white text-sm font-black tracking-wide flex items-center justify-center border border-primary-500 shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 transition-colors">
+                            {{ user_initials(current_user) }}
+                        </button>
+                        <div id="profile-menu-dropdown" class="hidden absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl z-50 overflow-hidden">
+                            <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+                                <p class="text-sm font-bold text-slate-900 dark:text-white truncate">{{ user_display_name(current_user) }}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 truncate">{{ user_display_subtitle(current_user) }}</p>
+                            </div>
+                            <form method="POST" action="{{ url_for('cikis') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="w-full flex items-center gap-2 px-4 py-3 text-sm font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors">
+                                    <span class="material-symbols-outlined text-lg">logout</span>
+                                    Çıkış Yap
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            {% endif %}
+
+            <!-- Page Content -->
+            <div class="app-content flex-1 overflow-y-auto {{ 'p-4 lg:p-8' if is_auth else 'p-0' }} relative">
+                {% if is_auth %}
+                <!-- Flash Messages -->
+                <div class="fixed top-4 right-4 z-[100] w-full max-w-sm pointer-events-none">
+                    {% include '_flash_messages.html' %}
+                </div>
+
+                <!-- Global Toast Container -->
+                <div id="toast-container" class="fixed top-4 right-4 z-[110] flex flex-col gap-3 items-end pointer-events-none"></div>
+                <div id="app-page-progress" class="app-page-progress" aria-hidden="true"></div>
+
+                <!-- Global Confirm Dialog -->
+                <div id="app-confirm" class="app-confirm-backdrop" role="dialog" aria-modal="true" aria-labelledby="app-confirm-title" aria-describedby="app-confirm-message">
+                    <div class="app-confirm-dialog">
+                        <div class="p-6">
+                            <div class="flex items-start gap-4">
+                                <div class="app-confirm-icon shrink-0">
+                                    <span class="material-symbols-outlined">warning</span>
+                                </div>
+                                <div class="min-w-0">
+                                    <h2 id="app-confirm-title" class="text-lg font-black text-slate-900 dark:text-white">İşlemi onayla</h2>
+                                    <p id="app-confirm-message" class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Bu işlemi yapmak istediğinize emin misiniz</p>
+                                </div>
+                            </div>
+                            <div class="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                                <button type="button" id="app-confirm-cancel" class="btn-secondary justify-center">Vazgeç</button>
+                                <button type="button" id="app-confirm-ok" class="btn-primary justify-center bg-rose-600 hover:bg-rose-700 focus:ring-rose-500">Onayla</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Sidebar Toggle for Mobile
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            if (!sidebar || !overlay) return;
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+
+        // Dark Mode Toggle
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        
+        // Initial theme check
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        if (themeToggleBtn) {
+            themeToggleBtn.addEventListener('click', () => {
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.theme = 'light';
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.theme = 'dark';
+                }
+            });
+        }
+
+        // Notifications Toggle
+        function toggleNotifications() {
+            const dropdown = document.getElementById('notification-dropdown');
+            const badge = document.getElementById('notification-badge');
+            dropdown.classList.toggle('hidden');
+            if (!dropdown.classList.contains('hidden')) {
+                loadNotifications();
+            }
+        }
+
+        function toggleProfileMenu(forceClose = false) {
+            const dropdown = document.getElementById('profile-menu-dropdown');
+            const toggle = document.getElementById('profile-menu-toggle');
+            if (!dropdown || !toggle) return;
+            const shouldClose = forceClose || !dropdown.classList.contains('hidden');
+            dropdown.classList.toggle('hidden', shouldClose);
+            toggle.setAttribute('aria-expanded', shouldClose ? 'false' : 'true');
+        }
+
+        document.addEventListener('click', (event) => {
+            const dropdown = document.getElementById('profile-menu-dropdown');
+            const toggle = document.getElementById('profile-menu-toggle');
+            if (!dropdown || !toggle || dropdown.classList.contains('hidden')) return;
+            if (!dropdown.contains(event.target) && !toggle.contains(event.target)) {
+                toggleProfileMenu(true);
+            }
+        });
+
+        function notificationColors(type) {
+            const colors = {
+                danger: 'bg-red-50 dark:bg-red-900/20 text-red-600',
+                warning: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600',
+                success: 'bg-green-50 dark:bg-green-900/20 text-green-600',
+                info: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600'
+            };
+            return colors[type] || colors.info;
+        }
+
+        function renderNotifications(items) {
+            const list = document.getElementById('notification-list');
+            const badge = document.getElementById('notification-badge');
+            const status = document.getElementById('notification-status');
+            if (!list) return;
+
+            list.innerHTML = items.map((item) => `
+                <a href="${item.url}" class="block p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+                    <div class="flex gap-3">
+                        <div class="size-8 ${notificationColors(item.type)} rounded-full flex items-center justify-center shrink-0">
+                            <span class="material-symbols-outlined text-sm">${item.icon}</span>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs font-bold text-slate-900 dark:text-white group-hover:text-primary-600 transition-colors">${item.title}</p>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">${item.message}</p>
+                            <p class="text-[10px] text-slate-400 mt-1">${item.time}</p>
+                        </div>
+                    </div>
+                </a>
+            `).join('');
+
+            const actionableCount = items.filter((item) => item.title !== 'Her sey yolunda').length;
+            if (badge) {
+                badge.textContent = actionableCount;
+                badge.classList.toggle('hidden', actionableCount === 0);
+            }
+            if (status) {
+                status.textContent = actionableCount > 0
+                    ? `${actionableCount} işlem`
+                    : 'Temiz';
+            }
+        }
+
+        async function loadNotifications() {
+            const list = document.getElementById('notification-list');
+            if (!list) return;
+            try {
+                const response = await fetch('{{ url_for("api_notifications") }}');
+                const data = await response.json();
+                if (data.success) {
+                    renderNotifications(data.notifications || []);
+                }
+            } catch (error) {
+                list.innerHTML = '<div class="p-4 text-sm text-red-500">Bildirimler yuklenemedi.</div>';
+            }
+        }
+
+        // Close dropdown when clicking outside
+        window.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('notification-dropdown');
+            const btn = e.target.closest('button');
+            if (dropdown && !dropdown.classList.contains('hidden') && !dropdown.contains(e.target) && (!btn || !btn.contains(e.target))) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        // Collapsible Sidebar Functionality
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+        const toggleIcon = sidebarToggle ? sidebarToggle.querySelector('.material-symbols-outlined') : null;
+        let isCollapsed = false;
+
+        if (sidebarToggle && sidebar && mainContent && toggleIcon) sidebarToggle.addEventListener('click', () => {
+            isCollapsed = !isCollapsed;
+            
+            if (isCollapsed) {
+                sidebar.classList.add('sidebar-collapsed');
+                mainContent.classList.remove('lg:ml-64');
+                mainContent.classList.add('lg:ml-20');
+                toggleIcon.textContent = 'menu';
+                // Save state to localStorage
+                localStorage.setItem('sidebarCollapsed', 'true');
+            } else {
+                sidebar.classList.remove('sidebar-collapsed');
+                mainContent.classList.remove('lg:ml-20');
+                mainContent.classList.add('lg:ml-64');
+                toggleIcon.textContent = 'menu_open';
+                // Save state to localStorage
+                localStorage.setItem('sidebarCollapsed', 'false');
+            }
+        });
+
+        // Restore sidebar state from localStorage on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedState = localStorage.getItem('sidebarCollapsed');
+            if (savedState === 'true' && sidebar && mainContent && toggleIcon) {
+                sidebar.classList.add('sidebar-collapsed');
+                mainContent.classList.remove('lg:ml-64');
+                mainContent.classList.add('lg:ml-20');
+                toggleIcon.textContent = 'menu';
+                isCollapsed = true;
+            }
+            loadNotifications();
+            setInterval(loadNotifications, 60000);
+            flushQueuedToast();
+        });
+
+        // Loading States Functions
+        function showPageLoading() {
+            if (document.getElementById('page-loading')) return;
+            document.body.classList.add('is-loading');
+            const progress = document.getElementById('app-page-progress');
+            if (progress) progress.classList.add('is-active');
+
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'page-loading';
+            loadingDiv.id = 'page-loading';
+            loadingDiv.setAttribute('role', 'status');
+            loadingDiv.setAttribute('aria-live', 'polite');
+            loadingDiv.innerHTML = `
+                <div class="page-loading-card">
+                    <div class="loading-spinner"></div>
+                    <p class="text-sm font-bold">Yükleniyor...</p>
+                </div>
+            `;
+            document.body.appendChild(loadingDiv);
+        }
+
+        function hidePageLoading() {
+            const loadingDiv = document.getElementById('page-loading');
+            const progress = document.getElementById('app-page-progress');
+            document.body.classList.remove('is-loading', 'page-leaving');
+            if (progress) progress.classList.remove('is-active');
+            if (loadingDiv) {
+                loadingDiv.remove();
+            }
+        }
+
+        function setButtonLoading(button, loading = true) {
+            if (!button) return;
+            if (loading) {
+                if (!button.dataset.originalHtml) button.dataset.originalHtml = button.innerHTML;
+                button.classList.add('btn-loading');
+                button.disabled = true;
+            } else {
+                button.classList.remove('btn-loading');
+                button.disabled = false;
+                if (button.dataset.originalHtml) {
+                    button.innerHTML = button.dataset.originalHtml;
+                    delete button.dataset.originalHtml;
+                }
+            }
+        }
+
+        function createSkeletonCard() {
+            return `
+                <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
+                    <div class="skeleton skeleton-title mb-4"></div>
+                    <div class="space-y-2">
+                        <div class="skeleton skeleton-text"></div>
+                        <div class="skeleton skeleton-text w-3/4"></div>
+                        <div class="skeleton skeleton-text w-1/2"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createSkeletonRow() {
+            return `
+                <tr>
+                    <td class="px-6 py-4">
+                        <div class="skeleton skeleton-text w-20"></div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="skeleton skeleton-text w-32"></div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="skeleton skeleton-text w-24"></div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="skeleton skeleton-text w-16"></div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="skeleton skeleton-text w-20"></div>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <div class="skeleton skeleton-button ml-auto"></div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function showSkeletonLoading(container, type = 'card', count = 3) {
+            let skeletonHTML = '';
+            
+            if (type === 'table') {
+                skeletonHTML = `
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500">Yükleniyor...</th>
+                                    <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500">Yükleniyor...</th>
+                                    <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500">Yükleniyor...</th>
+                                    <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500">Yükleniyor...</th>
+                                    <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500">Yükleniyor...</th>
+                                    <th class="px-6 py-3 text-right text-xs font-semibold text-slate-500">Yükleniyor...</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                                ${Array(count).fill('').map(() => createSkeletonRow()).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } else {
+                skeletonHTML = Array(count).fill('').map(() => createSkeletonCard()).join('');
+            }
+            
+            container.innerHTML = skeletonHTML;
+        }
+
+        function showToast(message, type = 'info', duration = 3000) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            toast.style.pointerEvents = 'auto';
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('toast-hide');
+                toast.addEventListener('animationend', () => toast.remove());
+            }, duration);
+        }
+
+        function showMessage(message, type = 'info') {
+            showToast(message, type);
+        }
+
+        function showNotification(message, type = 'info') {
+            showMessage(message, type);
+        }
+
+        function queueToastAfterReload(message, type = 'info') {
+            try {
+                sessionStorage.setItem('pendingToast', JSON.stringify({
+                    message: message,
+                    type: type,
+                }));
+            } catch (error) {}
+        }
+
+        function flushQueuedToast() {
+            try {
+                const raw = sessionStorage.getItem('pendingToast');
+                if (!raw) return;
+                sessionStorage.removeItem('pendingToast');
+                const payload = JSON.parse(raw);
+                if (payload && payload.message) {
+                    showToast(payload.message, payload.type || 'info');
+                }
+            } catch (error) {}
+        }
+
+        window.alert = function(message) {
+            showMessage(message, 'info');
+        };
+
+        function appConfirm(message, options = {}) {
+            const modal = document.getElementById('app-confirm');
+            const title = document.getElementById('app-confirm-title');
+            const messageEl = document.getElementById('app-confirm-message');
+            const okButton = document.getElementById('app-confirm-ok');
+            const cancelButton = document.getElementById('app-confirm-cancel');
+            if (!modal || !title || !messageEl || !okButton || !cancelButton) {
+                return Promise.resolve(window.confirm(message));
+            }
+
+            title.textContent = options.title || 'İşlemi onayla';
+            messageEl.textContent = message || 'Bu işlemi yapmak istediğinize emin misiniz';
+            okButton.textContent = options.confirmText || 'Onayla';
+            cancelButton.textContent = options.cancelText || 'Vazgeç';
+            modal.classList.add('is-open');
+            okButton.focus();
+
+            return new Promise((resolve) => {
+                const close = (value) => {
+                    modal.classList.remove('is-open');
+                    okButton.removeEventListener('click', onConfirm);
+                    cancelButton.removeEventListener('click', onCancel);
+                    modal.removeEventListener('click', onBackdrop);
+                    document.removeEventListener('keydown', onKeydown);
+                    resolve(value);
+                };
+                const onConfirm = () => close(true);
+                const onCancel = () => close(false);
+                const onBackdrop = (event) => {
+                    if (event.target === modal) close(false);
+                };
+                const onKeydown = (event) => {
+                    if (event.key === 'Escape') close(false);
+                    if (event.key === 'Enter') close(true);
+                };
+
+                okButton.addEventListener('click', onConfirm);
+                cancelButton.addEventListener('click', onCancel);
+                modal.addEventListener('click', onBackdrop);
+                document.addEventListener('keydown', onKeydown);
+            });
+        }
+
+        window.appConfirm = appConfirm;
+
+        document.addEventListener('submit', async (event) => {
+            const form = event.target;
+            if (!(form instanceof HTMLFormElement)) return;
+            if (!form.dataset.confirm || form.dataset.confirmed === 'true') return;
+            event.preventDefault();
+            const confirmed = await appConfirm(form.dataset.confirm, {
+                title: form.dataset.confirmTitle,
+                confirmText: form.dataset.confirmOk,
+                cancelText: form.dataset.confirmCancel
+            });
+            if (!confirmed) return;
+            form.dataset.confirmed = 'true';
+            if (typeof form.requestSubmit === 'function') {
+                form.requestSubmit();
+            } else {
+                form.submit();
+            }
+        }, { capture: true });
+
+        document.addEventListener('submit', (event) => {
+            const form = event.target;
+            if (!(form instanceof HTMLFormElement)) return;
+            if (event.defaultPrevented) return;
+            if (form.target || form.dataset.skipLoading === 'true') return;
+            const submitter = event.submitter || form.querySelector('button[type="submit"]');
+            if (submitter && !submitter.disabled) setButtonLoading(submitter, true);
+            window.setTimeout(showPageLoading, 120);
+        });
+
+        // Auto-hide page loading after content loads
+        window.addEventListener('load', () => {
+            setTimeout(hidePageLoading, 300);
+        });
+
+        document.addEventListener('click', (event) => {
+            const link = event.target.closest('a[href]');
+            if (!link || !document.body.classList.contains('app-shell-standard')) return;
+            if (link.target || link.hasAttribute('download')) return;
+            const href = link.getAttribute('href') || '';
+            if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+            try {
+                const targetUrl = new URL(href, window.location.href);
+                if (targetUrl.origin !== window.location.origin) return;
+            } catch (error) {
+                return;
+            }
+            const progress = document.getElementById('app-page-progress');
+            if (progress) progress.classList.add('is-active');
+            document.body.classList.add('page-leaving');
+            window.setTimeout(() => {
+                if (document.body.classList.contains('page-leaving')) showPageLoading();
+            }, 220);
+        }, { capture: true });
+
+        // Keyboard Shortcuts
+        const keyboardShortcuts = {
+            // Navigation shortcuts
+            'g h': () => window.location.href = "{{ url_for('dashboard') }}",
+            'g u': () => window.location.href = "{{ url_for('urunler') }}",
+            'g c': () => window.location.href = "{{ url_for('cariler') }}",
+            'g p': () => window.location.href = "{{ url_for('pos') }}",
+            'g i': () => window.location.href = "{{ url_for('iade') }}",
+            'g s': () => window.location.href = "{{ url_for('gunluk_satislar') }}",
+            'g t': () => window.location.href = "{{ url_for('teklif_yonetimi') }}",
+            'g r': () => window.location.href = "{{ url_for('raporlar') }}",
+            'g a': () => window.location.href = "{{ url_for('settings') }}",
+            
+            // Action shortcuts
+            'n u': () => {
+                const newProductBtn = document.querySelector('a[href*="urun_ekle"]');
+                if (newProductBtn) {
+                    newProductBtn.click();
+                } else {
+                    // Eğer buton bulunamazsa, doğrudan ürün ekle sayfasına yönlendir
+                    window.location.href = "{{ url_for('urun_ekle') }}";
+                }
+            },
+            'n c': () => {
+                const newCariBtn = document.querySelector('a[href*="cari_ekle"]');
+                if (newCariBtn) {
+                    newCariBtn.click();
+                } else {
+                    // Eğer buton bulunamazsa, doğrudan cari ekle sayfasına yönlendir
+                    window.location.href = "{{ url_for('cari_ekle') }}";
+                }
+            },
+            'n t': () => {
+                const newTeklifBtn = document.querySelector('a[href*="teklif_ekle"]');
+                if (newTeklifBtn) {
+                    newTeklifBtn.click();
+                } else {
+                    // Eğer buton bulunamazsa, doğrudan teklif ekle sayfasına yönlendir
+                    window.location.href = "{{ url_for('teklif_ekle') }}";
+                }
+            },
+            
+            // Search shortcuts
+            '/': () => {
+                const searchInput = document.querySelector('input[placeholder*="ara"]');
+                if (searchInput) {
+                    searchInput.focus();
+                    searchInput.select();
+                }
+            },
+            'ctrl k': () => {
+                const searchInput = document.querySelector('input[placeholder*="ara"]');
+                if (searchInput) {
+                    searchInput.focus();
+                    searchInput.select();
+                }
+            },
+            
+            // UI shortcuts
+            'ctrl b': () => {
+                const sidebarToggle = document.getElementById('sidebarToggle');
+                if (sidebarToggle) sidebarToggle.click();
+            },
+            'ctrl d': () => {
+                const themeToggle = document.getElementById('theme-toggle');
+                if (themeToggle) themeToggle.click();
+            },
+            'escape': () => {
+                toggleProfileMenu(true);
+                hideKeyboardShortcuts();
+            },
+            '': () => {
+                showKeyboardShortcuts();
+            }
+        };
+
+        let activeKeys = new Set();
+
+        document.addEventListener('keydown', (e) => {
+            // Ignore when typing in input fields
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.contentEditable === 'true') {
+                if (e.key === 'Escape') {
+                    e.target.blur();
+                }
+                return;
+            }
+
+            // Special handling for  key (which requires Shift)
+            if (e.key === '' || (e.shiftKey && e.key === '/')) {
+                e.preventDefault();
+                e.stopPropagation();
+                showKeyboardShortcuts();
+                return;
+            }
+
+            const key = e.key.toLowerCase();
+            activeKeys.add(key);
+
+            // Build key combination
+            let combination = [];
+            if (e.ctrlKey || e.metaKey) combination.push('ctrl');
+            if (e.altKey) combination.push('alt');
+            if (e.shiftKey) combination.push('shift');
+            combination.push(key);
+
+            const combo = combination.join(' ');
+            
+            // Check if this combination matches a shortcut
+            if (keyboardShortcuts[combo]) {
+                e.preventDefault();
+                e.stopPropagation();
+                keyboardShortcuts[combo]();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            activeKeys.delete(e.key.toLowerCase());
+        });
+
+        function showKeyboardShortcuts() {
+            if (document.getElementById('keyboard-shortcuts-modal')) return;
+            window.keyboardShortcutsPreviousFocus = document.activeElement;
+            const modal = document.createElement('div');
+            modal.className = 'keyboard-shortcuts-modal';
+            modal.id = 'keyboard-shortcuts-modal';
+            modal.setAttribute('role', 'dialog');
+            modal.setAttribute('aria-modal', 'true');
+            modal.setAttribute('aria-labelledby', 'keyboard-shortcuts-title');
+            modal.innerHTML = `
+                <div class="keyboard-shortcuts-content">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 id="keyboard-shortcuts-title" class="text-2xl font-bold text-slate-900 dark:text-white">Klavye Kısayolları</h2>
+                        <button type="button" aria-label="Klavye kısayollarını kapat" onclick="hideKeyboardShortcuts()" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-3">Navigasyon</h3>
+                            <div class="shortcut-item">
+                                <span>Ana Panele Git</span>
+                                <div class="shortcut-keys">
+                                    <span class="shortcut-key modifier">g</span>
+                                    <span class="shortcut-key">h</span>
+                                </div>
+                            </div>
+                            <div class="shortcut-item">
+                                <span>Ürünlere Git</span>
+                                <div class="shortcut-keys">
+                                    <span class="shortcut-key modifier">g</span>
+                                    <span class="shortcut-key">u</span>
+                                </div>
+                            </div>
+                            <div class="shortcut-item">
+                                <span>Carilere Git</span>
+                                <div class="shortcut-keys">
+                                    <span class="shortcut-key modifier">g</span>
+                                    <span class="shortcut-key">c</span>
+                                </div>
+                            </div>
+                            <div class="shortcut-item">
+                                <span>POS'a Git</span>
+                                <div class="shortcut-keys">
+                                    <span class="shortcut-key modifier">g</span>
+                                    <span class="shortcut-key">p</span>
+                                </div>
+                            </div>
+                            <div class="shortcut-item">
+                                <span>İade İşlemlerine Git</span>
+                                <div class="shortcut-keys">
+                                    <span class="shortcut-key modifier">g</span>
+                                    <span class="shortcut-key">i</span>
+                                </div>
+                            </div>
+                            <div class="shortcut-item">
+                                <span>Günlük Satışlara Git</span>
+                                <div class="shortcut-keys">
+                                    <span class="shortcut-key modifier">g</span>
+                                    <span class="shortcut-key">s</span>
+                                </div>
+                            </div>
+                            <div class="shortcut-item">
+                                <span>Tekliflere Git</span>
+                                <div class="shortcut-keys">
+                                    <span class="shortcut-key modifier">g</span>
+                                    <span class="shortcut-key">t</span>
+                                </div>
+                            </div>
+                            <div class="shortcut-item">
+                                <span>Raporlara Git</span>
+                                <div class="shortcut-keys">
+                                    <span class="shortcut-key modifier">g</span>
+                                    <span class="shortcut-key">r</span>
+                                </div>
+                            </div>
+                            <div class="shortcut-item">
+                                <span>Ayarlar'a Git</span>
+                                <div class="shortcut-keys">
+                                    <span class="shortcut-key modifier">g</span>
+                                    <span class="shortcut-key">a</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-3">Eylemler</h3>
+                            <div class="shortcut-item">
+                                <span>Yeni Ürün</span>
+                                <div class="shortcut-keys">
+                                    <span class="shortcut-key modifier">n</span>
+                                    <span class="shortcut-key">u</span>
+                                </div>
+                            </div>
+                            <div class="shortcut-item">
+                                <span>Yeni Cari</span>
+                                <div class="shortcut-keys">
+                                    <span class="shortcut-key modifier">n</span>
+                                    <span class="shortcut-key">c</span>
+                                </div>
+                            </div>
+                            <div class="shortcut-item">
+                                <span>Yeni Teklif</span>
+                                <div class="shortcut-keys">
+                                    <span class="shortcut-key modifier">n</span>
+                                    <span class="shortcut-key">t</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-3">Arama ve Arayüz</h3>
+                            <div class="shortcut-item">
+                                <span>Arama</span>
+                                <div class="shortcut-keys">
+                                    <span class="shortcut-key">/</span>
+                                </div>
+                            </div>
+                            <div class="shortcut-item">
+                                <span>Hızlı Arama</span>
+                                <div class="shortcut-keys">
+                                    <span class="shortcut-key modifier">ctrl</span>
+                                    <span class="shortcut-key">k</span>
+                                </div>
+                            </div>
+                            <div class="shortcut-item">
+                                <span>Sidebar'ı Aç/Kapa</span>
+                                <div class="shortcut-keys">
+                                    <span class="shortcut-key modifier">ctrl</span>
+                                    <span class="shortcut-key">b</span>
+                                </div>
+                            </div>
+                            <div class="shortcut-item">
+                                <span>Karanlık Modu Aç/Kapa</span>
+                                <div class="shortcut-keys">
+                                    <span class="shortcut-key modifier">ctrl</span>
+                                    <span class="shortcut-key">d</span>
+                                </div>
+                            </div>
+                            <div class="shortcut-item">
+                                <span>Kısayolları Göster</span>
+                                <div class="shortcut-keys">
+                                    <span class="shortcut-key"></span>
+                                </div>
+                            </div>
+                            <div class="shortcut-item">
+                                <span>Modal'ı Kapat</span>
+                                <div class="shortcut-keys">
+                                    <span class="shortcut-key">esc</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modal.querySelector('button').focus();
+        }
+
+        function hideKeyboardShortcuts() {
+            const modal = document.getElementById('keyboard-shortcuts-modal');
+            if (modal) {
+                modal.remove();
+                window.keyboardShortcutsPreviousFocus.focus();
+            }
+        }
+
+        // Close modal when clicking outside
+        document.addEventListener('click', (e) => {
+            const modal = document.getElementById('keyboard-shortcuts-modal');
+            if (modal && modal === e.target) {
+                hideKeyboardShortcuts();
+            }
+        });
+    </script>
+    <script>
+        // Lightweight PJAX navigation for sidebar links (graceful fallback)
+        (function(){
+            // Most pages in this app define page-specific functions in Jinja script blocks.
+            // Full-page navigation is the reliable path because every template initializes itself.
+            const ENABLE_PJAX = false;
+
+            function extractMainContent(htmlText){
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlText, 'text/html');
+                const newMain = doc.getElementById('mainContent');
+                return { title: doc.title, main: newMain ? newMain.innerHTML : null };
+            }
+
+            function executePageScripts(container){
+                container.querySelectorAll('script').forEach((oldScript) => {
+                    const newScript = document.createElement('script');
+                    Array.from(oldScript.attributes).forEach((attr) => {
+                        newScript.setAttribute(attr.name, attr.value);
+                    });
+                    newScript.textContent = oldScript.textContent;
+                    oldScript.replaceWith(newScript);
+                });
+            }
+
+            async function pjaxNavigate(url, push=true){
+                try{
+                    const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    if(!res.ok) return window.location.href = url; // fallback
+                    const text = await res.text();
+                    const extracted = extractMainContent(text);
+                    if(extracted.main){
+                        const main = document.getElementById('mainContent');
+                        if(main){
+                            // simple fade-out/in
+                            main.style.opacity = 0.0;
+                            setTimeout(()=>{
+                                main.innerHTML = extracted.main;
+                                executePageScripts(main);
+                                document.title = extracted.title || document.title;
+                                main.style.opacity = 1.0;
+                                window.scrollTo(0,0);
+                                document.dispatchEvent(new CustomEvent('pjax:loaded', { detail: { url } }));
+                                // Update active navigation after content loads
+                                updateActiveNavigation(url);
+                                // Initialize settings tabs if navigating to settings page
+                                if (url.includes('/settings')) {
+                                    setTimeout(() => {
+                                        // Set first tab as active by default
+                                        const firstTab = document.querySelector('.settings-tab-btn');
+                                        if (firstTab && !firstTab.classList.contains('active')) {
+                                            switchTab('profile');
+                                        } else {
+                                        }
+                                    }, 200);
+                                }
+                            }, 150);
+
+                            if(push) history.pushState({ pjax: true, url: url }, '', url);
+                            return true;
+                        }
+                    }
+                    // if cannot extract, do full navigation
+                    window.location.href = url;
+                }catch(e){
+                    console.error('PJAX navigation failed', e);
+                    window.location.href = url;
+                }
+            }
+
+            document.addEventListener('click', function(e){
+                if(!ENABLE_PJAX) return;
+                const a = e.target.closest('a.pjax-link');
+                if(!a) return;
+                const href = a.getAttribute('href');
+                if(!href || href.startsWith('http') && !href.startsWith(window.location.origin)) return;
+                e.preventDefault();
+                pjaxNavigate(href, true);
+            });
+
+            window.addEventListener('popstate', function(e){
+                if(!ENABLE_PJAX) return;
+                if(e.state && e.state.pjax && e.state.url){
+                    pjaxNavigate(e.state.url, false);
+                } else {
+                    // default behavior
+                    window.location.reload();
+                }
+            });
+        })();
+
+        
+        // Update navigation on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // Define functions in DOMContentLoaded to ensure they're available
+            window.updateActiveNavigation = function(currentUrl) {
+                const navItems = document.querySelectorAll('nav .nav-item');
+                
+                // Remove active class from all items
+                navItems.forEach(item => {
+                    item.classList.remove('active-nav');
+                    item.classList.add('text-slate-600', 'dark:text-slate-400', 'hover:bg-slate-50', 'dark:hover:bg-slate-800');
+                });
+                
+                // Define URL patterns for each navigation item
+                const urlPatterns = {
+                    'dashboard': ['/dashboard'],
+                    'urunler': ['/urunler', '/urun-ekle', '/urun/', '/stok/giris', '/stok/cikis', '/urunler/toplu-fiyat-guncelleme'],
+                    'cariler': ['/cariler', '/cari/', '/cari-ekle'],
+                    'pos': ['/pos', '/pos-odeme', '/pos/satis'],
+                    'nakit': ['/nakit_yonetimi', '/nakit'],
+                    'onmuhasebe_hesaplar': ['/onmuhasebe'],
+                    'teklif_yonetimi': ['/teklif_yonetimi', '/teklif/'],
+                    'personel_yonetimi': ['/personel_yonetimi', '/personel', '/personel_ekle', '/personel_duzenle', '/personel_detay', '/personel/bordro', '/departmanlar', '/izinler', '/avanslar', '/primler', '/maas_kayitlari', '/egitimler', '/performans_degerlendirmeleri'],
+                    'iade': ['/iade'],
+                    'gunluk_satislar': ['/gunluk_satislar', '/gunluk-satislar'],
+                    'raporlar': ['/raporlar'],
+                    'support_tickets': ['/destek'],
+                    'settings': ['/settings', '/ayarlar'],
+                    'admin_panel': ['/admin_panel', '/audit_logs', '/backup_management', '/system_settings'],
+                    'super_admin_dashboard': ['/super-admin']
+                };
+                
+                // Find matching navigation item
+                let matchingEndpoint = null;
+                
+                for (const [endpoint, patterns] of Object.entries(urlPatterns)) {
+                    if (patterns.some(pattern => currentUrl.includes(pattern))) {
+                        matchingEndpoint = endpoint;
+                        break;
+                    }
+                }
+                
+                // Add active class to matching item
+                if (matchingEndpoint) {
+                    for (let i = 0; i < navItems.length; i++) {
+                        const item = navItems[i];
+                        const navKey = item.getAttribute('data-nav-key');
+                        if (navKey === matchingEndpoint) {
+                            item.classList.add('active-nav');
+                            item.classList.remove('text-slate-600', 'dark:text-slate-400', 'hover:bg-slate-50', 'dark:hover:bg-slate-800');
+                            break; // Stop after finding match
+                        }
+                    }
+                } else {
+                }
+            };
+            
+            window.updateActiveNavigation(window.location.pathname);
+            
+            // Initialize settings tabs if on settings page
+            if (window.location.pathname.includes('/settings')) {
+                // Set first tab as active by default
+                const firstTab = document.querySelector('.settings-tab-btn');
+                if (firstTab && !firstTab.classList.contains('active')) {
+                    switchTab('profile');
+                } else {
+                }
+            }
+        });
+
+        // Update navigation on browser back/forward
+        window.addEventListener('popstate', () => {
+            setTimeout(() => {
+                updateActiveNavigation(window.location.pathname);
+            }, 100);
+        });
+
+        // Settings tab switching function - Global scope for PJAX compatibility
+        window.switchTab = function(tabName) {
+            
+            // Hide all content
+            const allContent = document.querySelectorAll('.settings-content');
+            allContent.forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // Remove active class from all tabs
+            const allTabs = document.querySelectorAll('.settings-tab-btn');
+            allTabs.forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected content
+            const selectedContent = document.getElementById(tabName + '-content');
+            if (selectedContent) {
+                selectedContent.classList.remove('hidden');
+            } else {
+                console.error('Content element not found:', tabName + '-content');
+            }
+            
+            // Add active class to selected tab
+            const selectedTab = document.getElementById(tabName + '-tab');
+            if (selectedTab) {
+                selectedTab.classList.add('active');
+            } else {
+                console.error('Tab element not found:', tabName + '-tab');
+            }
+        };
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

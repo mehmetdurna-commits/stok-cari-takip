@@ -1,0 +1,11 @@
+[Unit]
+Description=Run StokCari updater every minute
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=60s
+Unit=stokcari-updater.service
+
+[Install]
+WantedBy=timers.target
+

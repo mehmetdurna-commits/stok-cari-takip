@@ -1,0 +1,50 @@
+{% extends '_base.html' %}
+
+{% block title %}Departman Ekle{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-4">
+    <span class="material-symbols-outlined text-primary-600 font-bold">add</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Departman Ekle</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <form method="POST" class="space-y-8">
+        <!-- Departman Bilgileri -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary-600">domain</span>
+                Departman Bilgileri
+            </h2>
+            
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Departman Adı *</label>
+                    <input type="text" name="ad" required 
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white"
+                           placeholder="Örn: İnsan Kaynakları">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Açıklama</label>
+                    <textarea name="aciklama" rows="4" 
+                              class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white"
+                              placeholder="Departman ile ilgili açıklama bilgileri..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Butonlar -->
+        <div class="app-form-actions">
+            <a href="{{ url_for('departmanlar') }}" class="btn-secondary">
+                İptal
+            </a>
+            <button type="submit" class="btn-primary">
+                Departmanı Kaydet
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

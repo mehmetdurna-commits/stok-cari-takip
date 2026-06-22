@@ -1,0 +1,203 @@
+{% extends '_base.html' %}
+{% block title %}Ayarlar - Stok ve Cari Takip{% endblock %}
+{% block top_bar %}
+<div class="flex items-center gap-4">
+    <span class="material-symbols-outlined text-primary-600 font-bold">settings</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Ayarlar</h1>
+</div>
+{% endblock %}
+{% set active_page = 'ayarlar' %}
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+<!-- Page Description -->
+<div class="mb-6">
+<p class="text-slate-500 dark:text-slate-400">Sistem ayarlarını yönetin, kategorileri düzenleyin ve fiyatları güncelleyin.</p>
+</div>
+</div>
+
+<!-- Kategori Yönetimi Section -->
+<div class="bg-white rounded-xl border border-primary/10 shadow-sm overflow-hidden mb-6">
+<div class="px-6 py-5 border-b border-primary/5 flex items-center justify-between bg-primary/[0.02]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">folder</span>
+<h2 class="text-lg font-bold">Kategori Yönetimi</h2>
+</div>
+<button onclick="openKategoriModal()" class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+<span class="material-symbols-outlined">add</span>
+Yeni Kategori
+</button>
+</div>
+<div class="p-6">
+<div id="kategoriList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+{% if kategoriler %}
+{% for kategori in kategoriler %}
+<div class="flex items-center gap-3 p-4 border border-primary/5 rounded-lg">
+<div class="size-10 bg-primary/10 rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">folder</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold">{{ kategori.ad }}</p>
+<p class="text-xs text-[#5f6f8c]">{{ kategori.urun_sayisi }} ürün</p>
+</div>
+<button onclick="editKategori('{{ kategori.ad }}')" class="text-primary hover:text-primary/70">
+<span class="material-symbols-outlined text-sm">edit</span>
+</button>
+<button onclick="deleteKategori('{{ kategori.ad }}')" class="text-red-500 hover:text-red-700 ml-2">
+<span class="material-symbols-outlined text-sm">delete</span>
+</button>
+</div>
+{% endfor %}
+{% else %}
+<div class="col-span-full text-center py-8 text-slate-500">
+<span class="material-symbols-outlined text-4xl mb-2">folder_off</span>
+<p>Henüz kategori bulunmuyor</p>
+<p class="text-xs mt-1">Yeni kategori eklemek için yukarıdaki butonu kullanın</p>
+</div>
+{% endif %}
+</div>
+</div>
+</div>
+<!-- Sistem Araçları -->
+<div class="bg-white rounded-xl border border-primary/10 shadow-sm overflow-hidden">
+<div class="px-6 py-5 border-b border-primary/5 flex items-center justify-between bg-primary/[0.02]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">settings_suggest</span>
+<h2 class="text-lg font-bold">Sistem Araçları</h2>
+</div>
+</div>
+<div class="p-6">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<a href="{{ url_for('toplu_fiyat_guncelleme') }}" class="flex items-center gap-4 p-4 border border-primary/5 rounded-lg hover:border-primary/20 transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50">
+<div class="size-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-blue-600 dark:text-blue-400">trending_up</span>
+</div>
+<div class="flex-1">
+<div class="font-bold text-slate-800 dark:text-slate-200">Toplu Fiyat Güncelleme</div>
+<div class="text-xs text-slate-500 dark:text-slate-400 mt-1">Tüm ürünlerin fiyatlarını yüzde olarak güncelleyin</div>
+</div>
+<div class="text-primary">
+<span class="material-symbols-outlined">arrow_forward</span>
+</div>
+</a>
+</div>
+</div>
+</div>
+</div>
+<!-- Kategori Modal -->
+<div id="kategoriModal" class="fixed inset-0 bg-black/50 hidden z-50">
+<div class="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md mx-4">
+<div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+<h3 id="kategoriModalTitle" class="text-lg font-bold text-slate-800 dark:text-slate-200">Yeni Kategori Ekle</h3>
+<button onclick="closeKategoriModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<form id="kategoriForm" onsubmit="saveKategori(event)" class="p-6 space-y-4">
+<input type="hidden" id="kategoriEskiAd" name="eski_ad"/>
+<div>
+<label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Kategori Adı *</label>
+<input type="text" id="kategoriAdi" name="kategori_adi" required class="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none" placeholder="Kategori adı"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Açıklama</label>
+<textarea id="kategoriAciklama" name="aciklama" rows="2" class="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none resize-none" placeholder="Kategori açıklaması..."></textarea>
+</div>
+<div class="pt-4 flex gap-3">
+<button type="button" onclick="closeKategoriModal()" class="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+İptal
+</button>
+<button type="submit" class="flex-1 px-4 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors">
+Kaydet
+</button>
+</div>
+</form>
+</div>
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Kategori Modal Functions
+function openKategoriModal() {
+    document.getElementById('kategoriModalTitle').textContent = 'Yeni Kategori Ekle';
+    document.getElementById('kategoriForm').reset();
+    document.getElementById('kategoriEskiAd').value = '';
+    document.getElementById('kategoriModal').classList.remove('hidden');
+    document.getElementById('kategoriModal').classList.add('flex', 'items-center', 'justify-center');
+}
+function editKategori(kategoriAdi) {
+    document.getElementById('kategoriModalTitle').textContent = 'Kategori Düzenle';
+    document.getElementById('kategoriAdi').value = kategoriAdi;
+    document.getElementById('kategoriEskiAd').value = kategoriAdi;
+    document.getElementById('kategoriModal').classList.remove('hidden');
+    document.getElementById('kategoriModal').classList.add('flex', 'items-center', 'justify-center');
+}
+function closeKategoriModal() {
+    document.getElementById('kategoriModal').classList.add('hidden');
+    document.getElementById('kategoriModal').classList.remove('flex', 'items-center', 'justify-center');
+}
+function saveKategori(event) {
+    event.preventDefault();
+    const kategoriAdi = document.getElementById('kategoriAdi').value.trim();
+    const eskiAd = document.getElementById('kategoriEskiAd').value;
+    if (!kategoriAdi) {
+        showMessage('Kategori adı boş olamaz!', 'error');
+        return;
+    }
+    // AJAX ile kaydet
+    fetch('/kategori/kaydet', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({kategori_adi: kategoriAdi, eski_ad: eskiAd})
+    })
+    .then(r => r.text())
+    .then(text => {
+        try {
+            const data = JSON.parse(text);
+            if(data.success) {
+                showMessage('Kategori kaydedildi!', 'success');
+                closeKategoriModal();
+                location.reload();
+            } else {
+                showMessage('Hata: ' + (data.message || 'Bilinmeyen hata'), 'error');
+            }
+        } catch(e) {
+            showMessage('Sunucu yanıtı hatası: ' + text.substring(0, 100), 'error');
+        }
+    })
+    .catch(err => {
+        showMessage('Bağlantı hatası: ' + err.message, 'error');
+    });
+}
+function deleteKategori(kategoriAdi) {
+    if(!kategoriAdi || !confirm('"' + kategoriAdi + '" kategorisini silmek istediğinize emin misiniz')) return;
+    fetch('/kategori/sil', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({kategori_adi: kategoriAdi})
+    })
+    .then(r => r.text())
+    .then(text => {
+        try {
+            const data = JSON.parse(text);
+            if(data.success) {
+                showMessage('Kategori silindi!', 'success');
+                location.reload();
+            } else {
+                showMessage('Hata: ' + (data.message || 'Bilinmeyen hata'), 'error');
+            }
+        } catch(e) {
+            showMessage('Sunucu yanıtı hatası: ' + text.substring(0, 100), 'error');
+        }
+    })
+    .catch(err => {
+        showMessage('Bağlantı hatası: ' + err.message, 'error');
+    });
+}
+// Modal dışına tıklayınca kapat
+document.getElementById('kategoriModal').addEventListener('click', function(e) {
+    if (e.target === this) closeKategoriModal();
+});
+</script>
+{% endblock %}

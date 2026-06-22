@@ -1,0 +1,161 @@
+{% extends '_base.html' %}
+
+{% block title %}Platform Yedekleri - Stok ve Cari Takip{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-3">
+    <span class="material-symbols-outlined text-primary-600">backup</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Platform Yedekleri</h1>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<div class="flex items-center gap-2">
+    <form method="post" action="{{ url_for('super_admin_run_auto_backups') }}">
+        <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900">
+            <span class="material-symbols-outlined text-lg">schedule</span>
+            Auto Yedek Calistir
+        </button>
+    </form>
+    <a href="{{ url_for('super_admin_dashboard') }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
+        <span class="material-symbols-outlined text-lg">arrow_back</span>
+        Super Admin
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-4">
+    <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Izleme paneli</h2>
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    Bu ekran platform genelindeki <span class="font-semibold">BackupLog</span> kayitlarini izler; yedek dosyasi indirme/restore islemleri musteri tarafinda yapilir.
+                </p>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-sm lg:grid-cols-3">
+                <div class="rounded-lg border border-slate-200 dark:border-slate-800 px-3 py-2">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Otomatik</p>
+                    <p class="mt-1 font-bold text-slate-900 dark:text-white">{{ policies.auto_backup_frequency }}</p>
+                </div>
+                <div class="rounded-lg border border-slate-200 dark:border-slate-800 px-3 py-2">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Retention</p>
+                    <p class="mt-1 font-bold text-slate-900 dark:text-white">{{ policies.backup_retention_days }} gun</p>
+                </div>
+                <div class="rounded-lg border border-slate-200 dark:border-slate-800 px-3 py-2">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Son yedek</p>
+                    <p class="mt-1 font-bold text-slate-900 dark:text-white">{{ latest.created_at|datetime_tr if latest and latest.created_at else '-' }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
+            <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-3">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Toplam</p>
+                <p class="mt-1 text-xl font-black text-slate-900 dark:text-white">{{ totals.total }}</p>
+            </div>
+            <div class="rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/60 dark:bg-emerald-950/20 px-4 py-3">
+                <p class="text-[10px] font-bold text-emerald-700/80 uppercase tracking-widest">Tamamlandi</p>
+                <p class="mt-1 text-xl font-black text-emerald-800 dark:text-emerald-100">{{ totals.completed }}</p>
+            </div>
+            <div class="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/60 dark:bg-amber-950/20 px-4 py-3">
+                <p class="text-[10px] font-bold text-amber-700/80 uppercase tracking-widest">Suruyor</p>
+                <p class="mt-1 text-xl font-black text-amber-800 dark:text-amber-100">{{ totals.in_progress }}</p>
+            </div>
+            <div class="rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/60 dark:bg-rose-950/20 px-4 py-3">
+                <p class="text-[10px] font-bold text-rose-700/80 uppercase tracking-widest">Basarisiz</p>
+                <p class="mt-1 text-xl font-black text-rose-800 dark:text-rose-100">{{ totals.failed }}</p>
+            </div>
+            <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-3">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Toplam boyut</p>
+                <p class="mt-1 text-xl font-black text-slate-900 dark:text-white">{{ ((total_size or 0) / (1024 * 1024))|round(1) }} MB</p>
+            </div>
+        </div>
+
+        <form method="get" class="mt-4 grid gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 md:grid-cols-[1fr_160px_160px_auto]">
+            <label class="block">
+                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Ara</span>
+                <input name="q" value="{{ search_query }}" placeholder="dosya / e-posta / firma" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-900 dark:text-white" />
+            </label>
+            <label class="block">
+                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Durum</span>
+                <select name="status" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-900 dark:text-white">
+                    <option value="" {% if not status_filter %}selected{% endif %}>Hepsi</option>
+                    <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>completed</option>
+                    <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>in_progress</option>
+                    <option value="failed" {% if status_filter == 'failed' %}selected{% endif %}>failed</option>
+                </select>
+            </label>
+            <label class="block">
+                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tur</span>
+                <select name="type" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-900 dark:text-white">
+                    <option value="" {% if not type_filter %}selected{% endif %}>Hepsi</option>
+                    <option value="manual" {% if type_filter == 'manual' %}selected{% endif %}>manual</option>
+                    <option value="auto" {% if type_filter == 'auto' %}selected{% endif %}>auto</option>
+                </select>
+            </label>
+            <div class="flex items-end gap-2">
+                <button type="submit" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900">
+                    Filtrele
+                </button>
+                <a href="{{ url_for('super_admin_backups') }}" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
+                    Sifirla
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[760px]">
+                <thead class="bg-slate-50 dark:bg-slate-800">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Dosya</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tur</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Durum</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Boyut</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tarih</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Firma</th>
+                        <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Islem</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                    {% for backup in backups.items %}
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                        <td class="px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white">{{ backup.filename }}</td>
+                        <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{{ backup.backup_type }}</td>
+                        <td class="px-4 py-3"><span class="rounded-full px-2 py-1 text-xs font-semibold {% if backup.status == 'completed' %}bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200{% else %}bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-200{% endif %}">{{ backup.status }}</span></td>
+                        <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{{ ((backup.file_size or 0) / 1024)|round(1) }} KB</td>
+                        <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{{ backup.created_at|datetime_tr if backup.created_at else '-' }}</td>
+                        <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{{ backup.user.firma_adi if backup.user else '-' }}</td>
+                        <td class="px-4 py-3 text-right">
+                            {% if backup.status == 'completed' %}
+                            <a href="{{ url_for('super_admin_download_backup', backup_id=backup.id) }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
+                                <span class="material-symbols-outlined text-lg">download</span>
+                                Indir
+                            </a>
+                            {% else %}
+                            <span class="text-xs font-semibold text-slate-400">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="px-4 py-10 text-center text-slate-500 dark:text-slate-400">Yedek kaydi bulunamadi.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if backups.pages > 1 %}
+    <div class="flex items-center justify-between">
+        <a href="{{ url_for('super_admin_backups', page=backups.prev_num) }}" class="rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm font-medium {% if not backups.has_prev %}pointer-events-none opacity-40{% endif %}">Onceki</a>
+        <span class="text-sm text-slate-500 dark:text-slate-400">Sayfa {{ backups.page }} / {{ backups.pages }}</span>
+        <a href="{{ url_for('super_admin_backups', page=backups.next_num) }}" class="rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm font-medium {% if not backups.has_next %}pointer-events-none opacity-40{% endif %}">Sonraki</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,599 @@
+{% extends '_base.html' %}
+
+{% block title %}İade İşlemleri - Stok ve Cari Takip{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-4">
+    <span class="material-symbols-outlined text-rose-600 font-bold">assignment_return</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">İade İşlemleri</h1>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<div class="hidden sm:flex items-center gap-2">
+    <button type="button" onclick="showHistoryModal()" class="btn-secondary">
+        <span class="material-symbols-outlined text-lg">history</span>
+        Geçmiş
+    </button>
+    <button type="button" onclick="showStatisticsModal()" class="btn-primary">
+        <span class="material-symbols-outlined text-lg">monitoring</span>
+        Özet
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6 pb-20">
+    <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+        <div>
+            <h2 class="text-3xl font-black text-slate-900 dark:text-white tracking-tight">İade Yönetimi</h2>
+            <p class="text-slate-500 dark:text-slate-400 font-medium mt-1">Müşteri iadelerini stok, cari ve nakit etkisiyle birlikte tek akışta işleyin.</p>
+        </div>
+        <div class="flex sm:hidden items-center gap-2">
+            <button type="button" onclick="showHistoryModal()" class="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium">Geçmiş</button>
+            <button type="button" onclick="showStatisticsModal()" class="flex-1 px-3 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium">Özet</button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 border-l-4 border-l-rose-500">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Toplam İade</p>
+            <div class="flex items-baseline gap-2 mt-1">
+                <span class="text-2xl font-black text-slate-900 dark:text-white">{{ toplam_iade or 0 }}</span>
+                <span class="text-xs font-bold text-slate-500">Kayıt</span>
+            </div>
+        </div>
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 border-l-4 border-l-amber-500">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Bekleyen</p>
+            <div class="flex items-baseline gap-2 mt-1">
+                <span class="text-2xl font-black text-amber-600">{{ bekleyen_iade or 0 }}</span>
+                <span class="text-xs font-bold text-amber-500/80">İşlem</span>
+            </div>
+        </div>
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 border-l-4 border-l-emerald-500">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tamamlanan</p>
+            <div class="flex items-baseline gap-2 mt-1">
+                <span class="text-2xl font-black text-emerald-600">{{ tamamlanan_iade or 0 }}</span>
+                <span class="text-xs font-bold text-emerald-500/80">İade</span>
+            </div>
+        </div>
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 border-l-4 border-l-blue-500">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Toplam Değer</p>
+            <div class="flex items-baseline gap-1 mt-1">
+                <span class="text-sm font-bold text-slate-400">₺</span>
+                <span class="text-2xl font-black text-slate-900 dark:text-white">{{ (toplam_iade_deger or 0)|tr_number }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start">
+        <form id="iadeForm" method="POST" action="{{ url_for('iade') }}" class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Yeni İade Kaydı</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Müşteri, iade ürünleri ve ödeme etkisini seçin.</p>
+                </div>
+                <span id="returnTotalBadge" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200">₺0,00</span>
+            </div>
+
+            <div class="p-5 space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Müşteri *</label>
+                        <select name="cari_id" id="cariSelect" required class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                            <option value="">Müşteri seçin</option>
+                            {% for cari in cariler %}
+                            <option value="{{ cari.id }}" data-borc="{{ cari.borc or 0 }}" data-alacak="{{ cari.alacak or 0 }}">{{ cari.unvan }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">İade Türü</label>
+                            <select name="iade_turu" id="iadeTuru" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                                <option value="urun_iadesi">Ürün İadesi</option>
+                                <option value="para_iadesi">Para İadesi</option>
+                                <option value="hizmet_iadesi">Hizmet İadesi</option>
+                                <option value="degisim">Değişim</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Ödeme Türü</label>
+                            <select name="odeme_turu" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                                <option value="Nakit">Nakit</option>
+                                <option value="Havale/EFT">Havale/EFT</option>
+                                <option value="Kredi Kartı">Kredi Kartı</option>
+                                <option value="Çek">Çek</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Hesap</label>
+                            <select name="account_id" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                                <option value="">Otomatik</option>
+                                {% for a in (accounts or []) %}
+                                <option value="{{ a.id }}">{{ a.name }}{% if a.type %} ({% if a.type == 'cash' %}Kasa{% elif a.type == 'bank' %}Banka{% else %}POS{% endif %}){% endif %}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="cariPreview" class="hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-4"></div>
+
+                <div class="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                    <div class="px-4 py-3 bg-slate-50 dark:bg-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-900 dark:text-white">İade Kalemleri</h4>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">İade alınan ürünler stoklara geri eklenecektir.</p>
+                        </div>
+                        <button type="button" onclick="urunEkle()" class="px-3 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-lg">add</span>
+                            Ürün Ekle
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                <tr class="border-b border-slate-200 dark:border-slate-800">
+                                    <th class="px-4 py-3">Ürün</th>
+                                    <th class="px-4 py-3 text-center">Mevcut</th>
+                                    <th class="px-4 py-3 text-center">Miktar</th>
+                                    <th class="px-4 py-3 text-right">Birim Fiyat</th>
+                                    <th class="px-4 py-3 text-right">Tutar</th>
+                                    <th class="px-4 py-3 text-center">İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="urunListesi" class="divide-y divide-slate-200 dark:divide-slate-800">
+                                <tr id="emptyProductRow">
+                                    <td colspan="6" class="px-4 py-10 text-center">
+                                        <span class="material-symbols-outlined text-4xl text-slate-300">inventory_2</span>
+                                        <p class="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">Henüz ürün eklenmedi</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">İade Sebebi *</label>
+                    <textarea name="iade_sebebi" rows="4" required class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="İade nedenini kısa ve net şekilde yazın"></textarea>
+                </div>
+
+                <label class="flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-4 cursor-pointer">
+                    <input type="checkbox" name="alacak_olustur" id="alacakOlustur" class="mt-1 rounded border-slate-300 text-primary-600 focus:ring-primary-500">
+                    <span>
+                        <span class="block text-sm font-semibold text-slate-800 dark:text-slate-200">Müşteri için alacak oluştur</span>
+                        <span class="block text-xs text-slate-500 dark:text-slate-400 mt-1">Nakit çıkışı yerine cari hesabına iade alacağı yansıtılır.</span>
+                    </span>
+                </label>
+            </div>
+
+            <div class="p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex flex-col sm:flex-row justify-end gap-3">
+                <button type="button" onclick="resetForm()" class="px-5 py-3 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-white dark:hover:bg-slate-800 transition-colors">Temizle</button>
+                <button id="submitReturnButton" type="submit" class="px-5 py-3 bg-rose-600 text-white rounded-lg font-semibold hover:bg-rose-700 transition-colors flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined">assignment_return</span>
+                    İadeyi Kaydet
+                </button>
+            </div>
+        </form>
+
+        <div class="space-y-6">
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <div class="p-5 border-b border-slate-200 dark:border-slate-800">
+                    <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Son İadeler</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">En son tamamlanan 10 işlem.</p>
+                </div>
+                <div class="divide-y divide-slate-200 dark:divide-slate-800">
+                    {% for iade, cari in son_iadeler %}
+                    <div class="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-slate-900 dark:text-white truncate">{{ cari.unvan }}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ iade.tarih|datetime_tr if iade.tarih else '-' }}</p>
+                            </div>
+                            <span class="text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">₺{{ (iade.iade_tutari or 0)|tr_number }}</span>
+                        </div>
+                        <div class="flex items-center gap-2 mt-3">
+                            <span class="px-2 py-1 rounded-full bg-rose-100 text-rose-700 text-xs font-medium">{{ iade.iade_turu.replace('_', ' ').title() }}</span>
+                            <span class="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">{{ iade.durum.title() }}</span>
+                            <span class="text-xs text-slate-500">{{ iade.urun_adet or 0 }} ürün</span>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="app-empty-state app-empty-state--compact">
+                        <span class="material-symbols-outlined app-empty-icon">assignment_return</span>
+                        <h3 class="app-empty-title">Henüz iade kaydı yok</h3>
+                        <p class="app-empty-description">İade geldiğinde ürünü seçip miktar ve ödeme tipini girin; stok ve cari/kasa hareketleri düzenli kalsın.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="bg-slate-900 rounded-xl p-5 text-white">
+                <div class="flex items-center gap-3">
+                    <div class="size-10 rounded-lg bg-white/10 flex items-center justify-center">
+                        <span class="material-symbols-outlined">tips_and_updates</span>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold">İşlem Kontrolü</h3>
+                        <p class="text-sm text-slate-300 mt-1">Ürün iadesinde stok artar; para iadesinde nakit çıkışı oluşur.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="urunEkleModal" class="fixed inset-0 bg-slate-950/60 z-50 hidden">
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-3xl w-full max-h-[82vh] overflow-hidden">
+            <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Ürün Seç</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">İadeye eklenecek ürünü arayın.</p>
+                </div>
+                <button type="button" onclick="closeUrunModal()" class="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="p-5">
+                <div class="relative mb-4">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+                    <input type="search" id="urunArama" placeholder="Ürün adı, barkod veya kategori ara" class="w-full px-4 py-3 pl-10 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                </div>
+                <div id="urunListesiModal" class="space-y-2 max-h-[52vh] overflow-y-auto"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="historyModal" class="fixed inset-0 bg-slate-950/60 z-50 hidden">
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-5xl w-full max-h-[84vh] overflow-hidden">
+            <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">İade Geçmişi</h3>
+                <button type="button" onclick="closeHistoryModal()" class="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="overflow-x-auto max-h-[70vh]">
+                <table class="w-full">
+                    <thead class="bg-slate-50 dark:bg-slate-800 sticky top-0">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Tarih</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Müşteri</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Tür</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Sebep</th>
+                            <th class="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase">Tutar</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Durum</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody" class="divide-y divide-slate-200 dark:divide-slate-800"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="statisticsModal" class="fixed inset-0 bg-slate-950/60 z-50 hidden">
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-4xl w-full overflow-hidden">
+            <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">İade Özeti</h3>
+                <button type="button" onclick="closeStatisticsModal()" class="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div class="rounded-xl border border-slate-200 dark:border-slate-800 p-5">
+                    <h4 class="font-semibold text-slate-900 dark:text-white mb-4">İade Türleri</h4>
+                    <div id="iadeTuruGrafik" class="space-y-3"></div>
+                </div>
+                <div class="rounded-xl border border-slate-200 dark:border-slate-800 p-5">
+                    <h4 class="font-semibold text-slate-900 dark:text-white mb-4">Aylık Trend</h4>
+                    <div id="aylikTrendGrafik" class="space-y-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const urunData = {{ urunler|tojson|safe }};
+
+    function money(value) {
+        return `₺${Number(value || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    function escapeHtml(value) {
+        return String(value " '').replace(/[&<>"']/g, char => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[char]));
+    }
+
+    function formatLabel(value) {
+        return String(value || '-').replace(/_/g, ' ').replace(/\b\w/g, char => char.toLocaleUpperCase('tr-TR'));
+    }
+
+    function updateCustomerPreview(option) {
+        const preview = document.getElementById('cariPreview');
+        if (!preview) return;
+
+        if (!option.value) {
+            preview.classList.add('hidden');
+            preview.innerHTML = '';
+            return;
+        }
+
+        const borc = Number(option.dataset.borc || 0);
+        const alacak = Number(option.dataset.alacak || 0);
+        const bakiye = alacak - borc;
+        preview.innerHTML = `
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div><p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Borç</p><p class="mt-1 text-lg font-bold text-rose-600">${money(borc)}</p></div>
+                <div><p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Alacak</p><p class="mt-1 text-lg font-bold text-emerald-600">${money(alacak)}</p></div>
+                <div><p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Net Bakiye</p><p class="mt-1 text-lg font-bold text-slate-900 dark:text-white">${money(bakiye)}</p></div>
+            </div>
+        `;
+        preview.classList.remove('hidden');
+    }
+
+    function updateReturnTotal() {
+        let total = 0;
+        document.querySelectorAll('#urunListesi tr[data-product-row]').forEach(row => {
+            const quantity = Number(row.querySelector('input[name="iade_miktarlari[]"]').value || 0);
+            const price = Number(row.dataset.price || 0);
+            const lineTotal = quantity * price;
+            total += lineTotal;
+            const lineTotalEl = row.querySelector('[data-line-total]');
+            if (lineTotalEl) lineTotalEl.textContent = money(lineTotal);
+        });
+
+        const totalBadge = document.getElementById('returnTotalBadge');
+        if (totalBadge) totalBadge.textContent = money(total);
+
+        const emptyRow = document.getElementById('emptyProductRow');
+        if (emptyRow) {
+            emptyRow.classList.toggle('hidden', document.querySelectorAll('#urunListesi tr[data-product-row]').length > 0);
+        }
+    }
+
+    window.urunEkle = function () {
+        const modal = document.getElementById('urunEkleModal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        renderProducts('');
+        setTimeout(() => document.getElementById('urunArama').focus(), 50);
+    };
+
+    window.closeUrunModal = function () {
+        document.getElementById('urunEkleModal').classList.add('hidden');
+    };
+
+    function renderProducts(query) {
+        const list = document.getElementById('urunListesiModal');
+        if (!list) return;
+
+        const normalized = String(query || '').trim().toLowerCase();
+        const filtered = urunData.filter(urun => {
+            const haystack = `${urun.urun_adi || ''} ${urun.barkod || ''} ${urun.kategori || ''}`.toLowerCase();
+            return !normalized || haystack.includes(normalized);
+        });
+
+        if (!filtered.length) {
+            list.innerHTML = '<div class="p-8 text-center text-sm text-slate-500">Uygun ürün bulunamadı.</div>';
+            return;
+        }
+
+        list.innerHTML = filtered.map(urun => `
+            <button type="button" onclick="urunSec(${urun.id})" class="w-full text-left p-4 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                <div class="flex items-center justify-between gap-4">
+                    <div class="min-w-0">
+                        <p class="font-semibold text-slate-900 dark:text-white truncate">${escapeHtml(urun.urun_adi)}</p>
+                        <p class="text-xs text-slate-500 mt-1">${escapeHtml(urun.barkod || '-')} · Stok: ${Number(urun.stok_miktari || 0)}</p>
+                    </div>
+                    <span class="text-sm font-bold text-primary-600 whitespace-nowrap">${money(urun.satis_fiyati)}</span>
+                </div>
+            </button>
+        `).join('');
+    }
+
+    window.urunSec = function (urunId) {
+        const urun = urunData.find(item => Number(item.id) === Number(urunId));
+        const tbody = document.getElementById('urunListesi');
+        if (!urun || !tbody) return;
+
+        if (tbody.querySelector(`tr[data-product-row="${urun.id}"]`)) {
+            closeUrunModal();
+            return;
+        }
+
+        const row = document.createElement('tr');
+        row.dataset.productRow = urun.id;
+        row.dataset.price = Number(urun.satis_fiyati || 0);
+        row.className = 'hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors';
+        row.innerHTML = `
+            <td class="px-4 py-3">
+                <div class="flex items-center gap-3">
+                    <div class="size-9 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-slate-400 text-lg">inventory_2</span>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="font-medium text-slate-900 dark:text-white truncate">${escapeHtml(urun.urun_adi)}</p>
+                        <p class="text-xs text-slate-500">${escapeHtml(urun.barkod || '-')}</p>
+                        <input type="hidden" name="urun_idler[]" value="${urun.id}">
+                        <input type="hidden" name="urun_adlari[]" value="${escapeHtml(urun.urun_adi)}">
+                    </div>
+                </div>
+            </td>
+            <td class="px-4 py-3 text-center text-sm text-slate-600 dark:text-slate-400">${Number(urun.stok_miktari || 0)}</td>
+            <td class="px-4 py-3 text-center">
+                <input type="number" name="iade_miktarlari[]" min="0.01" step="0.01" value="1" class="w-24 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-center text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white" oninput="updateReturnTotal()">
+            </td>
+            <td class="px-4 py-3 text-right text-sm font-medium text-slate-700 dark:text-slate-200">${money(urun.satis_fiyati)}</td>
+            <td class="px-4 py-3 text-right text-sm font-bold text-slate-900 dark:text-white" data-line-total>${money(urun.satis_fiyati)}</td>
+            <td class="px-4 py-3 text-center">
+                <button type="button" onclick="urunCikar(this)" class="p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
+                    <span class="material-symbols-outlined text-lg">delete</span>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+        closeUrunModal();
+        updateReturnTotal();
+    };
+
+    window.urunCikar = function (button) {
+        button.closest('tr').remove();
+        updateReturnTotal();
+    };
+
+    window.resetForm = function () {
+        document.getElementById('iadeForm').reset();
+        document.querySelectorAll('#urunListesi tr[data-product-row]').forEach(row => row.remove());
+        document.getElementById('cariPreview').classList.add('hidden');
+        updateReturnTotal();
+    };
+
+    window.showHistoryModal = function () {
+        document.getElementById('historyModal').classList.remove('hidden');
+        loadHistoryData();
+    };
+
+    window.closeHistoryModal = function () {
+        document.getElementById('historyModal').classList.add('hidden');
+    };
+
+    function loadHistoryData() {
+        const tbody = document.getElementById('historyTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-slate-500">Yükleniyor...</td></tr>';
+
+        fetch('/api/iade/gecmis')
+            .then(response => response.json())
+            .then(data => {
+                const iadeler = data.iadeler || [];
+                if (!iadeler.length) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-slate-500">İade kaydı bulunamadı.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = iadeler.map(iade => `
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                        <td class="px-4 py-3 text-sm text-slate-500">${escapeHtml(iade.tarih)}</td>
+                        <td class="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">${escapeHtml(iade.cari_unvan)}</td>
+                        <td class="px-4 py-3"><span class="px-2 py-1 bg-rose-100 text-rose-700 text-xs font-medium rounded-full">${escapeHtml(formatLabel(iade.iade_turu))}</span></td>
+                        <td class="px-4 py-3 text-sm text-slate-500 max-w-xs truncate">${escapeHtml(iade.sebep)}</td>
+                        <td class="px-4 py-3 text-right text-sm font-bold text-slate-900 dark:text-white">${money(iade.tutar)}</td>
+                        <td class="px-4 py-3"><span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full">${escapeHtml(formatLabel(iade.durum))}</span></td>
+                    </tr>
+                `).join('');
+            })
+            .catch(() => {
+                tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-rose-600">Geçmiş yüklenemedi.</td></tr>';
+            });
+    }
+
+    window.showStatisticsModal = function () {
+        document.getElementById('statisticsModal').classList.remove('hidden');
+        loadStatisticsData();
+    };
+
+    window.closeStatisticsModal = function () {
+        document.getElementById('statisticsModal').classList.add('hidden');
+    };
+
+    function loadStatisticsData() {
+        fetch('/api/iade/istatistikler')
+            .then(response => response.json())
+            .then(data => {
+                createBarList('iadeTuruGrafik', data.iade_turleri || {}, 'rose');
+                createBarList('aylikTrendGrafik', data.aylik_trend || {}, 'blue');
+            });
+    }
+
+    function createBarList(containerId, data, color) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const entries = Object.entries(data);
+        if (!entries.length) {
+            container.innerHTML = '<p class="text-sm text-slate-500">Gösterilecek veri yok.</p>';
+            return;
+        }
+        const maxValue = Math.max(...entries.map(([, value]) => Number(value || 0)), 1);
+        container.innerHTML = entries.map(([label, value]) => {
+            const width = (Number(value || 0) / maxValue) * 100;
+            return `
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="text-slate-600 dark:text-slate-400">${escapeHtml(formatLabel(label))}</span>
+                        <span class="font-semibold text-slate-900 dark:text-white">${Number(value || 0)}</span>
+                    </div>
+                    <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2">
+                        <div class="bg-${color}-500 h-2 rounded-full" style="width: ${width}%"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function initIadePage() {
+        const cariSelect = document.getElementById('cariSelect');
+        const urunArama = document.getElementById('urunArama');
+        const form = document.getElementById('iadeForm');
+
+        if (cariSelect && cariSelect.dataset.ready !== 'true') {
+            cariSelect.dataset.ready = 'true';
+            cariSelect.addEventListener('change', function () {
+                updateCustomerPreview(this.options[this.selectedIndex]);
+            });
+        }
+
+        if (urunArama && urunArama.dataset.ready !== 'true') {
+            urunArama.dataset.ready = 'true';
+            urunArama.addEventListener('input', event => renderProducts(event.target.value));
+        }
+
+        if (form && form.dataset.ready !== 'true') {
+            form.dataset.ready = 'true';
+            form.addEventListener('submit', function (event) {
+                const quantities = document.querySelectorAll('input[name="iade_miktarlari[]"]');
+                if (!quantities.length) {
+                    event.preventDefault();
+                    alert('En az bir ürün seçmelisiniz.');
+                    return;
+                }
+                const invalid = Array.from(quantities).some(input => Number(input.value || 0) <= 0);
+                if (invalid) {
+                    event.preventDefault();
+                    alert('İade miktarı sıfırdan büyük olmalıdır.');
+                    return;
+                }
+                const submitButton = document.getElementById('submitReturnButton');
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.classList.add('opacity-70', 'cursor-wait');
+                    submitButton.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span> İşleniyor...';
+                }
+            });
+        }
+        updateReturnTotal();
+    }
+
+    initIadePage();
+    document.addEventListener('pjax:loaded', initIadePage);
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+            closeUrunModal();
+            closeHistoryModal();
+            closeStatisticsModal();
+        }
+    });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,273 @@
+{% extends '_base.html' %}
+
+{% set auth_site = site_config() %}
+{% set platform_name = auth_site.get('platform_name', auth_site.get('name', 'StokCari')) %}
+{% block title %}{{ platform_name }} - Güvenli Giriş{% endblock %}
+
+{% block head %}
+<style>
+    .auth-panel {
+        background:
+            linear-gradient(135deg, rgba(4, 64, 174, 0.88), rgba(15, 23, 42, 0.78)),
+            url("https://images.unsplash.com/photo-1586528116311-ad8dd3c8310dauto=format&fit=crop&w=1400&q=80");
+        background-size: cover;
+        background-position: center;
+    }
+    .auth-card {
+        box-shadow: 0 24px 80px rgba(15, 23, 42, 0.14);
+    }
+    .auth-feature-card {
+        color: #fff !important;
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        box-shadow: 0 14px 36px rgba(15, 23, 42, 0.16);
+        backdrop-filter: blur(10px);
+    }
+    .auth-feature-card * {
+        color: inherit !important;
+    }
+    .auth-feature-card small {
+        color: rgba(255, 255, 255, 0.72) !important;
+    }
+    .auth-pill {
+        color: rgba(255, 255, 255, 0.88) !important;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+    }
+    .auth-tab-active {
+        background: white;
+        color: #0440ae;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+    }
+    .dark .auth-tab-active {
+        background: #1e293b;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% set mode = auth_mode|default('login') %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div class="min-h-screen grid lg:grid-cols-[1.05fr_0.95fr]">
+        <section class="auth-panel hidden lg:flex relative overflow-hidden">
+            <div class="relative z-10 flex flex-col justify-between w-full p-12 xl:p-16 text-white">
+                <div class="flex items-center gap-3">
+                    <div class="size-11 bg-white rounded-xl flex items-center justify-center text-primary-600">
+                        <span class="material-symbols-outlined text-2xl">inventory_2</span>
+                    </div>
+                    <div>
+                        <p class="text-2xl font-black tracking-tight">{{ platform_name }}</p>
+                        <p class="text-sm text-white/70">SaaS işletme yönetimi</p>
+                    </div>
+                </div>
+
+                <div class="max-w-xl">
+                    <p class="text-sm font-bold uppercase tracking-[0.18em] text-white/70 mb-4">Stok, cari, POS, personel ve ön muhasebe</p>
+                    <h1 class="text-5xl font-black leading-tight mb-6">İşletmenizin günlük operasyonlarını tek panelden yönetin.</h1>
+                    <p class="text-lg text-white/78 leading-relaxed">Satış, stok, cari, teklif, iade, personel ve nakit akışlarını firma bazlı veri izolasyonuyla güvenle takip edin.</p>
+                    <div class="mt-7 flex flex-wrap gap-2">
+                        <span class="auth-pill rounded-full px-3 py-1 text-xs font-bold">Sayfalama tercihleri</span>
+                        <span class="auth-pill rounded-full px-3 py-1 text-xs font-bold">Demo veri araçları</span>
+                        <span class="auth-pill rounded-full px-3 py-1 text-xs font-bold">Yedekleme</span>
+                        <span class="auth-pill rounded-full px-3 py-1 text-xs font-bold">Güvenlik denetimi</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4 max-w-xl">
+                    <div class="auth-feature-card rounded-xl p-4">
+                        <p class="text-2xl font-black">POS</p>
+                        <small class="block text-xs mt-1">Hızlı satış</small>
+                    </div>
+                    <div class="auth-feature-card rounded-xl p-4">
+                        <p class="text-2xl font-black">CRM</p>
+                        <small class="block text-xs mt-1">Cari takip</small>
+                    </div>
+                    <div class="auth-feature-card rounded-xl p-4">
+                        <p class="text-2xl font-black">SaaS</p>
+                        <small class="block text-xs mt-1">Veri izolasyonu</small>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="flex items-center justify-center px-4 py-8 sm:px-8">
+            <div class="auth-card w-full max-w-[460px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8">
+                <div class="lg:hidden flex items-center justify-center gap-3 mb-8">
+                    <div class="size-10 bg-primary-600 rounded-xl flex items-center justify-center text-white">
+                        <span class="material-symbols-outlined">inventory_2</span>
+                    </div>
+                    <span class="text-2xl font-black text-slate-900 dark:text-white">{{ platform_name }}</span>
+                </div>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="mb-5 space-y-2">
+                    {% for category, message in messages %}
+                    <div class="p-3 rounded-lg text-sm font-medium {% if category == 'success' %}bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300{% elif category == 'error' %}bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300{% else %}bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300{% endif %}">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                {% if mode == 'forgot' %}
+                <div class="mb-7">
+                    <h2 class="text-2xl font-black text-slate-900 dark:text-white">Şifrenizi sıfırlayın</h2>
+                    <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">E-posta adresinizi girin; hesabınız varsa sıfırlama bağlantısı hazırlanır.</p>
+                </div>
+                <form method="POST" action="{{ url_for('sifremi_unuttum') }}" class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">E-posta</label>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">mail</span>
+                            <input name="email" type="email" required autocomplete="email" class="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="ornek@firma.com">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full min-h-12 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2">
+                        Bağlantı oluştur
+                        <span class="material-symbols-outlined text-[20px]">send</span>
+                    </button>
+                    <a href="{{ url_for('giris') }}" class="block text-center text-sm font-semibold text-primary-600 hover:underline">Giriş ekranına dön</a>
+                </form>
+
+                {% elif mode == 'reset' %}
+                <div class="mb-7">
+                    <h2 class="text-2xl font-black text-slate-900 dark:text-white">Yeni şifre belirleyin</h2>
+                    <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Güçlü bir şifre seçin. En az 8 karakter önerilir.</p>
+                </div>
+                <form method="POST" action="{{ url_for('sifre_sifirla', token=reset_token) }}" class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Yeni şifre</label>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">lock_reset</span>
+                            <input id="reset-password" name="password" type="password" required minlength="8" autocomplete="new-password" class="password-field w-full pl-10 pr-12 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="En az 8 karakter">
+                            <button class="toggle-password absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" type="button" aria-label="Şifreyi göster">
+                                <span class="material-symbols-outlined text-[20px]">visibility</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Yeni şifre tekrar</label>
+                        <input name="confirm_password" type="password" required minlength="8" autocomplete="new-password" class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="Şifrenizi tekrar girin">
+                    </div>
+                    <button type="submit" class="w-full min-h-12 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2">
+                        Şifreyi güncelle
+                        <span class="material-symbols-outlined text-[20px]">check_circle</span>
+                    </button>
+                </form>
+
+                {% else %}
+                <div class="mb-7">
+                    <h2 class="text-2xl font-black text-slate-900 dark:text-white">Güvenli giriş</h2>
+                    <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Firma hesabınıza erişmek için bilgilerinizi girin.</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-7">
+                    <button type="button" data-auth-tab="login" class="auth-tab auth-tab-active py-2.5 rounded-lg text-sm font-bold transition-all">Giriş</button>
+                    <button type="button" data-auth-tab="register" class="auth-tab py-2.5 rounded-lg text-sm font-bold text-slate-500 transition-all">Yeni kayıt</button>
+                </div>
+
+                <form id="login-form" method="POST" action="{{ url_for('giris') }}" class="auth-form space-y-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">E-posta</label>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">mail</span>
+                            <input name="email" type="email" required autocomplete="email" class="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="ornek@firma.com">
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300">Şifre</label>
+                            <a href="{{ url_for('sifremi_unuttum') }}" class="text-xs font-bold text-primary-600 hover:underline">Şifremi unuttum</a>
+                        </div>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">lock</span>
+                            <input name="password" type="password" required autocomplete="current-password" class="password-field w-full pl-10 pr-12 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="Şifreniz">
+                            <button class="toggle-password absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" type="button" aria-label="Şifreyi göster">
+                                <span class="material-symbols-outlined text-[20px]">visibility</span>
+                            </button>
+                        </div>
+                    </div>
+                    <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                        <input name="remember" type="checkbox" class="rounded text-primary-600 focus:ring-primary-600 border-slate-300 dark:border-slate-700">
+                        Beni hatırla
+                    </label>
+                    <button type="submit" class="w-full min-h-12 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2">
+                        Giriş Yap
+                        <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+                    </button>
+                </form>
+
+                <form id="register-form" method="POST" action="{{ url_for('kayit') }}" class="auth-form hidden space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Firma adı</label>
+                        <input name="firma_adi" type="text" required autocomplete="organization" class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="ABC Ticaret">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Yetkili adı</label>
+                        <input name="yetkili_adi" type="text" autocomplete="name" class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="Ad Soyad">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">E-posta</label>
+                        <input name="email" type="email" required autocomplete="email" class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="ornek@firma.com">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Telefon</label>
+                        <input name="telefon" type="tel" autocomplete="tel" class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="0 5xx xxx xx xx">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Şifre</label>
+                        <div class="relative">
+                            <input name="password" type="password" required minlength="8" autocomplete="new-password" class="password-field w-full px-4 pr-12 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="En az 8 karakter">
+                            <button class="toggle-password absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" type="button" aria-label="Şifreyi göster">
+                                <span class="material-symbols-outlined text-[20px]">visibility</span>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full min-h-12 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2">
+                        Firma hesabı oluştur
+                        <span class="material-symbols-outlined text-[20px]">person_add</span>
+                    </button>
+                </form>
+                {% endif %}
+
+                <p class="mt-8 text-center text-xs text-slate-400">© 2026 {{ platform_name }}. Güvenli SaaS işletme yönetimi.</p>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('[data-auth-tab]').forEach((button) => {
+    button.addEventListener('click', () => {
+        const target = button.dataset.authTab;
+        document.querySelectorAll('.auth-tab').forEach((tab) => {
+            tab.classList.remove('auth-tab-active');
+            tab.classList.add('text-slate-500');
+        });
+        button.classList.add('auth-tab-active');
+        button.classList.remove('text-slate-500');
+        document.getElementById('login-form').classList.toggle('hidden', target !== 'login');
+        document.getElementById('register-form').classList.toggle('hidden', target !== 'register');
+    });
+});
+
+document.querySelectorAll('.toggle-password').forEach((button) => {
+    button.addEventListener('click', () => {
+        const wrapper = button.closest('.relative');
+        const input = wrapper ? wrapper.querySelector('.password-field') : null;
+        const icon = button.querySelector('.material-symbols-outlined');
+        if (!input) return;
+        const isPassword = input.type === 'password';
+        input.type = isPassword ? 'text' : 'password';
+        if (icon) icon.textContent = isPassword ? 'visibility_off' : 'visibility';
+        button.setAttribute('aria-label', isPassword ? 'Şifreyi gizle' : 'Şifreyi göster');
+    });
+});
+</script>
+{% endblock %}

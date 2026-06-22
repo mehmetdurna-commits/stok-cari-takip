@@ -1,0 +1,213 @@
+{% extends '_base.html' %}
+
+{% block title %}Sistem Yönetimi - Stok ve Cari Takip{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-3">
+    <span class="material-symbols-outlined text-primary-600">admin_panel_settings</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Sistem Yönetimi</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+    <!-- Sistem İstatistikleri -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+            <div class="flex items-center gap-3">
+                <div class="size-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
+                    <span class="material-symbols-outlined text-blue-600 text-2xl">people</span>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Toplam Kullanıcı</p>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ total_users }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+            <div class="flex items-center gap-3">
+                <div class="size-12 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center">
+                    <span class="material-symbols-outlined text-green-600 text-2xl">inventory_2</span>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Toplam Ürün</p>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ total_products }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+            <div class="flex items-center gap-3">
+                <div class="size-12 bg-purple-50 dark:bg-purple-900/20 rounded-xl flex items-center justify-center">
+                    <span class="material-symbols-outlined text-purple-600 text-2xl">receipt_long</span>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Toplam Satış</p>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ total_sales }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+            <div class="flex items-center gap-3">
+                <div class="size-12 bg-orange-50 dark:bg-orange-900/20 rounded-xl flex items-center justify-center">
+                    <span class="material-symbols-outlined text-orange-600 text-2xl">description</span>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Toplam Teklif</p>
+                    <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ total_quotes }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hızlı İşlemler -->
+    <div class="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl p-6 text-white">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-2xl font-bold mb-2">Hızlı İşlemler</h2>
+                <p class="text-primary-100 opacity-90">Sistem yönetimi için hızlı erişim</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="createBackup()" class="px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-lg font-medium hover:bg-white/30 transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined">backup</span>
+                    Yedekle
+                </button>
+                <a href="{{ url_for('system_settings') }}" class="px-4 py-2 bg-white text-primary-600 rounded-lg font-medium hover:bg-primary-50 transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined">tune</span>
+                    Ayarlar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Son Aktiviteler -->
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+        <div class="p-6 border-b border-slate-200 dark:border-slate-800">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Son Aktiviteler</h3>
+                <a href="{{ url_for('audit_logs') }}" class="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                    Tümünü Gör
+                </a>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b border-slate-200 dark:border-slate-700">
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Kullanıcı</th>
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">İşlem</th>
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Kaynak</th>
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">IP Adres</th>
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Tarih</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                    {% for log in recent_logs %}
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td class="py-3 px-4">
+                            <div class="flex items-center gap-3">
+                                <div class="size-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-slate-400 text-sm">person</span>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-slate-900 dark:text-white">{{ log.user.firma_adi }}</p>
+                                    <p class="text-xs text-slate-500">{{ log.user.email }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs rounded-full">
+                                {{ log.action }}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4">
+                            <span class="text-sm text-slate-600 dark:text-slate-400">{{ log.resource_type }}</span>
+                        </td>
+                        <td class="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">{{ log.ip_address }}</td>
+                        <td class="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">{{ log.timestamp|datetime_tr }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Sistem Durumu -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+            <div class="p-6 border-b border-slate-200 dark:border-slate-800">
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Sistem Durumu</h3>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-600 dark:text-slate-400">Veritabanı</span>
+                    <span class="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Sağlıklı</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-600 dark:text-slate-400">Disk Alanı</span>
+                    <span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">85%</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-600 dark:text-slate-400">Son Yedek</span>
+                    <span class="text-sm text-slate-900 dark:text-white">2 saat önce</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-600 dark:text-slate-400">Aktif Oturumlar</span>
+                    <span class="text-sm text-slate-900 dark:text-white">3</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+            <div class="p-6 border-b border-slate-200 dark:border-slate-800">
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Performans Metrikleri</h3>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-600 dark:text-slate-400">Ortalama Yanıt Süresi</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">124ms</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-600 dark:text-slate-400">CPU Kullanımı</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">12%</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-600 dark:text-slate-400">Bellek Kullanımı</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">256MB</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-600 dark:text-slate-400">Aktif İşlemler</span>
+                    <span class="text-sm font-medium text-slate-900 dark:text-white">7</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function createBackup() {
+        fetch('/admin/backup/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showMessage(data.message, 'success');
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                showMessage(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('Yedekleme sırasında hata oluştu!', 'error');
+        });
+    }
+
+    // Note: Use global showMessage() from _base.html for notifications
+</script>
+{% endblock %}

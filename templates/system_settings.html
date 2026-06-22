@@ -1,0 +1,33 @@
+{% extends '_base.html' %}
+
+{% block title %}Sistem Ayarlari - Stok ve Cari Takip{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-3">
+    <span class="material-symbols-outlined text-primary-600">tune</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Sistem Ayarlari</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <form method="POST" class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-5">
+        {% for setting in settings %}
+        <div>
+            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">{{ setting.key }}</label>
+            <input type="text" name="{{ setting.key }}" value="{{ setting.value or '' }}" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+            {% if setting.description %}
+            <p class="mt-1 text-xs text-slate-500">{{ setting.description }}</p>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="text-center py-8 text-slate-500">Kayitli sistem ayari bulunamadi.</div>
+        {% endfor %}
+
+        <div class="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+            <a href="{{ url_for('admin_panel') }}" class="px-5 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300">Iptal</a>
+            <button type="submit" class="px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Kaydet</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

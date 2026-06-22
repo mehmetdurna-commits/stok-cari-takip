@@ -1,0 +1,560 @@
+{% extends '_base.html' %}
+
+{% block title %}Yeni Ürün Ekle - Stok ve Cari Takip{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-3">
+    <span class="material-symbols-outlined text-primary-600">add_box</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Yeni Ürün Ekle</h1>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+{% if current_user.is_platform_admin %}
+<button type="button" onclick="demoUrunleriEkle(this)" class="btn-secondary text-amber-700 dark:text-amber-300">
+    <span class="material-symbols-outlined text-lg">auto_awesome</span>
+    Demo Ürün Ekle
+</button>
+{% endif %}
+<a href="{{ url_for('urunler') }}" class="btn-secondary">
+    <span class="material-symbols-outlined text-lg">arrow_back</span>
+    Ürün Listesine Dön
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="flex sm:hidden gap-2">
+        {% if current_user.is_platform_admin %}
+        <button type="button" onclick="demoUrunleriEkle(this)" class="flex-1 rounded-lg bg-amber-600 px-3 py-2 text-sm font-bold text-white">
+            Demo Ürün Ekle
+        </button>
+        {% endif %}
+        <a href="{{ url_for('urunler') }}" class="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-center text-sm font-bold text-slate-700 dark:border-slate-700 dark:text-slate-200">
+            Ürün Listesi
+        </a>
+    </div>
+    <!-- Progress Bar -->
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Ürün Ekleme Adımları</h2>
+            <span class="text-sm text-slate-500 dark:text-slate-400">Adım 1/3</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <div class="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                <div class="bg-primary-600 h-2 rounded-full transition-all duration-300" style="width: 33%"></div>
+            </div>
+            <div class="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-2"></div>
+            <div class="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-2"></div>
+        </div>
+        <div class="flex justify-between mt-2 text-xs text-slate-500 dark:text-slate-400">
+            <span>Temel Bilgiler</span>
+            <span>Fiyatlandırma</span>
+            <span>Stok Yönetimi</span>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800 p-4">
+        <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-blue-600 text-2xl">lightbulb</span>
+            <div class="flex-1">
+                <h3 class="text-sm font-semibold text-blue-900 dark:text-blue-100">Hızlı İpuçları</h3>
+                <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">Barkod okuyucu ile hızlı ürün ekleme yapabilirsiniz. Ürün adı ve satış fiyatı zorunludur.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Form -->
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div class="border-b border-slate-200 dark:border-slate-800 p-6">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
+                    <span class="material-symbols-outlined text-primary-600">inventory_2</span>
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Temel Ürün Bilgileri</h2>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Ürünün temel tanımlayıcı bilgilerini girin</p>
+                </div>
+            </div>
+        </div>
+
+        <form method="POST" id="urunEkleForm" class="p-6 space-y-8">
+            <!-- Product Information Section -->
+            <div class="space-y-6">
+                <!-- Product Name with Icon -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-lg">label</span>
+                        Ürün Adı <span class="text-red-500 ml-1">*</span>
+                    </label>
+                    <div class="relative">
+                        <input type="text" name="urun_adi" required
+                            class="w-full px-4 py-3 pl-12 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 text-lg"
+                            placeholder="Örn: Laptop Dell Inspiron 15">
+                        <span class="material-symbols-outlined absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400">inventory_2</span>
+                    </div>
+                </div>
+
+                <!-- Warehouse Selection -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-lg">warehouse</span>
+                        Depo
+                    </label>
+                    <div class="relative">
+                        <select name="depo_adi"
+                            class="w-full px-4 py-3 pl-12 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                            <option value="">Depo seçin</option>
+                            {% for depo in depolar %}
+                            <option value="{{ depo }}">{{ depo }}</option>
+                            {% endfor %}
+                        </select>
+                        <span class="material-symbols-outlined absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400">warehouse</span>
+                    </div>
+                    <input type="text" name="yeni_depo_adi"
+                        class="mt-2 w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
+                        placeholder="Yeni depo adı">
+                </div>
+
+                <!-- Barcode and Category -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-lg">qr_code</span>
+                            Barkod
+                        </label>
+                        <div class="relative">
+                            <input type="text" name="barkod"
+                                class="w-full px-4 py-3 pl-12 pr-12 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
+                                placeholder="Barkod okuyucu ile tarayın veya manuel girin">
+                            <span class="material-symbols-outlined absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400">qr_code_scanner</span>
+                            <button type="button" onclick="scanBarcode()" class="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1.5 bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-md hover:bg-primary-200 dark:hover:bg-primary-900/50 transition-all duration-200 flex items-center gap-1 text-sm font-medium">
+                                <span class="material-symbols-outlined text-lg">qr_code_scanner</span>
+                                Tara
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-lg">category</span>
+                            Kategori
+                        </label>
+                        <div class="relative">
+                            <select name="kategori"
+                                class="w-full px-4 py-3 pl-12 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200">
+                                <option value="">Kategori Seçin</option>
+                                {% for kategori in kategoriler %}
+                                <option value="{{ kategori }}">{{ kategori }}</option>
+                                {% endfor %}
+                                <option value="Yeni Kategori">+ Yeni Kategori Ekle</option>
+                            </select>
+                            <span class="material-symbols-outlined absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400">category</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Unit -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-lg">straighten</span>
+                        Birim <span class="text-red-500 ml-1">*</span>
+                    </label>
+                    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="birim" value="Adet" checked class="sr-only peer">
+                            <div class="px-3 py-2 text-center border-2 rounded-lg transition-all peer-checked:border-primary-600 peer-checked:bg-primary-50 peer-checked:text-primary-600 dark:peer-checked:bg-primary-900/20 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600">
+                                <span class="text-sm font-medium">Adet</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="birim" value="Kg" class="sr-only peer">
+                            <div class="px-3 py-2 text-center border-2 rounded-lg transition-all peer-checked:border-primary-600 peer-checked:bg-primary-50 peer-checked:text-primary-600 dark:peer-checked:bg-primary-900/20 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600">
+                                <span class="text-sm font-medium">Kg</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="birim" value="Litre" class="sr-only peer">
+                            <div class="px-3 py-2 text-center border-2 rounded-lg transition-all peer-checked:border-primary-600 peer-checked:bg-primary-50 peer-checked:text-primary-600 dark:peer-checked:bg-primary-900/20 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600">
+                                <span class="text-sm font-medium">Litre</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="birim" value="Metre" class="sr-only peer">
+                            <div class="px-3 py-2 text-center border-2 rounded-lg transition-all peer-checked:border-primary-600 peer-checked:bg-primary-50 peer-checked:text-primary-600 dark:peer-checked:bg-primary-900/20 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600">
+                                <span class="text-sm font-medium">Metre</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="birim" value="Paket" class="sr-only peer">
+                            <div class="px-3 py-2 text-center border-2 rounded-lg transition-all peer-checked:border-primary-600 peer-checked:bg-primary-50 peer-checked:text-primary-600 dark:peer-checked:bg-primary-900/20 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600">
+                                <span class="text-sm font-medium">Paket</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="birim" value="Diğer" class="sr-only peer">
+                            <div class="px-3 py-2 text-center border-2 rounded-lg transition-all peer-checked:border-primary-600 peer-checked:bg-primary-50 peer-checked:text-primary-600 dark:peer-checked:bg-primary-900/20 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600">
+                                <span class="text-sm font-medium">Diğer</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pricing Section -->
+            <div class="space-y-6">
+                <div class="flex items-center gap-3 border-t border-slate-200 dark:border-slate-800 pt-8">
+                    <div class="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+                        <span class="material-symbols-outlined text-emerald-600">payments</span>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Fiyatlandırma</h3>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Alış ve satış fiyatlarını girin</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Alış Fiyatı</label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₺</span>
+                            <input type="number" step="0.01" min="0" name="alis_fiyati" value="0" class="w-full px-4 py-3 pl-10 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200" placeholder="0.00">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Satış Fiyatı <span class="text-red-500 ml-1">*</span></label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₺</span>
+                            <input type="number" step="0.01" min="0" name="satis_fiyati" required class="w-full px-4 py-3 pl-10 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200" placeholder="0.00">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-4 flex items-center justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-bold text-slate-900 dark:text-white">Tahmini kar marjı</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Alış ve satış fiyatına göre otomatik hesaplanır.</p>
+                    </div>
+                    <span id="profitMargin" class="text-lg font-bold text-slate-400">-%</span>
+                </div>
+            </div>
+
+            <!-- Stock Section -->
+            <div class="space-y-6">
+                <div class="flex items-center gap-3 border-t border-slate-200 dark:border-slate-800 pt-8">
+                    <div class="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+                        <span class="material-symbols-outlined text-orange-600">inventory</span>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Stok Yönetimi</h3>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Başlangıç stok miktarı ve uyarı eşiğini belirleyin</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Başlangıç Stok Miktarı</label>
+                        <input type="number" step="0.01" min="0" name="stok_miktari" value="0" class="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200" placeholder="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Kritik Stok Seviyesi</label>
+                        <input type="number" step="0.01" min="0" name="kritik_stok" value="10" class="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200" placeholder="10">
+                    </div>
+                </div>
+
+                <div class="rounded-xl bg-orange-50 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-900/20 p-4 flex gap-3">
+                    <span class="material-symbols-outlined text-orange-600 mt-0.5">warning</span>
+                    <div>
+                        <p class="text-sm font-bold text-orange-800 dark:text-orange-200">Kritik stok uyarısı</p>
+                        <p class="text-sm text-slate-600 dark:text-slate-400">Stok bu seviyenin altına düştüğünde uyarı alırsınız.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="app-form-actions">
+                <a href="{{ url_for('urunler') }}" class="btn-secondary">
+                    İptal
+                </a>
+                <button type="submit" class="btn-primary">
+                    <span class="material-symbols-outlined">add</span>
+                    Ürünü Ekle
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Help Section -->
+    <div class="bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+        <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary-600">help</span>
+            Yardım ve İpuçları
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="flex gap-3">
+                <span class="material-symbols-outlined text-blue-600 mt-1">tips_and_updates</span>
+                <div>
+                    <h4 class="font-medium text-slate-900 dark:text-white">Barkod Kullanımı</h4>
+                    <p class="text-sm text-slate-600 dark:text-slate-400">Ürün barkodunu girerek hızlı arama yapabilirsiniz.</p>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <span class="material-symbols-outlined text-green-600 mt-1">trending_up</span>
+                <div>
+                    <h4 class="font-medium text-slate-900 dark:text-white">Kar Marjı</h4>
+                    <p class="text-sm text-slate-600 dark:text-slate-400">Satış ve alış fiyatlarına göre otomatik hesaplanır.</p>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <span class="material-symbols-outlined text-orange-600 mt-1">warning</span>
+                <div>
+                    <h4 class="font-medium text-slate-900 dark:text-white">Kritik Stok</h4>
+                    <p class="text-sm text-slate-600 dark:text-slate-400">Stok bu seviyenin altına düştüğünde uyarı alırsınız.</p>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <span class="material-symbols-outlined text-purple-600 mt-1">category</span>
+                <div>
+                    <h4 class="font-medium text-slate-900 dark:text-white">Kategori Yönetimi</h4>
+                    <p class="text-sm text-slate-600 dark:text-slate-400">Yeni kategori ekleyebilir veya mevcutları düzenleyebilirsiniz.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function demoUrunleriEkle(button) {
+    const confirmed = await appConfirm('Farklı kategorilerde 11 demo ürün eklensin mi', {
+        title: 'Demo ürün ekle',
+        confirmText: 'Demo ürünleri ekle'
+    });
+    if (!confirmed) return;
+
+    const originalContent = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span class="material-symbols-outlined animate-spin text-lg">refresh</span> Ekleniyor...';
+
+    try {
+        const response = await fetch('{{ url_for("urun_demo_veri_ekle") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ csrf_token: '{{ csrf_token() }}' })
+        });
+        const result = await response.json();
+        if (result.success) {
+            showMessage(result.message || 'Demo ürünler eklendi', 'success');
+            setTimeout(() => window.location.href = '{{ url_for("urunler") }}', 700);
+        } else {
+            showMessage(result.message || 'Demo ürünler eklenemedi', 'error');
+            button.disabled = false;
+            button.innerHTML = originalContent;
+        }
+    } catch (error) {
+        console.error('Demo ürün ekleme hatası:', error);
+        showMessage('Demo ürünler eklenemedi', 'error');
+        button.disabled = false;
+        button.innerHTML = originalContent;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('urunEkleForm');
+    const kategoriSelect = form.querySelector('select[name="kategori"]');
+    const depoSelect = form.querySelector('select[name="depo_adi"]');
+    const alisFiyatiInput = form.querySelector('input[name="alis_fiyati"]');
+    const satisFiyatiInput = form.querySelector('input[name="satis_fiyati"]');
+    const profitMarginElement = document.getElementById('profitMargin');
+    
+    // Kar marjı hesapla
+    function calculateProfitMargin() {
+        const alisFiyati = parseFloat(alisFiyatiInput.value) || 0;
+        const satisFiyati = parseFloat(satisFiyatiInput.value) || 0;
+        
+        if (alisFiyati > 0 && satisFiyati > 0) {
+            const margin = ((satisFiyati - alisFiyati) / alisFiyati * 100).toFixed(1);
+            profitMarginElement.textContent = `+${margin}%`;
+            profitMarginElement.className = margin >= 0  
+                'text-lg font-bold text-green-600 dark:text-green-400' : 
+                'text-lg font-bold text-red-600 dark:text-red-400';
+        } else {
+            profitMarginElement.textContent = '-%';
+            profitMarginElement.className = 'text-lg font-bold text-slate-400';
+        }
+    }
+    
+    // Fiyat değiştiğinde kar marjını güncelle
+    alisFiyatiInput.addEventListener('input', calculateProfitMargin);
+    satisFiyatiInput.addEventListener('input', calculateProfitMargin);
+    
+    // Kategori seçimi değiştiğinde
+    kategoriSelect.addEventListener('change', async function() {
+        if (this.value === 'Yeni Kategori') {
+            const yeniKategori = prompt('Yeni kategori adını girin:');
+            if (yeniKategori) {
+                try {
+                    // API'ye yeni kategori ekle
+                    const response = await fetch('/api/settings/categories', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ name: yeniKategori })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        // Yeni kategori option'ını ekle
+                        const newOption = document.createElement('option');
+                        newOption.value = yeniKategori;
+                        newOption.textContent = yeniKategori;
+                        newOption.selected = true;
+                        this.insertBefore(newOption, this.lastElementChild);
+                        
+                        // Başarı mesajı göster
+                        showMessage('Kategori başarıyla eklendi', 'success');
+                    } else {
+                        showMessage(data.message, 'error');
+                        this.value = '';
+                    }
+                } catch (error) {
+                    console.error('Kategori eklenemedi:', error);
+                    showMessage('Kategori eklenemedi', 'error');
+                    this.value = '';
+                }
+            } else {
+                this.value = '';
+            }
+        }
+    });
+    
+    // Form validasyonu
+    form.addEventListener('submit', function(e) {
+        const satisFiyati = parseFloat(satisFiyatiInput.value);
+        const alisFiyati = parseFloat(alisFiyatiInput.value);
+        
+        if (alisFiyati > 0 && satisFiyati < alisFiyati) {
+            e.preventDefault();
+            showMessage('Satış fiyatı alış fiyatından düşük olamaz!', 'error');
+            return false;
+        }
+        
+        // Loading state
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `
+            <span class="material-symbols-outlined animate-spin">refresh</span>
+            Ekleniyor...
+        `;
+    });
+});
+
+// Barkod tarama fonksiyonu
+function scanBarcode() {
+    // Barkod input'unu focus'la
+    const barkodInput = document.querySelector('input[name="barkod"]');
+    if (barkodInput) {
+        barkodInput.focus();
+        barkodInput.select();
+        
+        // Barkod okuyucu için klavye dinleyicisi
+        barkodInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                // Enter tuşuna basıldığında ürünü ekleme formunu doldur
+                fillProductFromBarcode(barkodInput.value);
+            }
+        });
+        
+        showMessage('Barkod okuyucu hazır. Lütfen barkodu tarayın ve Enter tuşuna basın.', 'info');
+    }
+}
+
+// Barkod ile ürün bilgilerini doldurma
+async function fillProductFromBarcode(barkod) {
+    if (!barkod) {
+        showMessage('Lütfen barkod girin veya tarayın.', 'error');
+        return;
+    }
+    
+    try {
+        // API'den barkod ile ürün ara
+        const response = await fetch(`/api/barkod/${barkod}`);
+        const data = await response.json();
+        
+        if (data.success && data.urun) {
+            // Ürün zaten varsa bilgi ver
+            showMessage(`Bu barkodlu ürün zaten mevcut: ${data.urun.urun_adi}`, 'error');
+            document.querySelector('input[name="barkod"]').value = '';
+            return;
+        }
+        
+        // Ürün yoksa barkodu al ve formu doldurmaya başla
+        document.querySelector('input[name="urun_adi"]').focus();
+        showMessage(`Yeni ürün için barkod: ${barkod}. Lütfen ürün adını girin.`, 'success');
+        
+    } catch (error) {
+        console.error('Barkod kontrolü başarısız:', error);
+        // API çağrısı başarısız olursa yine de formu doldurmaya devam et
+        document.querySelector('input[name="urun_adi"]').focus();
+        showMessage(`Barkod: ${barkod}. Ürün adını girin.`, 'info');
+    }
+}
+
+// Kar marjı hesaplama fonksiyonu (form içinde zaten var, sadece çağır)
+function triggerProfitMarginCalculation() {
+    const alisFiyatiInput = document.querySelector('input[name="alis_fiyati"]');
+    const satisFiyatiInput = document.querySelector('input[name="satis_fiyati"]');
+    const profitMarginElement = document.getElementById('profitMargin');
+    
+    if (alisFiyatiInput && satisFiyatiInput && profitMarginElement) {
+        const alisFiyati = parseFloat(alisFiyatiInput.value) || 0;
+        const satisFiyati = parseFloat(satisFiyatiInput.value) || 0;
+        
+        if (alisFiyati > 0 && satisFiyati > 0) {
+            const margin = ((satisFiyati - alisFiyati) / alisFiyati * 100).toFixed(1);
+            profitMarginElement.textContent = `+${margin}%`;
+            profitMarginElement.className = margin >= 0  
+                'text-lg font-bold text-green-600 dark:text-green-400' : 
+                'text-lg font-bold text-red-600 dark:text-red-400';
+        } else {
+            profitMarginElement.textContent = '-%';
+            profitMarginElement.className = 'text-lg font-bold text-slate-400';
+        }
+    }
+}
+
+// Depoları ürün ekleme sayfasına yükle
+async function loadWarehousesForProduct() {
+    try {
+        const response = await fetch('/api/settings/warehouses');
+        const data = await response.json();
+        
+        if (data.success) {
+            const depoSelect = document.querySelector('select[name="depo_adi"]');
+            if (depoSelect) {
+                // Mevcut seçenekleri temizle (sadece ilk seçeneği koru)
+                while (depoSelect.children.length > 1) {
+                    depoSelect.removeChild(depoSelect.lastChild);
+                }
+                
+                // Depoları ekle
+                Object.keys(data.warehouses).forEach(depo => {
+                    const option = document.createElement('option');
+                    option.value = depo;
+                    option.textContent = depo;
+                    depoSelect.appendChild(option);
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Depolar yüklenemedi:', error);
+    }
+}
+
+</script>
+{% endblock %}

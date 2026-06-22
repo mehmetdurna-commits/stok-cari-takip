@@ -1,0 +1,144 @@
+{% extends '_base.html' %}
+
+{% block title %}İşlem Geçmişi - StokCari{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-3">
+    <span class="material-symbols-outlined text-primary-600">manage_search</span>
+    <div>
+        <h1 class="text-xl font-bold text-slate-900 dark:text-white">İşlem Geçmişi</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400">Hesabınızda yapılan önemli işlemleri sade bir zaman akışında izleyin.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+{% set active_filters = (search_query or selected_action != 'all' or selected_resource != 'all') %}
+<div class="mx-auto max-w-7xl space-y-6">
+    <section class="grid gap-4 md:grid-cols-3">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Toplam Kayıt</span>
+                <span class="material-symbols-outlined rounded-xl bg-primary-50 p-2 text-primary-600 dark:bg-primary-900/20">history</span>
+            </div>
+            <p class="mt-4 text-3xl font-black text-slate-900 dark:text-white">{{ total_logs or 0 }}</p>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Sistem tarafından tutulan işlem sayısı.</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Kritik İşlem</span>
+                <span class="material-symbols-outlined rounded-xl bg-amber-50 p-2 text-amber-600 dark:bg-amber-900/20">warning</span>
+            </div>
+            <p class="mt-4 text-3xl font-black text-slate-900 dark:text-white">{{ critical_logs or 0 }}</p>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Silme, güvenlik uyarısı veya başarısız giriş.</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Bu Liste</span>
+                <span class="material-symbols-outlined rounded-xl bg-emerald-50 p-2 text-emerald-600 dark:bg-emerald-900/20">filter_list</span>
+            </div>
+            <p class="mt-4 text-3xl font-black text-slate-900 dark:text-white">{{ logs.total or 0 }}</p>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ 'Filtrelenmiş kayıt sayısı.' if active_filters else 'Son işlem kayıtları.' }}</p>
+        </div>
+    </section>
+
+    <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <form method="GET" action="{{ url_for('audit_logs') }}" class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_220px_auto] lg:items-end">
+            <label class="block">
+                <span class="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Ara</span>
+                <div class="relative">
+                    <span class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg text-slate-400">search</span>
+                    <input name="q" value="{{ search_query }}" placeholder="İşlem, kaynak, detay veya IP ara" class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-900 outline-none transition focus:border-primary-500 focus:ring-4 focus:ring-primary-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-primary-900/30">
+                </div>
+            </label>
+
+            <label class="block">
+                <span class="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">İşlem Tipi</span>
+                <select name="action" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-primary-500 focus:ring-4 focus:ring-primary-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-primary-900/30">
+                    <option value="all">Tüm işlemler</option>
+                    {% for action in action_options %}
+                    <option value="{{ action }}" {% if selected_action == action %}selected{% endif %}>{{ action|audit_action_label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <label class="block">
+                <span class="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Kaynak</span>
+                <select name="resource" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-primary-500 focus:ring-4 focus:ring-primary-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-primary-900/30">
+                    <option value="all">Tüm kaynaklar</option>
+                    {% for resource in resource_options %}
+                    <option value="{{ resource }}" {% if selected_resource == resource %}selected{% endif %}>{{ resource|audit_resource_label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <div class="flex gap-2">
+                <button type="submit" class="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-primary-700">
+                    <span class="material-symbols-outlined text-lg">filter_alt</span>
+                    Filtrele
+                </button>
+                {% if active_filters %}
+                <a href="{{ url_for('audit_logs') }}" class="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+                    Temizle
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </section>
+
+    <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+            <h2 class="text-base font-black text-slate-900 dark:text-white">Kayıt Akışı</h2>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">En yeni işlem en üstte görünür. Detaylar kullanıcı diliyle sadeleştirilmiştir.</p>
+        </div>
+
+        <div class="divide-y divide-slate-200 dark:divide-slate-800">
+            {% for log in logs.items %}
+            {% set action_label = log.action|audit_action_label %}
+            {% set resource_label = log.resource_type|audit_resource_label %}
+            {% set is_critical = log.action in ['DELETE', 'LOGIN_FAILED', 'SECURITY_THREAT_BLOCKED'] %}
+            <article class="grid gap-4 p-5 transition hover:bg-slate-50/70 dark:hover:bg-slate-800/40 lg:grid-cols-[220px_minmax(0,1fr)_180px] lg:items-start">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-11 w-11 items-center justify-center rounded-2xl {{ 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-300' if is_critical else 'bg-primary-50 text-primary-600 dark:bg-primary-900/20 dark:text-primary-300' }}">
+                        <span class="material-symbols-outlined">{{ 'shield_lock' if is_critical else 'history' }}</span>
+                    </div>
+                    <div>
+                        <p class="text-sm font-black text-slate-900 dark:text-white">{{ action_label }}</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">{{ log.timestamp|datetime_tr if log.timestamp else '-' }}</p>
+                    </div>
+                </div>
+
+                <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ resource_label }}{% if log.resource_id %} #{{ log.resource_id }}{% endif %}</span>
+                        {% if is_critical %}
+                        <span class="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700 dark:bg-rose-900/20 dark:text-rose-300">Dikkat</span>
+                        {% endif %}
+                    </div>
+                    <p class="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">{{ log.details|audit_detail_label }}</p>
+                    <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Kullanıcı: <span class="font-semibold">{{ log.user.email if log.user else '-' }}</span></p>
+                </div>
+
+                <div class="rounded-xl bg-slate-50 p-3 text-xs text-slate-500 dark:bg-slate-950/60 dark:text-slate-400">
+                    <p class="font-bold text-slate-700 dark:text-slate-200">Teknik bilgi</p>
+                    <p class="mt-1">Kod: {{ log.action }}</p>
+                    <p class="mt-1">IP: {{ log.ip_address or '-' }}</p>
+                    <p class="mt-1 truncate" title="{{ log.user_agent or '-' }}">Cihaz: {{ log.user_agent or '-' }}</p>
+                </div>
+            </article>
+            {% else %}
+            <div class="app-empty-state">
+                <span class="material-symbols-outlined app-empty-icon">manage_search</span>
+                <h3 class="app-empty-title">Kayıt bulunamadı</h3>
+                <p class="app-empty-description">Bu filtrelere uygun işlem kaydı henüz yok. Filtreleri temizleyerek tekrar deneyebilirsiniz.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    {% set pagination = logs %}
+    {% include '_pagination.html' %}
+</div>
+{% endblock %}

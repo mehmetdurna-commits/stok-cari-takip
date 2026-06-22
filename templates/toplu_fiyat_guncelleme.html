@@ -1,0 +1,133 @@
+{% extends '_base.html' %}
+
+{% block title %}Toplu Fiyat Güncelleme - StokCari{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-3">
+    <span class="material-symbols-outlined text-primary-600">trending_up</span>
+    <div>
+        <h1 class="text-xl font-bold text-slate-900 dark:text-white">Toplu Fiyat Güncelleme</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400">Kategori bazlı satış fiyatı güncellemesi</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('urunler') }}" class="btn-secondary">
+    <span class="material-symbols-outlined text-lg">arrow_back</span>
+    Ürünler
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5">
+        <div class="flex items-start gap-4">
+            <div class="size-12 rounded-xl bg-primary-50 dark:bg-primary-900/20 text-primary-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-2xl">price_change</span>
+            </div>
+            <div>
+                <h2 class="text-lg font-black text-slate-900 dark:text-white">Fiyat güncelleme sihirbazı</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Seçtiğiniz kategoriye veya tüm ürünlere yüzde oranında fiyat artışı uygulayın.</p>
+            </div>
+        </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('toplu_fiyat_guncelleme') }}" id="fiyatGuncellemeForm" class="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6">
+        <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 h-fit space-y-5">
+            <div>
+                <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Kategori</label>
+                <select name="kategori" id="kategoriSelect" class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                    <option value="">Tüm ürünler</option>
+                    {% for kategori in kategoriler %}
+                    <option value="{{ kategori }}">{{ kategori }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Artış oranı (%)</label>
+                <input type="number" name="zam_orani" id="zamOraniInput" value="0" step="0.01" required class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary">
+            </div>
+            <div class="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 p-4 text-sm text-blue-700 dark:text-blue-300">
+                <div class="flex gap-2">
+                    <span class="material-symbols-outlined text-lg">info</span>
+                    <p>Güncellemeden önce önizleme tablosunu kontrol edin. İşlem seçilen ürünlerin satış fiyatını değiştirir.</p>
+                </div>
+            </div>
+            <div class="app-form-actions">
+                <a href="{{ url_for('urunler') }}" class="btn-secondary">İptal</a>
+                <button type="submit" class="btn-primary">Güncelle</button>
+            </div>
+        </section>
+
+        <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+            <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                    <h3 class="font-black text-slate-900 dark:text-white">Önizleme</h3>
+                    <p class="text-sm text-slate-500 mt-1"><span id="etkilenenUrunSayisi">{{ urunler|length }} ürün etkilenecek</span></p>
+                </div>
+            </div>
+            <div class="overflow-x-auto max-h-[640px]">
+                <table class="w-full">
+                    <thead class="bg-slate-50 dark:bg-slate-800 sticky top-0">
+                        <tr>
+                            <th class="px-5 py-3 text-left text-xs font-bold text-slate-500 uppercase">Ürün</th>
+                            <th class="px-5 py-3 text-left text-xs font-bold text-slate-500 uppercase">Kategori</th>
+                            <th class="px-5 py-3 text-right text-xs font-bold text-slate-500 uppercase">Mevcut</th>
+                            <th class="px-5 py-3 text-right text-xs font-bold text-slate-500 uppercase">Yeni</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fiyatOnizlemeTablo" class="divide-y divide-slate-200 dark:divide-slate-800">
+                        {% for urun in urunler %}
+                        <tr data-satis-fiyat="{{ urun.satis_fiyati or 0 }}" data-kategori="{{ urun.kategori or '' }}">
+                            <td class="px-5 py-4 font-semibold text-slate-900 dark:text-white">{{ urun.urun_adi }}</td>
+                            <td class="px-5 py-4 text-sm text-slate-500">{{ urun.kategori or 'Kategorisiz' }}</td>
+                            <td class="px-5 py-4 text-right text-slate-600 dark:text-slate-300">₺{{ (urun.satis_fiyati or 0)|tr_number }}</td>
+                            <td class="px-5 py-4 text-right font-black text-primary-600 yeni-fiyat">₺{{ (urun.satis_fiyati or 0)|tr_number }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="px-5 py-12 text-center text-slate-500">Güncellenecek ürün yok.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+        function formatTRY(value) {
+            return '' + Number(value || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+const zamOraniInput = document.getElementById('zamOraniInput');
+const kategoriSelect = document.getElementById('kategoriSelect');
+const rows = document.querySelectorAll('#fiyatOnizlemeTablo tr[data-satis-fiyat]');
+const etkilenenUrunSayisi = document.getElementById('etkilenenUrunSayisi');
+
+function updateFiyatOnizleme() {
+    const zamOrani = parseFloat(zamOraniInput.value) || 0;
+    const kategori = kategoriSelect.value;
+    let count = 0;
+    rows.forEach((row) => {
+        const rowKategori = row.dataset.kategori || '';
+        const visible = !kategori || rowKategori === kategori;
+            row.style.display = visible ? '' : 'none';
+        if (visible) {
+            count++;
+            const oldPrice = parseFloat(row.dataset.satisFiyat) || 0;
+            row.querySelector('.yeni-fiyat').textContent = formatTRY(oldPrice * (1 + zamOrani / 100));
+        }
+    });
+    etkilenenUrunSayisi.textContent = `${count} ürün etkilenecek`;
+}
+
+zamOraniInput.addEventListener('input', updateFiyatOnizleme);
+kategoriSelect.addEventListener('change', updateFiyatOnizleme);
+updateFiyatOnizleme();
+</script>
+{% endblock %}

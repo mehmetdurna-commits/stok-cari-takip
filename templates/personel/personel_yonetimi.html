@@ -1,0 +1,642 @@
+{% extends '_base.html' %}
+
+{% block title %}Personel Yönetimi{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-4">
+    <span class="material-symbols-outlined text-primary-600 font-bold">people</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Personel Yönetimi</h1>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<div class="hidden sm:flex items-center gap-2">
+    <a href="{{ url_for('personel_ekle') }}" class="btn-primary">
+        <span class="material-symbols-outlined text-lg">person_add</span>
+        Personel Ekle
+    </a>
+    <a href="{{ url_for('toplu_maas_bordrosu') }}" class="btn-secondary">
+        <span class="material-symbols-outlined text-lg">payments</span>
+        Toplu Bordro
+    </a>
+    <a href="{{ url_for('maas_bordro_kayitlari') }}" class="btn-secondary">
+        <span class="material-symbols-outlined text-lg">receipt_long</span>
+        Bordro Kayıtları
+    </a>
+    <a href="{{ url_for('departmanlar') }}" class="btn-secondary">
+        <span class="material-symbols-outlined text-lg">domain</span>
+        Departmanlar
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+    <!-- İstatistik Kartları -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="size-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400">
+                    <span class="material-symbols-outlined text-2xl">people</span>
+                </div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Toplam Personel</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-3xl font-bold text-slate-900 dark:text-white">{{ all_personeller|length }}</h3>
+                <span class="text-slate-500 text-sm font-medium">Kişi</span>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="size-12 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center text-green-600 dark:text-green-400">
+                    <span class="material-symbols-outlined text-2xl">work</span>
+                </div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Aktif Personel</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-3xl font-bold text-slate-900 dark:text-white">{{ status_counts.Aktif }}</h3>
+                <span class="text-slate-500 text-sm font-medium">Kişi</span>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="size-12 bg-amber-50 dark:bg-amber-900/20 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400">
+                    <span class="material-symbols-outlined text-2xl">beach_access</span>
+                </div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">İzinli Personel</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-3xl font-bold text-slate-900 dark:text-white">{{ status_counts['İzinli'] }}</h3>
+                <span class="text-slate-500 text-sm font-medium">Kişi</span>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="size-12 bg-red-50 dark:bg-red-900/20 rounded-xl flex items-center justify-center text-red-600 dark:text-red-400">
+                    <span class="material-symbols-outlined text-2xl">person_off</span>
+                </div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Pasif Personel</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-3xl font-bold text-slate-900 dark:text-white">{{ status_counts.Pasif }}</h3>
+                <span class="text-slate-500 text-sm font-medium">Kişi</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Personel Listesi -->
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+        <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">Personel Listesi</h2>
+            
+            <!-- Filtreleme -->
+            <form method="GET" action="{{ url_for('personel_yonetimi') }}" id="personel-filter-form" class="app-filter-bar rounded-xl border border-slate-200 dark:border-slate-800">
+                <div class="app-filter-search">
+                    <input type="text" id="arama" name="search" value="{{ search_query or '' }}" placeholder="Personel ara..." 
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+                <div class="app-filter-controls">
+                    <select id="departman-filter" name="department" class="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                        <option value="">Tüm Departmanlar</option>
+                        {% for departman in all_personeller|map(attribute='departman')|unique|list %}
+                        {% if departman %}
+                        <option value="{{ departman.id }}" {% if selected_department == departman.id|string %}selected{% endif %}>{{ departman.ad }}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                    <select id="durum-filter" name="status" class="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                        <option value="">Tüm Durumlar</option>
+                        <option value="Aktif" {% if selected_status == 'Aktif' %}selected{% endif %}>Aktif</option>
+                        <option value="Pasif" {% if selected_status == 'Pasif' %}selected{% endif %}>Pasif</option>
+                        <option value="İzinli" {% if selected_status == 'İzinli' %}selected{% endif %}>İzinli</option>
+                    </select>
+                    <button type="submit" class="btn-secondary">
+                        <span class="material-symbols-outlined text-lg">search</span>
+                        Ara
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tablo -->
+        <div class="overflow-x-auto">
+            <table class="w-full" id="personel-table">
+                <thead class="bg-slate-50 dark:bg-slate-800">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Fotoğraf</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Sicil No</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ad Soyad</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Departman</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pozisyon</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Telefon</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Maaş</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Durum</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700" id="personel-tbody">
+                    {% for personel in personeller %}
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors personel-row" 
+                        data-departman="{{ personel.departman.id if personel.departman else '' }}"
+                        data-durum="{{ personel.etkin_durum }}"
+                        data-search="{{ (personel.ad ~ ' ' ~ personel.soyad ~ ' ' ~ personel.sicil_no ~ ' ' ~ (personel.pozisyon or '') ~ ' ' ~ (personel.telefon or '') ~ ' ' ~ (personel.etkin_durum or '') ~ ' ' ~ (personel.departman.ad if personel.departman else ''))|lower }}">
+                        <td class="px-6 py-4">
+                            {% if personel.profil_foto %}
+                            <img src="{{ url_for('static', filename='uploads/' + personel.profil_foto) }}" 
+                                 alt="{{ personel.ad }} {{ personel.soyad }}" 
+                                 class="w-10 h-10 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700">
+                            {% else %}
+                            <div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                                <span class="material-symbols-outlined text-slate-500">person</span>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 font-medium text-slate-900 dark:text-white">{{ personel.sicil_no }}</td>
+                        <td class="px-6 py-4">
+                            <div class="font-medium text-slate-900 dark:text-white">{{ personel.ad }} {{ personel.soyad }}</div>
+                            <div class="text-sm text-slate-500 dark:text-slate-400">{{ personel.pozisyon }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if personel.departman %}
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                                {{ personel.departman.ad }}
+                            </span>
+                            {% else %}
+                            <span class="text-slate-500 dark:text-slate-400">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-slate-900 dark:text-white">{{ personel.pozisyon }}</td>
+                        <td class="px-6 py-4 text-slate-900 dark:text-white">{{ personel.telefon or '-' }}</td>
+                        <td class="px-6 py-4 font-medium text-slate-900 dark:text-white">₺{{ (personel.maas)|tr_number }}</td>
+                        <td class="px-6 py-4">
+                            {% if personel.etkin_durum == 'Aktif' %}
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+                                Aktif
+                            </span>
+                            {% elif personel.etkin_durum == 'Pasif' %}
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
+                                Pasif
+                            </span>
+                            {% elif personel.etkin_durum == 'İzinli' %}
+                            <div class="flex flex-col gap-1">
+                                <span class="w-fit px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
+                                    İzinli
+                                </span>
+                                {% if personel.aktif_izin %}
+                                <span class="text-xs text-slate-500 dark:text-slate-400">
+                                    {{ personel.aktif_izin.bitis_tarihi|date_tr }} tarihine kadar
+                                </span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-2">
+                                <a href="{{ url_for('personel_detay', id=personel.id) }}" 
+                                   class="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300 font-medium">
+                                    <span class="material-symbols-outlined text-lg">visibility</span>
+                                </a>
+                                <a href="{{ url_for('personel_duzenle', id=personel.id) }}" 
+                                   class="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 font-medium">
+                                    <span class="material-symbols-outlined text-lg">edit</span>
+                                </a>
+                                <button onclick="yazdirPersonel({{ personel.id }}, this)" 
+                                        class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
+                                    <span class="material-symbols-outlined text-lg">print</span>
+                                </button>
+                                <form method="POST" action="{{ url_for('personel_sil', id=personel.id) }}" 
+                                      data-confirm="Bu personeli silmek istediğinizden emin misiniz" data-confirm-title="Personeli sil" data-confirm-ok="Sil" 
+                                      class="inline">
+                                    <button type="submit" class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 font-medium">
+                                        <span class="material-symbols-outlined text-lg">delete</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9">
+                            <div class="app-empty-state app-empty-state--compact">
+                                <span class="material-symbols-outlined app-empty-icon">person_off</span>
+                                <h3 class="app-empty-title">Ekibini kaydederek personel takibine başla</h3>
+                                <p class="app-empty-description">Personel kartı oluşturduktan sonra izin, avans, prim ve bordro akışlarını aynı modül içinde takip edebilirsiniz.</p>
+                                <div class="app-empty-steps">
+                                    <span class="app-empty-step"><span class="material-symbols-outlined text-sm">looks_one</span>Personel ekle</span>
+                                    <span class="app-empty-step"><span class="material-symbols-outlined text-sm">looks_two</span>Maaş/IBAN gir</span>
+                                    <span class="app-empty-step"><span class="material-symbols-outlined text-sm">looks_3</span>İzin ve bordroyu yönet</span>
+                                </div>
+                                <div class="app-empty-actions">
+                                    <a href="{{ url_for('personel_ekle') }}" class="btn-primary">
+                                        <span class="material-symbols-outlined">person_add</span>
+                                        İlk Personeli Ekle
+                                    </a>
+                                    <a href="{{ url_for('departmanlar') }}" class="btn-secondary">
+                                        <span class="material-symbols-outlined">apartment</span>
+                                        Departmanları Yönet
+                                    </a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include '_pagination.html' %}
+    </div>
+</div>
+
+<script>
+    function formatTRY(value) {
+        return '' + Number(value || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+function initPersonelFilters() {
+    const aramaInput = document.getElementById('arama');
+    const departmanFilter = document.getElementById('departman-filter');
+    const durumFilter = document.getElementById('durum-filter');
+    const filterForm = document.getElementById('personel-filter-form');
+
+    if (!aramaInput || !departmanFilter || !durumFilter || !filterForm) return;
+    if (aramaInput.dataset.personelFilterReady === 'true') return;
+    aramaInput.dataset.personelFilterReady = 'true';
+
+    let searchTimer;
+    aramaInput.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => filterForm.requestSubmit(), 350);
+    });
+    departmanFilter.addEventListener('change', () => filterForm.requestSubmit());
+    durumFilter.addEventListener('change', () => filterForm.requestSubmit());
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPersonelFilters);
+} else {
+    initPersonelFilters();
+}
+
+document.addEventListener('pjax:loaded', initPersonelFilters);
+</script>
+
+<script>
+function escapeHtml(value) {
+    return String(value " '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[char]));
+}
+
+function sanitizePersonel(personel) {
+    const sanitized = {};
+
+    Object.entries(personel || {}).forEach(([key, value]) => {
+            sanitized[key] = typeof value === 'string' ? escapeHtml(value) : value;
+    });
+
+    if (personel.departman) {
+        sanitized.departman = {
+            ...personel.departman,
+            ad: escapeHtml(personel.departman.ad)
+        };
+    }
+
+    return sanitized;
+}
+
+function writePrintLoading(printWindow) {
+    const openHtml = '<' + 'html lang="tr">';
+    const closeHtml = '<' + '/html>';
+    const openBody = '<' + 'body>';
+    const closeBody = '<' + '/body>';
+
+    printWindow.document.open();
+    printWindow.document.write(`
+        <!doctype html>
+        ${openHtml}
+        <head>
+            <meta charset="utf-8">
+            <title>Personel Bilgi Formu Hazırlanıyor</title>
+            <style>
+                body {
+                    margin: 0;
+                    min-height: 100vh;
+                    display: grid;
+                    place-items: center;
+                    background: #f8fafc;
+                    color: #0f172a;
+                    font-family: Arial, Helvetica, sans-serif;
+                }
+                .loading {
+                    width: min(420px, calc(100vw - 32px));
+                    padding: 28px;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 12px;
+                    background: #fff;
+                    box-shadow: 0 16px 42px rgba(15, 23, 42, .12);
+                    text-align: center;
+                }
+                strong { display: block; margin-bottom: 8px; font-size: 18px; }
+                span { color: #64748b; }
+            </style>
+        </head>
+        ${openBody}
+            <div class="loading">
+                <strong>Personel bilgi formu hazırlanıyor</strong>
+                <span>Yazdırma penceresi birazdan açılacak.</span>
+            </div>
+        ${closeBody}
+        ${closeHtml}
+    `);
+    printWindow.document.close();
+}
+
+async function yazdirPersonel(personelId, triggerButton) {
+    const printWindow = window.open('', '_blank', 'width=980,height=720');
+    if (!printWindow) {
+        alert('Yazdırma penceresi açılamadı. Tarayıcı açılır pencere iznini kontrol edin.');
+        return;
+    }
+
+    writePrintLoading(printWindow);
+    triggerButton.setAttribute('disabled', 'disabled');
+    triggerButton.classList.add('opacity-50', 'cursor-wait');
+
+    try {
+        // Personel verilerini API'den al
+        const response = await fetch(`/api/personel/${personelId}`);
+        const rawPersonel = await response.json();
+        if (!response.ok) {
+            throw new Error(rawPersonel.error || 'Personel verileri alınamadı.');
+        }
+        const personel = sanitizePersonel(rawPersonel);
+        
+        // Yazdırma içeriğini oluştur
+        const yazdirHTML = `
+            <div class="personel-rapor max-w-4xl mx-auto">
+                <!-- Başlık -->
+                <div class="text-center mb-8 border-b-2 border-primary-200 pb-6">
+                    <h1 class="text-3xl font-bold text-slate-900 mb-2">Personel Bilgi Formu</h1>
+                    <p class="text-slate-600">Tarih: ${new Date().toLocaleDateString('tr-TR')}</p>
+                </div>
+                
+                <!-- Personel Fotoğrafı ve Temel Bilgiler -->
+                <div class="grid grid-cols-3 gap-8 mb-8">
+                    <div class="col-span-1">
+                        ${personel.profil_foto  
+                            `<img src="/static/uploads/${personel.profil_foto}" alt="${personel.ad} ${personel.soyad}" class="w-32 h-32 rounded-full mx-auto object-cover border-4 border-primary-200 shadow-lg">` :
+                            `<div class="w-32 h-32 rounded-full mx-auto bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center border-4 border-primary-200 shadow-lg">
+                                <span class="material-symbols-outlined text-4xl text-primary-600">person</span>
+                            </div>`
+                        }
+                    </div>
+                    <div class="col-span-2">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-4">${personel.ad} ${personel.soyad}</h2>
+                        <div class="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+                            <div><strong class="text-primary-600">Sicil No:</strong> <span class="text-slate-800">${personel.sicil_no}</span></div>
+                            <div><strong class="text-primary-600">TC Kimlik:</strong> <span class="text-slate-800">${personel.tc_kimlik || '-'}</span></div>
+                            <div><strong class="text-primary-600">Departman:</strong> <span class="text-slate-800">${personel.departman.ad || '-'}</span></div>
+                            <div><strong class="text-primary-600">Pozisyon:</strong> <span class="text-slate-800">${personel.pozisyon}</span></div>
+                            <div><strong class="text-primary-600">Telefon:</strong> <span class="text-slate-800">${personel.telefon || '-'}</span></div>
+                            <div><strong class="text-primary-600">E-posta:</strong> <span class="text-slate-800">${personel.email || '-'}</span></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Kişisel Bilgiler -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold text-slate-900 mb-4 border-b-2 border-primary-200 pb-2 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary-600">person</span>
+                        Kişisel Bilgiler
+                    </h3>
+                    <div class="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+                        <div><strong class="text-primary-600">Doğum Tarihi:</strong> <span class="text-slate-800">${personel.dogum_tarihi ? new Date(personel.dogum_tarihi).toLocaleDateString('tr-TR') : '-'}</span></div>
+                        <div><strong class="text-primary-600">Cinsiyet:</strong> <span class="text-slate-800">${personel.cinsiyet || '-'}</span></div>
+                        <div><strong class="text-primary-600">Medeni Hal:</strong> <span class="text-slate-800">${personel.medeni_hal || '-'}</span></div>
+                        <div><strong class="text-primary-600">Kan Grubu:</strong> <span class="text-slate-800">${personel.kan_grubu || '-'}</span></div>
+                        <div><strong class="text-primary-600">Ehliyet:</strong> <span class="text-slate-800">${personel.ehliyet || '-'}</span></div>
+                        <div><strong class="text-primary-600">Ehliyet No:</strong> <span class="text-slate-800">${personel.ehliyet_no || '-'}</span></div>
+                        <div class="col-span-2"><strong class="text-primary-600">Adres:</strong> <span class="text-slate-800">${personel.adres || '-'}</span></div>
+                        <div><strong class="text-primary-600">Acil Durum Kişisi:</strong> <span class="text-slate-800">${personel.acil_durum_kisi || '-'}</span></div>
+                        <div><strong class="text-primary-600">Acil Durum Telefon:</strong> <span class="text-slate-800">${personel.acil_durum_telefon || '-'}</span></div>
+                    </div>
+                </div>
+                
+                <!-- İş Bilgileri -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold text-slate-900 mb-4 border-b-2 border-primary-200 pb-2 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary-600">work</span>
+                        İş Bilgileri
+                    </h3>
+                    <div class="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+                        <div><strong class="text-primary-600">İşe Giriş Tarihi:</strong> <span class="text-slate-800">${personel.ise_giris_tarihi ? new Date(personel.ise_giris_tarihi).toLocaleDateString('tr-TR') : '-'}</span></div>
+                        <div><strong class="text-primary-600">İşe Çıkış Tarihi:</strong> <span class="text-slate-800">${personel.ise_cikis_tarihi ? new Date(personel.ise_cikis_tarihi).toLocaleDateString('tr-TR') : '-'}</span></div>
+                        <div><strong class="text-primary-600">Çalışma Durumu:</strong> <span class="text-slate-800">${personel.calisma_durumu}</span></div>
+                        <div><strong class="text-primary-600">Aylık Maaş:</strong> <span class="text-slate-800">${formatTRY(personel.maas)}</span></div>
+                        <div><strong class="text-primary-600">SGK No:</strong> <span class="text-slate-800">${personel.sgk_no || '-'}</span></div>
+                        <div><strong class="text-primary-600">Vergi No:</strong> <span class="text-slate-800">${personel.vergi_no || '-'}</span></div>
+                    </div>
+                </div>
+                
+                <!-- Banka Bilgileri -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold text-slate-900 mb-4 border-b-2 border-primary-200 pb-2 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary-600">account_balance</span>
+                        Banka Bilgileri
+                    </h3>
+                    <div class="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+                        <div><strong class="text-primary-600">IBAN:</strong> <span class="text-slate-800">${personel.iban || '-'}</span></div>
+                        <div><strong class="text-primary-600">Banka Adı:</strong> <span class="text-slate-800">${personel.banka_adi || '-'}</span></div>
+                    </div>
+                </div>
+                
+                <!-- İmza Alanı -->
+                <div class="mt-12 pt-8 border-t-2 border-primary-200">
+                    <div class="grid grid-cols-2 gap-8">
+                        <div class="text-center">
+                            <div class="border-b-2 border-slate-400 pb-2 mb-2"></div>
+                            <p class="text-sm text-slate-600 font-medium">Personel İmzası</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="border-b-2 border-slate-400 pb-2 mb-2"></div>
+                            <p class="text-sm text-slate-600 font-medium">Yetkili İmzası</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        yazdirRapor(yazdirHTML, `${personel.ad || 'Personel'} ${personel.soyad || ''} - Personel Bilgi Formu`, printWindow);
+        
+    } catch (error) {
+        console.error('Personel verileri alınamadı:', error);
+        printWindow.close();
+        alert('Personel verileri yüklenirken hata oluştu. Lütfen sayfayı yenileyip tekrar deneyin.');
+    } finally {
+        triggerButton.removeAttribute('disabled');
+        triggerButton.classList.remove('opacity-50', 'cursor-wait');
+    }
+}
+
+function yazdirRapor(content, title = 'Personel Bilgi Formu', targetWindow = null) {
+    if (!content) {
+        alert('Yazdırılacak personel bilgisi henüz hazır değil. Lütfen personeli tekrar seçin.');
+        return;
+    }
+
+    const printWindow = targetWindow || window.open('', '_blank', 'width=980,height=720');
+    if (!printWindow) {
+        alert('Yazdırma penceresi açılamadı. Tarayıcı açılır pencere iznini kontrol edin.');
+        return;
+    }
+
+    const openHtml = '<' + 'html lang="tr">';
+    const closeHtml = '<' + '/html>';
+    const openBody = '<' + 'body>';
+    const closeBody = '<' + '/body>';
+
+    printWindow.document.open();
+    printWindow.document.write(`
+        <!doctype html>
+        ${openHtml}
+        <head>
+            <meta charset="utf-8">
+            <title>${escapeHtml(title)}</title>
+            <style>
+                @page { size: A4; margin: 14mm; }
+                * { box-sizing: border-box; }
+                body {
+                    margin: 0;
+                    background: #eef2f7;
+                    color: #0f172a;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 12px;
+                    line-height: 1.45;
+                }
+                .print-shell {
+                    max-width: 210mm;
+                    margin: 18px auto;
+                    background: #fff;
+                    border: 1px solid #dbe3ef;
+                    box-shadow: 0 18px 45px rgba(15, 23, 42, .14);
+                }
+                .print-toolbar {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                    padding: 14px 18px;
+                    border-bottom: 1px solid #e2e8f0;
+                    background: #f8fafc;
+                }
+                .print-toolbar strong { font-size: 14px; }
+                .print-toolbar button {
+                    border: 0;
+                    border-radius: 8px;
+                    padding: 9px 14px;
+                    background: #2563eb;
+                    color: #fff;
+                    cursor: pointer;
+                    font-weight: 700;
+                }
+                .print-toolbar button.secondary {
+                    background: #e2e8f0;
+                    color: #0f172a;
+                }
+                .print-content {
+                    padding: 18mm;
+                }
+                .personel-rapor { max-width: none; margin: 0; }
+                .text-center { text-align: center; }
+                .font-bold { font-weight: 700; }
+                .font-semibold { font-weight: 700; }
+                .font-medium { font-weight: 600; }
+                .text-3xl { font-size: 24px; }
+                .text-2xl { font-size: 20px; }
+                .text-xl { font-size: 16px; }
+                .text-sm { font-size: 11px; }
+                .mb-2 { margin-bottom: 8px; }
+                .mb-4 { margin-bottom: 12px; }
+                .mb-8 { margin-bottom: 20px; }
+                .mt-12 { margin-top: 28px; }
+                .pt-8 { padding-top: 20px; }
+                .pb-2 { padding-bottom: 8px; }
+                .pb-6 { padding-bottom: 16px; }
+                .p-4 { padding: 12px; }
+                .grid { display: grid; }
+                .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+                .grid-cols-3 { grid-template-columns: 135px 1fr 1fr; }
+                .col-span-1 { grid-column: span 1; }
+                .col-span-2 { grid-column: span 2; }
+                .gap-4 { gap: 10px 16px; }
+                .gap-8 { gap: 22px; }
+                .flex { display: flex; }
+                .items-center { align-items: center; }
+                .rounded-lg { border-radius: 8px; }
+                .rounded-full { border-radius: 999px; }
+                .bg-gray-50 {
+                    background: #f8fafc;
+                    border: 1px solid #e2e8f0;
+                }
+                .bg-gradient-to-br { background: #eff6ff; }
+                .border-b-2 { border-bottom: 2px solid #dbeafe; }
+                .border-t-2 { border-top: 2px solid #dbeafe; }
+                .border-primary-200 { border-color: #bfdbfe; }
+                .border-slate-400 { border-color: #94a3b8; }
+                .text-primary-600 { color: #2563eb; }
+                .text-slate-900 { color: #0f172a; }
+                .text-slate-800 { color: #1e293b; }
+                .text-slate-600 { color: #475569; }
+                .w-32 { width: 128px; }
+                .h-32 { height: 128px; }
+                .mx-auto { margin-left: auto; margin-right: auto; }
+                .object-cover { object-fit: cover; }
+                .shadow-lg { box-shadow: 0 8px 22px rgba(15, 23, 42, .12); }
+                img { max-width: 100%; display: block; }
+                strong { display: inline-block; min-width: 112px; }
+                .material-symbols-outlined { display: none; }
+                @media print {
+                    body { background: #fff; }
+                    .print-shell {
+                        margin: 0;
+                        border: 0;
+                        box-shadow: none;
+                        max-width: none;
+                    }
+                    .print-toolbar { display: none; }
+                    .print-content { padding: 0; }
+                    .bg-gray-50 { background: #f8fafc !important; }
+                    a { color: inherit; text-decoration: none; }
+                }
+            </style>
+        </head>
+        ${openBody}
+            <main class="print-shell">
+                <div class="print-toolbar">
+                    <strong>${escapeHtml(title)}</strong>
+                    <div>
+                        <button class="secondary" onclick="window.close()">Kapat</button>
+                        <button onclick="window.print()">Yazdır</button>
+                    </div>
+                </div>
+                <section class="print-content">${content}</section>
+            </main>
+            <script>
+                window.addEventListener('load', () => {
+                    setTimeout(() => window.print(), 250);
+                });
+            <\/script>
+        ${closeBody}
+        ${closeHtml}
+    `);
+    printWindow.document.close();
+}
+</script>
+{% endblock %}

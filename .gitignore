@@ -1,0 +1,15 @@
+.env
+.repo-git2/
+.pytest_cache/
+.pytest-tmp/
+.venv/
+.vscode/
+__pycache__/
+*.py[cod]
+backups/
+dist/
+instance/
+pytest-cache-files-*/
+static/support_uploads/
+templates/instance/
+tests/.tmp/

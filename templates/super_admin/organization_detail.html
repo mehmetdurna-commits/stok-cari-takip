@@ -1,0 +1,182 @@
+{% extends '_base.html' %}
+
+{% block title %}Firma 360 - Super Admin{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-3">
+    <span class="material-symbols-outlined text-primary-600">monitoring</span>
+    <div>
+        <h1 class="text-xl font-bold text-slate-900 dark:text-white">Firma 360</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400">{{ organization.name }} icin operasyon profili</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('super_admin_dashboard') }}#companies" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+    <span class="material-symbols-outlined text-lg">arrow_back</span>
+    Super Admin
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl space-y-5">
+    <section class="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <h2 class="text-2xl font-bold text-slate-900 dark:text-white">{{ organization.name }}</h2>
+                    <span class="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ organization.plan|title }}</span>
+                    <span class="rounded-full px-2 py-1 text-xs font-semibold {% if organization.active %}bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200{% else %}bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200{% endif %}">{{ 'Aktif' if organization.active else 'Pasif' }}</span>
+                    <span class="rounded-full px-2 py-1 text-xs font-semibold {% if subscription.tone == 'rose' %}bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200{% elif subscription.tone == 'amber' %}bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200{% elif subscription.tone == 'emerald' %}bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200{% else %}bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200{% endif %}">{{ subscription.label }}</span>
+                </div>
+                <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Sahip: {{ owner.email if owner else 'atanmamis' }} · Destek bitis: {{ organization.subscription_end|date_tr if organization.subscription_end else '-' }}</p>
+            </div>
+            <form method="post" action="{{ url_for('super_admin_impersonate', organization_id=organization.id) }}">
+                <button class="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900">
+                    <span class="material-symbols-outlined text-lg">support_agent</span>
+                    Destek girisi
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+        {% set cards = [
+            ('group', 'Kullanici', usage.users ~ ' / ' ~ (organization.user_limit or 1)),
+            ('inventory_2', 'Urun', usage.products ~ ' / ' ~ (organization.product_limit or 10)),
+            ('contacts', 'Cari', usage.customers),
+            ('request_quote', 'Teklif', usage.quotes),
+            ('support_agent', 'Acik destek', open_ticket_count),
+            ('task_alt', 'Aksiyon', open_action_count)
+        ] %}
+        {% for icon, label, value in cards %}
+        <div class="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ label }}</p>
+                    <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{{ value }}</p>
+                </div>
+                <span class="material-symbols-outlined rounded-lg bg-primary-50 p-2 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300">{{ icon }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </section>
+
+    <section class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div class="space-y-5">
+            <div class="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                    <h3 class="text-base font-bold text-slate-900 dark:text-white">Destek ve aksiyon ozeti</h3>
+                </div>
+                <div class="grid gap-0 md:grid-cols-2">
+                    <div class="divide-y divide-slate-200 dark:divide-slate-800">
+                        {% for ticket in tickets %}
+                        <a href="{{ url_for('super_admin_support_ticket_detail', ticket_id=ticket.id) }}" class="block px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <div class="flex items-center justify-between gap-3">
+                                <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">#{{ ticket.id }} {{ ticket.subject }}</p>
+                                <span class="rounded-full bg-primary-50 px-2 py-1 text-xs font-semibold text-primary-700 dark:bg-primary-950/40 dark:text-primary-200">{{ status_labels.get(ticket.status, ticket.status) }}</span>
+                            </div>
+                            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ category_labels.get(ticket.category, ticket.category) }} · {{ priority_labels.get(ticket.priority, ticket.priority) }}</p>
+                        </a>
+                        {% else %}
+                        <p class="px-5 py-8 text-sm text-slate-500 dark:text-slate-400">Destek talebi yok.</p>
+                        {% endfor %}
+                    </div>
+                    <div class="divide-y divide-slate-200 border-t border-slate-200 dark:divide-slate-800 dark:border-slate-800 md:border-l md:border-t-0">
+                        {% for action in actions %}
+                        <div class="px-5 py-4">
+                            <div class="flex items-center justify-between gap-3">
+                                <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">{{ action.title }}</p>
+                                <span class="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ action_status_labels.get(action.status, action.status) }}</span>
+                            </div>
+                            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ action_source_labels.get(action.source_type, action.source_type) }} · {{ action_severity_labels.get(action.severity, action.severity) }}</p>
+                        </div>
+                        {% else %}
+                        <p class="px-5 py-8 text-sm text-slate-500 dark:text-slate-400">Aksiyon yok.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                    <h3 class="text-base font-bold text-slate-900 dark:text-white">Son hareketler</h3>
+                </div>
+                <div class="divide-y divide-slate-200 dark:divide-slate-800">
+                    {% for log in logs %}
+                    <div class="px-5 py-3">
+                        <div class="flex items-center justify-between gap-3">
+                            <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ log.action|audit_action_label }}</p>
+                            <span class="text-xs text-slate-500 dark:text-slate-400">{{ log.timestamp|datetime_tr if log.timestamp else '-' }}</span>
+                        </div>
+                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ log.resource_type|audit_resource_label }}{% if log.resource_id %} #{{ log.resource_id }}{% endif %}</p>
+                    </div>
+                    {% else %}
+                    <p class="px-5 py-8 text-sm text-slate-500 dark:text-slate-400">Hareket kaydi yok.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-5">
+            <div class="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                <h3 class="text-base font-bold text-slate-900 dark:text-white">Odeme / abonelik kaydi</h3>
+                <form method="post" action="{{ url_for('super_admin_add_subscription_payment', organization_id=organization.id) }}" class="mt-4 space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="space-y-1">
+                            <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Paket</span>
+                            <select name="plan" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+                                {% for plan in ['demo', 'standart', 'profesyonel'] %}
+                                <option value="{{ plan }}" {% if organization.plan == plan %}selected{% endif %}>{{ plan|title }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label class="space-y-1">
+                            <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Durum</span>
+                            <select name="status" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+                                {% for value, label in billing_status_labels.items() %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-[1fr_86px] gap-3">
+                        <input name="amount" type="number" min="0" step="0.01" placeholder="Tutar" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+                        <input name="currency" value="TRY" maxlength="8" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input name="period_start" type="date" value="{{ organization.subscription_start.isoformat() if organization.subscription_start else '' }}" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+                        <input name="period_end" type="date" value="{{ organization.subscription_end.isoformat() if organization.subscription_end else '' }}" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+                    </div>
+                    <textarea name="note" rows="3" placeholder="Orn: 2027 yenilemesi odendi, destek suresi uzatildi." class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"></textarea>
+                    <button class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">
+                        <span class="material-symbols-outlined text-lg">add_card</span>
+                        Kaydi ekle
+                    </button>
+                </form>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                    <h3 class="text-base font-bold text-slate-900 dark:text-white">Odeme gecmisi</h3>
+                </div>
+                <div class="divide-y divide-slate-200 dark:divide-slate-800">
+                    {% for payment in payments %}
+                    <div class="px-5 py-4">
+                        <div class="flex items-center justify-between gap-3">
+                            <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ payment.amount|round(2) }} {{ payment.currency }}</p>
+                            <span class="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ billing_status_labels.get(payment.status, payment.status) }}</span>
+                        </div>
+                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ payment.period_start|date_tr if payment.period_start else '-' }} - {{ payment.period_end|date_tr if payment.period_end else '-' }}</p>
+                        {% if payment.note %}<p class="mt-2 text-sm text-slate-600 dark:text-slate-300">{{ payment.note }}</p>{% endif %}
+                    </div>
+                    {% else %}
+                    <p class="px-5 py-8 text-sm text-slate-500 dark:text-slate-400">Odeme kaydi yok.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

@@ -1,0 +1,132 @@
+{% extends "_base.html" %}
+
+{% block title %}Ön Muhasebe - Hesaplar{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">Ön Muhasebe</h1>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Kasadaki, bankadaki ve POS’taki paranı tek ekrandan takip et.</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="{{ url_for('onmuhasebe_raporlar') }}" class="text-sm font-bold text-primary-600 hover:text-primary-700">Raporlar</a>
+      <a href="{{ url_for('onmuhasebe_mutabakat') }}" class="text-sm font-bold text-primary-600 hover:text-primary-700">Mutabakat</a>
+    </div>
+  </div>
+
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
+    <h2 class="text-sm font-bold text-slate-900 dark:text-white mb-4">Yeni Para Hesabı</h2>
+    <form method="post" class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+      <input type="hidden" name="action" value="create">
+
+      <div class="md:col-span-2">
+        <label class="block text-xs font-bold text-slate-500 mb-1">Hesap Adı</label>
+        <input name="name" required class="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-950" placeholder="Örn: Garanti TL">
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-500 mb-1">Hesap Türü</label>
+        <select name="type" class="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-950">
+          <option value="cash">Kasa</option>
+          <option value="bank">Banka</option>
+          <option value="pos">POS</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-500 mb-1">Para Birimi</label>
+        <input name="currency" class="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-950" value="TRY" placeholder="TRY">
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-500 mb-1">Başlangıç Parası</label>
+        <input name="opening_balance" class="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-950" value="0" inputmode="decimal">
+      </div>
+
+      <div class="flex justify-end">
+        <button class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-bold">
+          <span class="material-symbols-outlined text-[18px]">add</span>
+          Hesap Oluştur
+        </button>
+      </div>
+
+      <div class="md:col-span-3">
+        <label class="block text-xs font-bold text-slate-500 mb-1">Banka Adı (opsiyonel)</label>
+        <input name="bank_name" class="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-950" placeholder="Örn: Garanti BBVA">
+      </div>
+
+      <div class="md:col-span-3">
+        <label class="block text-xs font-bold text-slate-500 mb-1">IBAN (opsiyonel)</label>
+        <input name="iban" class="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-950" placeholder="TR00 0000 0000 0000 0000 0000 00">
+      </div>
+    </form>
+  </div>
+
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+    <div class="p-5 flex items-center justify-between">
+      <h2 class="text-sm font-bold text-slate-900 dark:text-white">Hesaplar</h2>
+      <a href="{{ url_for('nakit_yonetimi') }}" class="text-sm font-bold text-primary-600 hover:text-primary-700">Nakit yönetimine git</a>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+        <thead class="bg-slate-50 dark:bg-slate-900/50">
+          <tr>
+            <th class="px-4 py-3 text-left">Hesap</th>
+            <th class="px-4 py-3 text-left">Hesap Türü</th>
+            <th class="px-4 py-3 text-right">Başlangıç</th>
+            <th class="px-4 py-3 text-right">Giren Para</th>
+            <th class="px-4 py-3 text-right">Çıkan Para</th>
+            <th class="px-4 py-3 text-right">Kalan Para</th>
+            <th class="px-4 py-3 text-right">Durum</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50 dark:divide-slate-800/50">
+          {% for row in account_rows %}
+          {% set a = row.account %}
+          <tr class="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+            <td class="px-4 py-3">
+              <div class="font-semibold text-slate-900 dark:text-white">{{ a.name }}</div>
+              {% if a.bank_name or a.iban %}
+                <div class="text-xs text-slate-500 mt-0.5">
+                  {{ a.bank_name or '' }}{% if a.bank_name and a.iban %} • {% endif %}{{ a.iban or '' }}
+                </div>
+              {% endif %}
+              <div class="mt-1">
+                <a href="{{ url_for('onmuhasebe_hesap_detay', account_id=a.id) }}" class="text-xs font-bold text-primary-600 hover:text-primary-700">Hareketleri Gör</a>
+              </div>
+            </td>
+            <td class="px-4 py-3">
+              {% if a.type == 'cash' %}Kasa{% elif a.type == 'bank' %}Banka{% else %}POS{% endif %}
+            </td>
+            <td class="px-4 py-3 text-right">{{ (row.opening_balance)|tr_number }} <span class="text-xs text-slate-400">{{ a.currency }}</span></td>
+            <td class="px-4 py-3 text-right text-emerald-600 font-semibold">{{ (row.sum_giris)|tr_number }}</td>
+            <td class="px-4 py-3 text-right text-rose-600 font-semibold">{{ (row.sum_cikis)|tr_number }}</td>
+            <td class="px-4 py-3 text-right font-extrabold text-slate-900 dark:text-white">{{ (row.balance)|tr_number }} <span class="text-xs text-slate-400">{{ a.currency }}</span></td>
+            <td class="px-4 py-3 text-right">
+              <form method="post" class="inline-flex items-center gap-2">
+                <input type="hidden" name="action" value="toggle">
+                <input type="hidden" name="account_id" value="{{ a.id }}">
+                {% if a.active %}
+                  <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300">Aktif</span>
+                  <button class="text-xs font-bold text-slate-500 hover:text-rose-600">Pasif yap</button>
+                {% else %}
+                  <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-extrabold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">Pasif</span>
+                  <button class="text-xs font-bold text-slate-500 hover:text-emerald-500">Aktif yap</button>
+                {% endif %}
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+          {% if account_rows|length == 0 %}
+          <tr>
+            <td class="px-4 py-8 text-center text-slate-500" colspan="7">Henüz hesap yok.</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

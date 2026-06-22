@@ -1,0 +1,313 @@
+{% extends '_base.html' %}
+
+{% block title %}Stok Çıkışı - Stok ve Cari Takip{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-3">
+    <span class="material-symbols-outlined text-red-600">outbox</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Stok Çıkışı</h1>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<div class="flex items-center gap-2">
+    <a href="{{ url_for('urunler') }}" class="btn-secondary">
+        <span class="material-symbols-outlined">inventory_2</span>
+        Ürünler
+    </a>
+    <a href="{{ url_for('stok_giris') }}" class="btn-secondary text-green-700 dark:text-green-300">
+        <span class="material-symbols-outlined">move_to_inbox</span>
+        Stok Girişi
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<datalist id="warehouseOptions">
+    {% for depo in depolar %}
+    <option value="{{ depo }}"></option>
+    {% endfor %}
+</datalist>
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+        <div class="flex items-center gap-4">
+            <div class="size-12 bg-red-50 dark:bg-red-900/20 rounded-xl flex items-center justify-center">
+                <span class="material-symbols-outlined text-red-600 text-2xl">outbox</span>
+            </div>
+            <div>
+                <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Stok Çıkışı</h2>
+                <p class="text-slate-600 dark:text-slate-400">Müşteriye stok çıkışı yapmak için aşağıdaki formu kullanın.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stok Çıkış Formu -->
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+        <form method="POST" class="p-6 space-y-6">
+            <!-- Müşteri Seçimi -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Müşteri Seçimi *</label>
+                <select name="cari_id" id="cariSelect" required class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500">
+                    <option value="">Müşteri seçin...</option>
+                    {% for cari in cariler %}
+                    <option value="{{ cari.id }}" data-borc="{{ cari.borc or 0 }}" data-alacak="{{ cari.alacak or 0 }}">
+                        {{ cari.unvan }} (Borç: ₺{{ (cari.borc or 0)|tr_number }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Tarih -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Tarih</label>
+                <input type="date" name="tarih" required
+                       class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500">
+            </div>
+
+            <!-- Depo -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Depo</label>
+                <input type="text" name="depo" list="warehouseOptions" value="{{ depolar[0] if depolar else '' }}"
+                       class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                       placeholder="Depo adı">
+            </div>
+
+            <!-- Ürün ve Miktar Tablosu -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Ürünler ve Miktarlar *</label>
+                <div class="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                    <table class="w-full" id="urunTablosu">
+                        <thead class="bg-slate-50 dark:bg-slate-800">
+                            <tr>
+                                <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Ürün</th>
+                                <th class="text-center py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Mevcut Stok</th>
+                                <th class="text-center py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Çıkış Miktarı</th>
+                                <th class="text-center py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody id="urunListesi">
+                            <!-- Ürün satırları JavaScript ile eklenecek -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Ürün Ekle Butonu -->
+                <div class="mt-4">
+                    <button type="button" onclick="urunEkle()" class="px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors flex items-center gap-2">
+                        <span class="material-symbols-outlined">add</span>
+                        Ürün Ekle
+                    </button>
+                </div>
+            </div>
+
+            <!-- KDV ve skonto -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">KDV Oran (%)</label>
+                    <input type="number" name="kdv_orani" min="0" max="100" step="0.01" value="20"
+                           class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">skonto</label>
+                    <input type="number" name="iskonto" min="0" step="0.01" value="0"
+                           class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500">
+                </div>
+            </div>
+
+            <!-- Açıklama -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Açıklama</label>
+                <textarea name="aciklama" rows="3"
+                          class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                          placeholder="Stok çıkışı hakkında notlar..."></textarea>
+            </div>
+
+            <!-- Butonlar -->
+            <div class="flex items-center gap-3 pt-4">
+                <a href="{{ url_for('urunler') }}" class="px-6 py-3 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    İptal
+                </a>
+                <button type="submit" id="submitBtn" class="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined">outbox</span>
+                    Stok Çıkışı Yap
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Son İşlemler -->
+    {% if stok_hareketleri %}
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+        <div class="p-6 border-b border-slate-200 dark:border-slate-800">
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Son Stok Çıkışları</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b border-slate-200 dark:border-slate-700">
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Müşteri</th>
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Ürün</th>
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Miktar</th>
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Depo</th>
+                        <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">Tarih</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                    {% for hareket in stok_hareketleri[:10] %}
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td class="py-3 px-4">
+                            <div class="flex items-center gap-3">
+                                <div class="size-8 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-blue-600 text-sm">person</span>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-slate-900 dark:text-white">{{ hareket.cari_unvan }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4">
+                            <div class="flex items-center gap-3">
+                                <div class="size-8 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-red-600 text-sm">inventory_2</span>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-slate-900 dark:text-white">{{ hareket.urun_adi }}</p>
+                                    <p class="text-xs text-slate-500">{{ hareket.barkod or '-' }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">-{{ hareket.miktar }}</span>
+                        </td>
+                        <td class="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">{{ hareket.depo or '-' }}</td>
+                        <td class="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">{{ hareket.tarih|datetime_tr }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let urunSatirlari = [];
+    let satirSayisi = 0;
+
+    function urunEkle() {
+        satirSayisi++;
+        const tbody = document.getElementById('urunListesi');
+        
+        const satir = document.createElement('tr');
+        satir.className = 'border-t border-slate-200 dark:border-slate-700';
+        
+        // Ürün options'ı oluştur
+        let urunOptions = '';
+        const urunler = {{ urunler|tojson|safe }};
+        urunler.forEach(function(urun) {
+            urunOptions += `<option value="${urun.id}" data-stok="${urun.stok_miktari}" data-barkod="${urun.barkod || ''}">
+                ${urun.urun_adi} (Stok: ${urun.stok_miktari})
+            </option>`;
+        });
+        
+        satir.innerHTML = `
+            <td class="py-3 px-4">
+                <select name="urun_id[]" required class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-800">
+                    <option value="">Ürün seçin...</option>
+                    ${urunOptions}
+                </select>
+            </td>
+            <td class="py-3 px-4 text-center">
+                <span id="stok_${satirSayisi}" class="text-sm text-slate-600 dark:text-slate-400">-</span>
+            </td>
+            <td class="py-3 px-4">
+                <input type="number" name="miktar[]" step="0.01" min="0.01" required
+                       class="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-800"
+                       placeholder="0.00">
+            </td>
+            <td class="py-3 px-4 text-center">
+                <button type="button" onclick="urunSil(this)" class="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                    <span class="material-symbols-outlined">delete</span>
+                </button>
+            </td>
+        `;
+        
+        tbody.appendChild(satir);
+        
+        // Ürün seçimi değiştiğinde stok bilgisini güncelle
+        const select = satir.querySelector('select');
+        select.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const stok = parseFloat(selectedOption.dataset.stok) || 0;
+            const stokSpan = document.getElementById(`stok_${satirSayisi}`);
+            stokSpan.textContent = stok;
+            stokSpan.className = stok <= 5 ? 'text-sm text-red-600 font-medium' : 'text-sm text-slate-600 dark:text-slate-400';
+        });
+        
+    }
+
+    function urunSil(button) {
+        const satir = button.closest('tr');
+        satir.remove();
+    }
+
+    // Form gönderildiğinde ürün verilerini hidden input'lara aktar
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const urunIdler = [];
+        const miktarlar = [];
+        
+        // Tüm ürün satırlarını al
+        const tumSatirlar = document.querySelectorAll('#urunListesi tr');
+        
+        if (tumSatirlar.length === 0) {
+            e.preventDefault();
+            showMessage('En az bir ürün eklemelisiniz!', 'error');
+            return false;
+        }
+        
+        tumSatirlar.forEach((satir, index) => {
+            const select = satir.querySelector('select');
+            const miktarInput = satir.querySelector('input[type="number"]');
+            
+            if (select.value && miktarInput.value) {
+                const selectedOption = select.options[select.selectedIndex];
+                const stok = parseFloat(selectedOption.dataset.stok) || 0;
+                const miktar = parseFloat(miktarInput.value);
+                
+                if (miktar > stok) {
+                    e.preventDefault();
+                    showMessage(`${selectedOption.text} için yetersiz stok! Mevcut: ${stok}, İstenen: ${miktar}`, 'error');
+                    return false;
+                }
+                
+                urunIdler.push(select.value);
+                miktarlar.push(miktar);
+            }
+        });
+        
+        if (urunIdler.length === 0) {
+            e.preventDefault();
+            showMessage('En az bir ürün ve miktar girmelisiniz!', 'error');
+            return false;
+        }
+        
+        
+        // Loading state
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `
+            <span class="material-symbols-outlined animate-spin">refresh</span>
+            İşleniyor...
+        `;
+    });
+
+    // İlk ürün satırını otomatik ekle
+    document.addEventListener('DOMContentLoaded', function() {
+        urunEkle();
+    });
+</script>
+{% endblock %}

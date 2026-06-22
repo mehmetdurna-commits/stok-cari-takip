@@ -1,0 +1,65 @@
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="space-y-2 max-w-md">
+            {% for category, message in messages %}
+                <div id="flash-{{ loop.index }}" role="status" class="p-4 rounded-2xl shadow-xl border transform transition-all duration-300 translate-x-full opacity-0 backdrop-blur
+                    {% if category == 'success' %}bg-green-50/95 border-green-200 text-green-800 dark:bg-green-900/30 dark:border-green-800 dark:text-green-200{% endif %}
+                    {% if category == 'error' %}bg-red-50/95 border-red-200 text-red-800 dark:bg-red-900/30 dark:border-red-800 dark:text-red-200{% endif %}
+                    {% if category == 'warning' %}bg-yellow-50/95 border-yellow-200 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-800 dark:text-yellow-200{% endif %}
+                    {% if category == 'info' %}bg-blue-50/95 border-blue-200 text-blue-800 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-200{% endif %}">
+                    <div class="flex items-start gap-3">
+                        <span class="material-symbols-outlined text-lg flex-shrink-0 mt-0.5
+                            {% if category == 'success' %}text-green-600 dark:text-green-400{% endif %}
+                            {% if category == 'error' %}text-red-600 dark:text-red-400{% endif %}
+                            {% if category == 'warning' %}text-yellow-600 dark:text-yellow-400{% endif %}
+                            {% if category == 'info' %}text-blue-600 dark:text-blue-400{% endif %}">
+                            {% if category == 'success' %}check_circle{% endif %}
+                            {% if category == 'error' %}error{% endif %}
+                            {% if category == 'warning' %}warning{% endif %}
+                            {% if category == 'info' %}info{% endif %}
+                        </span>
+                        <div class="flex-1">
+                            <p class="font-medium">{{ message }}</p>
+                        </div>
+                        <button type="button" aria-label="Bildirimi kapat" onclick="closeFlash('{{ loop.index }}')" class="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300">
+                            <span class="material-symbols-outlined text-lg">close</span>
+                        </button>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+<script>
+    function closeFlash(index) {
+        const element = document.getElementById('flash-' + index);
+        if (element) {
+            element.style.transform = 'translateX(100%)';
+            element.style.opacity = '0';
+            setTimeout(function() {
+                element.remove();
+            }, 300);
+        }
+    }
+
+    // Auto-close flash messages after 5 seconds
+    document.addEventListener('DOMContentLoaded', function() {
+        const flashMessages = document.querySelectorAll('[id^="flash-"]');
+        flashMessages.forEach(function(element) {
+            const index = element.id.replace('flash-', '');
+            setTimeout(function() {
+                closeFlash(index);
+            }, 5000);
+        });
+
+        // Show flash messages with animation
+        setTimeout(function() {
+            flashMessages.forEach(function(element) {
+                element.style.transform = 'translateX(0)';
+                element.style.opacity = '1';
+            });
+        }, 100);
+    });
+</script>

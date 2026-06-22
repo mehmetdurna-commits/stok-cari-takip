@@ -1,0 +1,216 @@
+{% extends '_base.html' %}
+
+{% block title %}Prim Yönetimi{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-4">
+    <span class="material-symbols-outlined text-primary-600 font-bold">workspace_premium</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Prim Yönetimi</h1>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('click', (event) => {
+    const openButton = event.target.closest('[data-open-personel-modal]');
+    if (openButton) {
+        const modal = document.getElementById(openButton.dataset.openPersonelModal);
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            modal.querySelector('select, textarea, input, button').focus();
+        }
+        return;
+    }
+
+    const closeButton = event.target.closest('[data-close-personel-modal]');
+        const backdrop = event.target.classList.contains('personel-action-modal') ? event.target : null;
+    const modal = closeButton.closest('.personel-action-modal') || backdrop;
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    document.querySelectorAll('.personel-action-modal.flex').forEach((modal) => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    });
+});
+</script>
+{% endblock %}
+
+{% block header_actions %}
+<div class="hidden sm:flex items-center gap-2">
+    <a href="{{ url_for('prim_ekle') }}" class="btn-primary">
+        <span class="material-symbols-outlined text-lg">add</span>
+        Prim Ekle
+    </a>
+    <a href="{{ url_for('personel_yonetimi') }}" class="btn-secondary">
+        <span class="material-symbols-outlined text-lg">people</span>
+        Personeller
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+    <!-- İstatistik Kartları -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="size-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400">
+                    <span class="material-symbols-outlined text-2xl">workspace_premium</span>
+                </div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Toplam Prim</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-3xl font-bold text-slate-900 dark:text-white">{{ primler|length }}</h3>
+                <span class="text-slate-500 text-sm font-medium">Kayıt</span>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="size-12 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center text-green-600 dark:text-green-400">
+                    <span class="material-symbols-outlined text-2xl">payments</span>
+                </div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Toplam Tutar</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-3xl font-bold text-slate-900 dark:text-white">₺{{ (primler|sum(attribute='tutar') or 0)|tr_number(0) }}</h3>
+                <span class="text-slate-500 text-sm font-medium">TL</span>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="size-12 bg-amber-50 dark:bg-amber-900/20 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400">
+                    <span class="material-symbols-outlined text-2xl">trending_up</span>
+                </div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Bu Ay</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-3xl font-bold text-slate-900 dark:text-white">
+                    {% set bu_ay = primler|selectattr('donem')|list|selectattr('donem', 'equalto', now().strftime('%Y-%m'))|list %}
+                    ₺{{ (bu_ay|sum(attribute='tutar') or 0)|tr_number(0) }}
+                </h3>
+                <span class="text-slate-500 text-sm font-medium">TL</span>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="size-12 bg-purple-50 dark:bg-purple-900/20 rounded-xl flex items-center justify-center text-purple-600 dark:text-purple-400">
+                    <span class="material-symbols-outlined text-2xl">stars</span>
+                </div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Ortalama Prim</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-3xl font-bold text-slate-900 dark:text-white">
+                    {% if primler|length > 0 %}
+                    ₺{{ ((primler|sum(attribute='tutar') or 0) / primler|length)|tr_number(0) }}
+                    {% else %}
+                    ₺0
+                    {% endif %}
+                </h3>
+                <span class="text-slate-500 text-sm font-medium">TL</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prim Listesi -->
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+        <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">Prim Kayıtları</h2>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Personel prim kayıtlarını buradan yönetebilirsiniz.</p>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-slate-50 dark:bg-slate-800">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Personel</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Prim Türü</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tutar</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Dönem</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tarih</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Durum</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Açıklama</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                    {% for prim in primler %}
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                        <td class="px-6 py-4">
+                            <div class="font-medium text-slate-900 dark:text-white">{{ prim.personel.ad }} {{ prim.personel.soyad }}</div>
+                            <div class="text-sm text-slate-500 dark:text-slate-400">{{ prim.personel.pozisyon }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+                                {{ prim.prim_tipi }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="font-medium text-slate-900 dark:text-white">₺{{ (prim.tutar)|tr_number }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-slate-900 dark:text-white">{{ prim.donem or '-' }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-slate-900 dark:text-white">{{ prim.kayit_tarihi|date_tr }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if prim.id in paid_prim_ids %}
+                            <span class="px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400">Peşin Ödendi</span>
+                            {% else %}
+                            <span class="px-2 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">Kaydedildi</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-slate-900 dark:text-white max-w-xs truncate">{{ prim.aciklama or '-' }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-2">
+                                <details class="relative">
+                                    <summary title="Açıklama" class="list-none cursor-pointer text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                                        <span class="material-symbols-outlined text-lg">visibility</span>
+                                    </summary>
+                                    <div class="absolute right-0 z-10 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                                        {{ prim.aciklama or 'Açıklama yok.' }}
+                                    </div>
+                                </details>
+                                <form method="POST" action="{{ url_for('prim_sil', id=prim.id) }}" data-confirm="Bu prim kaydı silinsin mi" data-confirm-title="Primi sil" data-confirm-ok="Sil">
+                                    <button type="submit" title="Sil" class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
+                                        <span class="material-symbols-outlined text-lg">delete</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                            <div class="app-empty-state app-empty-state--compact">
+                                <span class="material-symbols-outlined app-empty-icon">workspace_premium</span>
+                                <h3 class="app-empty-title">Henüz prim kaydı yok</h3>
+                                <p class="app-empty-description">Performans, satış veya dönem primlerini kaydedin; personel maliyetini daha net takip edin.</p>
+                                <div class="app-empty-actions">
+                                <a href="{{ url_for('prim_ekle') }}" class="btn-primary">
+                                    <span class="material-symbols-outlined">add</span>
+                                    İlk Prim Kaydını Ekle
+                                </a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

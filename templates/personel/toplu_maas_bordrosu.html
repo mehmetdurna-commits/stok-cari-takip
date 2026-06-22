@@ -1,0 +1,209 @@
+{% extends '_base.html' %}
+
+{% block title %}Toplu Maaş Bordrosu{% endblock %}
+
+{% block head %}
+<style>
+@media print {
+    body { background: #fff !important; }
+    aside, header, nav, .no-print { display: none !important; }
+    main, #mainContent, .content-wrapper { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: none !important; }
+    .print-page { box-shadow: none !important; border: 0 !important; border-radius: 0 !important; }
+}
+</style>
+{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-4">
+    <span class="material-symbols-outlined text-primary-600 font-bold">payments</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Toplu Maaş Bordrosu</h1>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<div class="no-print hidden sm:flex items-center gap-2">
+    <button onclick="window.print()" class="btn-primary">
+        <span class="material-symbols-outlined text-lg">print</span>
+        Yazdır
+    </button>
+    <a href="{{ url_for('toplu_maas_banka_listesi_csv', period=payroll_data.period) }}" class="btn-secondary">
+        <span class="material-symbols-outlined text-lg">download</span>
+        Banka CSV
+    </a>
+    <a href="{{ url_for('maas_bordro_kayitlari', period=payroll_data.period) }}" class="btn-secondary">
+        <span class="material-symbols-outlined text-lg">receipt_long</span>
+        Kayıtlar
+    </a>
+    <a href="{{ url_for('personel_yonetimi') }}" class="btn-secondary">
+        <span class="material-symbols-outlined text-lg">people</span>
+        Personeller
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl space-y-6">
+    <section class="no-print rounded-2xl border border-primary-100 bg-primary-50/70 p-5 dark:border-primary-900/40 dark:bg-primary-950/20">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <p class="text-xs font-black uppercase tracking-widest text-primary-600">Maaş Dağıtım Hazırlığı</p>
+                <h2 class="mt-1 text-xl font-black text-slate-900 dark:text-white">{{ payroll_data.period }} dönemi toplu ödeme listesi</h2>
+                <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Aktif personellerin maaş, prim, avans kesintisi ve net ödemeleri tek tabloda hazırlanır.</p>
+            </div>
+            <form method="GET" action="{{ url_for('toplu_maas_bordrosu') }}" class="flex items-center gap-2">
+                <input type="month" name="period" value="{{ payroll_data.period }}"
+                       class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                <button type="submit" class="btn-primary">
+                    <span class="material-symbols-outlined text-lg">refresh</span>
+                    Hesapla
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <section class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
+        <div class="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Personel</span>
+            <p class="mt-2 text-2xl font-black text-slate-900 dark:text-white">{{ payroll_data.totals.employee_count }}</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Maaş Toplamı</span>
+            <p class="mt-2 text-2xl font-black text-slate-900 dark:text-white">₺{{ payroll_data.totals.base_salary|tr_number }}</p>
+        </div>
+        <div class="rounded-xl border border-green-100 bg-green-50 p-5 dark:border-green-900/30 dark:bg-green-950/20">
+            <span class="text-xs font-bold uppercase tracking-wider text-green-700">Prim</span>
+            <p class="mt-2 text-2xl font-black text-green-700">₺{{ payroll_data.totals.total_primes|tr_number }}</p>
+        </div>
+        <div class="rounded-xl border border-amber-100 bg-amber-50 p-5 dark:border-amber-900/30 dark:bg-amber-950/20">
+            <span class="text-xs font-bold uppercase tracking-wider text-amber-700">Avans Kesintisi</span>
+            <p class="mt-2 text-2xl font-black text-amber-700">₺{{ payroll_data.totals.total_advances|tr_number }}</p>
+        </div>
+        <div class="rounded-xl border border-blue-100 bg-blue-50 p-5 dark:border-blue-900/30 dark:bg-blue-950/20">
+            <span class="text-xs font-bold uppercase tracking-wider text-blue-700">Brüt Toplam</span>
+            <p class="mt-2 text-2xl font-black text-blue-700">₺{{ payroll_data.totals.gross_total|tr_number }}</p>
+        </div>
+        <div class="rounded-xl border border-primary-100 bg-primary-50 p-5 dark:border-primary-900/30 dark:bg-primary-950/20">
+            <span class="text-xs font-bold uppercase tracking-wider text-primary-700">Net Ödenecek</span>
+            <p class="mt-2 text-2xl font-black text-primary-700">₺{{ payroll_data.totals.net_pay|tr_number }}</p>
+        </div>
+    </section>
+
+    <section class="no-print rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+                <p class="text-xs font-black uppercase tracking-widest text-primary-600">Finans İşlemi</p>
+                <h3 class="mt-1 text-lg font-black text-slate-900 dark:text-white">Maaşları ödendi işaretle</h3>
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    Ödenmemiş personeller için tek finans çıkışı oluşturulur. Ödenmiş bordrolar tekrar ödenmez.
+                </p>
+                <div class="mt-3 flex flex-wrap gap-2 text-xs font-bold">
+                    <span class="rounded-full bg-primary-50 px-3 py-1 text-primary-700">Ödenecek: ₺{{ payroll_data.totals.payable_net|tr_number }}</span>
+                    <span class="rounded-full bg-green-50 px-3 py-1 text-green-700">Ödenmiş kişi: {{ payroll_data.totals.paid_count }}</span>
+                </div>
+            </div>
+            <form method="POST" action="{{ url_for('toplu_maas_odeme') }}" class="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                <input type="hidden" name="period" value="{{ payroll_data.period }}">
+                <select name="account_id" required class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                    <option value="">Ödeme hesabı seçin</option>
+                    {% for account in accounts %}
+                    {% if account.active %}
+                    <option value="{{ account.id }}">{{ account.name }} · {{ account.type|upper }}</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+                <button type="submit"
+                        data-confirm="Bu dönem için ödenmemiş maaşlar finans çıkışı olarak kaydedilecek. Devam edilsin mi"
+                        data-confirm-title="Toplu maaş ödemesi"
+                        data-confirm-ok="Ödemeyi Kaydet"
+                        class="btn-primary {{ 'opacity-60 pointer-events-none' if payroll_data.totals.payable_net <= 0 else '' }}">
+                    <span class="material-symbols-outlined text-lg">done_all</span>
+                    Ödemeyi Kaydet
+                </button>
+            </form>
+        </div>
+    </section>
+
+    {% if payroll_data.totals.missing_bank_count %}
+    <div class="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:border-red-900/30 dark:bg-red-950/20 dark:text-red-300">
+        {{ payroll_data.totals.missing_bank_count }} personelin IBAN bilgisi eksik. Banka CSV'sini göndermeden önce personel kartını tamamlayın.
+    </div>
+    {% endif %}
+
+    {% if payment_transactions %}
+    <section class="no-print rounded-2xl border border-green-100 bg-green-50 p-5 dark:border-green-900/30 dark:bg-green-950/20">
+        <div class="mb-3 flex items-center gap-2">
+            <span class="material-symbols-outlined text-green-700">verified</span>
+            <h3 class="font-black text-green-800 dark:text-green-200">Bu dönem için kayıtlı maaş ödeme hareketleri</h3>
+        </div>
+        <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {% for tx in payment_transactions %}
+            <div class="rounded-xl bg-white/80 p-4 dark:bg-slate-900/70">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <p class="font-bold text-slate-900 dark:text-white">{{ tx.account.name if tx.account else 'Hesap yok' }}</p>
+                        <p class="mt-1 text-xs text-slate-500">{{ tx.tarih|datetime_tr }} · {{ tx.odeme_turu }}</p>
+                    </div>
+                    <span class="text-lg font-black text-red-600">-₺{{ tx.tutar|tr_number }}</span>
+                </div>
+                <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">{{ tx.aciklama }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="print-page overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="border-b border-slate-200 p-6 dark:border-slate-800">
+            <h2 class="text-lg font-black text-slate-900 dark:text-white">Banka Ödeme Listesi</h2>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ current_user.firma_adi or 'Firma' }} · {{ payroll_data.period }} · {{ generated_at|datetime_tr }}</p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-slate-50 dark:bg-slate-800">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">Personel</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">Banka / IBAN</th>
+                        <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Maaş</th>
+                        <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Prim</th>
+                        <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Avans</th>
+                        <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Net Ödeme</th>
+                        <th class="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500 no-print">Bordro</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                    {% for row in payroll_data.rows %}
+                    {% set personel = row.personel %}
+                    {% set summary = row.summary %}
+                    <tr>
+                        <td class="px-4 py-3">
+                            <p class="font-bold text-slate-900 dark:text-white">{{ personel.ad }} {{ personel.soyad }}</p>
+                            <p class="text-xs text-slate-500">{{ personel.sicil_no }} · {{ personel.pozisyon or '-' }}</p>
+                            {% if summary.is_paid %}
+                            <span class="mt-1 inline-flex rounded-full bg-green-100 px-2 py-1 text-xs font-bold text-green-700">Ödendi</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3">
+                            <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ personel.banka_adi or '-' }}</p>
+                            <p class="text-xs {{ 'text-red-600 font-bold' if summary.missing_bank_info else 'text-slate-500' }}">{{ personel.iban or 'IBAN eksik' }}</p>
+                        </td>
+                        <td class="px-4 py-3 text-right font-semibold text-slate-900 dark:text-white">₺{{ summary.base_salary|tr_number }}</td>
+                        <td class="px-4 py-3 text-right font-semibold text-green-700">₺{{ summary.total_primes|tr_number }}</td>
+                        <td class="px-4 py-3 text-right font-semibold text-amber-700">₺{{ summary.total_advances|tr_number }}</td>
+                        <td class="px-4 py-3 text-right text-lg font-black text-primary-600">₺{{ summary.net_pay|tr_number }}</td>
+                        <td class="px-4 py-3 text-center no-print">
+                            <a href="{{ url_for('personel_bordro', id=personel.id, period=payroll_data.period) }}" class="inline-flex rounded-lg bg-primary-50 p-2 text-primary-600 hover:bg-primary-100">
+                                <span class="material-symbols-outlined text-lg">receipt_long</span>
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-12 text-center text-slate-500">Aktif personel bulunamadı.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}

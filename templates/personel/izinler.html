@@ -1,0 +1,273 @@
+{% extends '_base.html' %}
+
+{% block title %}İzin Yönetimi{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-4">
+    <span class="material-symbols-outlined text-primary-600 font-bold">beach_access</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">İzin Yönetimi</h1>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('click', (event) => {
+    const openButton = event.target.closest('[data-open-personel-modal]');
+    if (openButton) {
+        const modal = document.getElementById(openButton.dataset.openPersonelModal);
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            modal.querySelector('textarea, input, select, button').focus();
+        }
+        return;
+    }
+
+    const closeButton = event.target.closest('[data-close-personel-modal]');
+        const backdrop = event.target.classList.contains('personel-action-modal') ? event.target : null;
+    const modal = closeButton.closest('.personel-action-modal') || backdrop;
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    document.querySelectorAll('.personel-action-modal.flex').forEach((modal) => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    });
+});
+</script>
+{% endblock %}
+
+{% block header_actions %}
+<div class="hidden sm:flex items-center gap-2">
+    <a href="{{ url_for('izin_ekle') }}" class="btn-primary">
+        <span class="material-symbols-outlined text-lg">add</span>
+        İzin Ekle
+    </a>
+    <a href="{{ url_for('personel_yonetimi') }}" class="btn-secondary">
+        <span class="material-symbols-outlined text-lg">people</span>
+        Personeller
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+    <!-- İstatistik Kartları -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="size-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400">
+                    <span class="material-symbols-outlined text-2xl">calendar_month</span>
+                </div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Toplam İzin</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-3xl font-bold text-slate-900 dark:text-white">{{ izinler|length }}</h3>
+                <span class="text-slate-500 text-sm font-medium">Talep</span>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="size-12 bg-amber-50 dark:bg-amber-900/20 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400">
+                    <span class="material-symbols-outlined text-2xl">pending</span>
+                </div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Bekleyen</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-3xl font-bold text-slate-900 dark:text-white">{{ izinler|selectattr('onay_durumu', 'equalto', 'Beklemede')|list|length }}</h3>
+                <span class="text-slate-500 text-sm font-medium">Talep</span>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="size-12 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center text-green-600 dark:text-green-400">
+                    <span class="material-symbols-outlined text-2xl">check_circle</span>
+                </div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Onaylanan</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-3xl font-bold text-slate-900 dark:text-white">{{ izinler|selectattr('onay_durumu', 'equalto', 'Onaylandı')|list|length }}</h3>
+                <span class="text-slate-500 text-sm font-medium">Talep</span>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="size-12 bg-red-50 dark:bg-red-900/20 rounded-xl flex items-center justify-center text-red-600 dark:text-red-400">
+                    <span class="material-symbols-outlined text-2xl">cancel</span>
+                </div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Kapalı Talep</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <h3 class="text-3xl font-bold text-slate-900 dark:text-white">{{ (izinler|selectattr('onay_durumu', 'equalto', 'Reddedildi')|list|length) + (izinler|selectattr('onay_durumu', 'equalto', 'İptal Edildi')|list|length) }}</h3>
+                <span class="text-slate-500 text-sm font-medium">Talep</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- İzin Listesi -->
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+        <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">İzin Talepleri</h2>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Personel izin taleplerini buradan yönetebilirsiniz.</p>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-slate-50 dark:bg-slate-800">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Personel</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">İzin Türü</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Başlangıç</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Bitiş</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Gün Sayısı</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Durum</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                    {% for izin in izinler %}
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                        <td class="px-6 py-4">
+                            <div class="font-medium text-slate-900 dark:text-white">{{ izin.personel.ad }} {{ izin.personel.soyad }}</div>
+                            <div class="text-sm text-slate-500 dark:text-slate-400">{{ izin.personel.pozisyon }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                                {{ izin.izin_tipi }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-900 dark:text-white">{{ izin.baslangic_tarihi|date_tr }}</td>
+                        <td class="px-6 py-4 text-slate-900 dark:text-white">{{ izin.bitis_tarihi|date_tr }}</td>
+                        <td class="px-6 py-4">
+                            <span class="font-medium text-slate-900 dark:text-white">{{ izin.gun_sayisi }} gün</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if izin.onay_durumu == 'Onaylandı' %}
+                            <div class="flex flex-col gap-1">
+                                <span class="w-fit px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+                                    Onaylandı
+                                </span>
+                                {% if izin.bugun_aktif %}
+                                <span class="w-fit px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
+                                    Bugün izinde
+                                </span>
+                                {% endif %}
+                            </div>
+                            {% elif izin.onay_durumu == 'Reddedildi' %}
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
+                                Reddedildi
+                            </span>
+                            {% elif izin.onay_durumu == 'İptal Edildi' %}
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                İptal Edildi
+                            </span>
+                            {% elif izin.onay_durumu == 'Beklemede' %}
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
+                                Beklemede
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-2">
+                                {% if izin.onay_durumu == 'Beklemede' %}
+                                <form method="POST" action="{{ url_for('izin_onayla', id=izin.id) }}" class="inline">
+                                    <button type="submit" title="Onayla" class="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 font-medium">
+                                        <span class="material-symbols-outlined text-lg">check_circle</span>
+                                    </button>
+                                </form>
+                                <button type="button" title="Reddet" data-open-personel-modal="izin-red-{{ izin.id }}" class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
+                                        <span class="material-symbols-outlined text-lg">cancel</span>
+                                </button>
+                                <div id="izin-red-{{ izin.id }}" class="personel-action-modal hidden fixed inset-0 z-[130] items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+                                    <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+                                        <div class="mb-5 flex items-start gap-3">
+                                            <div class="flex size-11 items-center justify-center rounded-xl bg-red-50 text-red-600 dark:bg-red-950/30">
+                                                <span class="material-symbols-outlined">cancel</span>
+                                            </div>
+                                            <div>
+                                                <h3 class="text-lg font-black text-slate-900 dark:text-white">İzin talebini reddet</h3>
+                                                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ izin.personel.ad }} {{ izin.personel.soyad }} için red notu ekleyebilirsiniz.</p>
+                                            </div>
+                                        </div>
+                                        <form method="POST" action="{{ url_for('izin_reddet', id=izin.id) }}" class="space-y-4">
+                                            <div>
+                                                <label class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Red açıklaması</label>
+                                                <textarea name="karar_notu" rows="3" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white" placeholder="İsteğe bağlı not"></textarea>
+                                            </div>
+                                            <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                                                <button type="button" data-close-personel-modal class="btn-secondary justify-center">Vazgeç</button>
+                                                <button type="submit" class="btn-primary justify-center bg-red-600 hover:bg-red-700">Reddet</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                                {% elif izin.onay_durumu == 'Onaylandı' %}
+                                <button type="button" title="İptal et" data-open-personel-modal="izin-iptal-{{ izin.id }}" class="text-slate-600 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white">
+                                        <span class="material-symbols-outlined text-lg">event_busy</span>
+                                </button>
+                                <div id="izin-iptal-{{ izin.id }}" class="personel-action-modal hidden fixed inset-0 z-[130] items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+                                    <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+                                        <div class="mb-5 flex items-start gap-3">
+                                            <div class="flex size-11 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                                                <span class="material-symbols-outlined">event_busy</span>
+                                            </div>
+                                            <div>
+                                                <h3 class="text-lg font-black text-slate-900 dark:text-white">Onaylı izni iptal et</h3>
+                                                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Bu işlem personelin izin durumunu günceller.</p>
+                                            </div>
+                                        </div>
+                                        <form method="POST" action="{{ url_for('izin_iptal', id=izin.id) }}" class="space-y-4">
+                                            <div>
+                                                <label class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">İptal açıklaması</label>
+                                                <textarea name="karar_notu" rows="3" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white" placeholder="İsteğe bağlı not"></textarea>
+                                            </div>
+                                            <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                                                <button type="button" data-close-personel-modal class="btn-secondary justify-center">Vazgeç</button>
+                                                <button type="submit" class="btn-primary justify-center bg-slate-700 hover:bg-slate-800">İptal Et</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                <details class="relative">
+                                    <summary title="Açıklama" class="list-none cursor-pointer text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                                    <span class="material-symbols-outlined text-lg">visibility</span>
+                                    </summary>
+                                    <div class="absolute right-0 z-10 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                                        {{ izin.aciklama or 'Açıklama yok.' }}
+                                    </div>
+                                </details>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                            <div class="app-empty-state app-empty-state--compact">
+                                <span class="material-symbols-outlined app-empty-icon">beach_access</span>
+                                <h3 class="app-empty-title">Henüz izin kaydı yok</h3>
+                                <p class="app-empty-description">Personel izinlerini tarih aralığıyla kaydedin; izin süresince personel listesinde durum otomatik görünür.</p>
+                                <div class="app-empty-actions">
+                                <a href="{{ url_for('izin_ekle') }}" class="btn-primary">
+                                    <span class="material-symbols-outlined">add</span>
+                                    İlk İzin Talebini Ekle
+                                </a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

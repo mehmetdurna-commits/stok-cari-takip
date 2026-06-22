@@ -1,0 +1,303 @@
+{% extends '_base.html' %}
+
+{% block title %}{{ personel.ad }} {{ personel.soyad }} - Personel Düzenle{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-4">
+    <span class="material-symbols-outlined text-primary-600 font-bold">edit</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Personel Düzenle - {{ personel.ad }} {{ personel.soyad }}</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <section class="rounded-2xl border border-primary-100 bg-primary-50/70 p-5 dark:border-primary-900/40 dark:bg-primary-900/10">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+                <p class="text-xs font-black uppercase tracking-widest text-primary-600">Personel düzenleme akışı</p>
+                <h2 class="mt-1 text-2xl font-black text-slate-900 dark:text-white">{{ personel.ad }} {{ personel.soyad }} bilgilerini güncelleyin</h2>
+                <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Önce zorunlu bilgileri kontrol edin; banka, resmi bilgiler ve fotoğrafı ihtiyaç olduğunda güncelleyin.</p>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-xs font-bold sm:grid-cols-4 md:w-auto">
+                <a href="#kisisel-bilgiler" class="rounded-lg bg-white px-3 py-2 text-center text-primary-700 shadow-sm dark:bg-slate-900">1. Kişisel</a>
+                <a href="#is-bilgileri" class="rounded-lg bg-white px-3 py-2 text-center text-primary-700 shadow-sm dark:bg-slate-900">2. İş</a>
+                <a href="#acil-durum" class="rounded-lg bg-white px-3 py-2 text-center text-primary-700 shadow-sm dark:bg-slate-900">3. İletişim</a>
+                <a href="#resmi-bilgiler" class="rounded-lg bg-white px-3 py-2 text-center text-primary-700 shadow-sm dark:bg-slate-900">4. Ek</a>
+            </div>
+        </div>
+    </section>
+
+    <form method="POST" enctype="multipart/form-data" class="space-y-8">
+        <!-- Kişisel Bilgiler -->
+        <div id="kisisel-bilgiler" class="scroll-mt-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">person</span>
+                    Kişisel Bilgiler
+                </h2>
+                <span class="text-xs font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/20 px-3 py-1 rounded-full">Zorunlu ana bölüm</span>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Sicil No *</label>
+                    <input type="text" name="sicil_no" required value="{{ personel.sicil_no }}"
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Ad *</label>
+                    <input type="text" name="ad" required value="{{ personel.ad }}"
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Soyad *</label>
+                    <input type="text" name="soyad" required value="{{ personel.soyad }}"
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">TC Kimlik No *</label>
+                    <input type="text" name="tc_kimlik" required maxlength="11" value="{{ personel.tc_kimlik }}"
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Doğum Tarihi *</label>
+                    <input type="date" name="dogum_tarihi" required 
+                           {% if personel.dogum_tarihi %}value="{{ personel.dogum_tarihi.strftime('%Y-%m-%d') }}"{% endif %}
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Cinsiyet *</label>
+                    <select name="cinsiyet" required 
+                            class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                        <option value="">Seçiniz</option>
+                        <option value="Erkek" {% if personel.cinsiyet == 'Erkek' %}selected{% endif %}>Erkek</option>
+                        <option value="Kadın" {% if personel.cinsiyet == 'Kadın' %}selected{% endif %}>Kadın</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Medeni Hal</label>
+                    <select name="medeni_hal" 
+                            class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                        <option value="">Seçiniz</option>
+                        <option value="Bekar" {% if personel.medeni_hal == 'Bekar' %}selected{% endif %}>Bekar</option>
+                        <option value="Evli" {% if personel.medeni_hal == 'Evli' %}selected{% endif %}>Evli</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Telefon</label>
+                    <input type="tel" name="telefon" value="{{ personel.telefon }}"
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">E-posta</label>
+                    <input type="email" name="email" value="{{ personel.email }}"
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div class="lg:col-span-3">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Adres</label>
+                    <textarea name="adres" rows="3" 
+                              class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">{{ personel.adres or '' }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- İş Bilgileri -->
+        <div id="is-bilgileri" class="scroll-mt-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">work</span>
+                    İş Bilgileri
+                </h2>
+                <span class="text-xs font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/20 px-3 py-1 rounded-full">Kadro ve maaş</span>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">İşe Giriş Tarihi *</label>
+                    <input type="date" name="ise_giris_tarihi" required 
+                           value="{{ personel.ise_giris_tarihi.strftime('%Y-%m-%d') }}"
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">İşe Çıkış Tarihi</label>
+                    <input type="date" name="ise_cikis_tarihi" 
+                           {% if personel.ise_cikis_tarihi %}value="{{ personel.ise_cikis_tarihi.strftime('%Y-%m-%d') }}"{% endif %}
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Çalışma Durumu *</label>
+                    <select name="calisma_durumu" required 
+                            class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                        <option value="Aktif" {% if personel.calisma_durumu == 'Aktif' %}selected{% endif %}>Aktif</option>
+                        <option value="Pasif" {% if personel.calisma_durumu == 'Pasif' %}selected{% endif %}>Pasif</option>
+                        <option value="İzinli" {% if personel.calisma_durumu == 'İzinli' %}selected{% endif %}>İzinli</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Departman *</label>
+                    <select name="departman_id" required 
+                            class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                        <option value="">Departman Seçiniz</option>
+                        {% for departman in departmanlar %}
+                        <option value="{{ departman.id }}" {% if personel.departman_id == departman.id %}selected{% endif %}>{{ departman.ad }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Pozisyon *</label>
+                    <input type="text" name="pozisyon" required value="{{ personel.pozisyon }}"
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Aylık Maaş *</label>
+                    <input type="number" name="maas" required step="0.01" min="0" value="{{ personel.maas }}"
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+            </div>
+        </div>
+
+        <!-- İletişim ve Acil Durum -->
+        <div id="acil-durum" class="scroll-mt-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary-600">contact_phone</span>
+                İletişim ve Acil Durum
+            </h2>
+            <p class="mb-6 text-sm text-slate-500 dark:text-slate-400">Acil erişim ve iletişim bilgilerini burada güncelleyin.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Ehliyet</label>
+                    <select name="ehliyet" 
+                            class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                        <option value="">Seçiniz</option>
+                        <option value="Yok" {% if personel.ehliyet == 'Yok' %}selected{% endif %}>Yok</option>
+                        <option value="B" {% if personel.ehliyet == 'B' %}selected{% endif %}>B</option>
+                        <option value="A" {% if personel.ehliyet == 'A' %}selected{% endif %}>A</option>
+                        <option value="B2" {% if personel.ehliyet == 'B2' %}selected{% endif %}>B2</option>
+                        <option value="C" {% if personel.ehliyet == 'C' %}selected{% endif %}>C</option>
+                        <option value="D" {% if personel.ehliyet == 'D' %}selected{% endif %}>D</option>
+                        <option value="E" {% if personel.ehliyet == 'E' %}selected{% endif %}>E</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Ehliyet No</label>
+                    <input type="text" name="ehliyet_no" value="{{ personel.ehliyet_no }}"
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Kan Grubu</label>
+                    <select name="kan_grubu" 
+                            class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                        <option value="">Seçiniz</option>
+                        <option value="A Rh+" {% if personel.kan_grubu == 'A Rh+' %}selected{% endif %}>A Rh+</option>
+                        <option value="A Rh-" {% if personel.kan_grubu == 'A Rh-' %}selected{% endif %}>A Rh-</option>
+                        <option value="B Rh+" {% if personel.kan_grubu == 'B Rh+' %}selected{% endif %}>B Rh+</option>
+                        <option value="B Rh-" {% if personel.kan_grubu == 'B Rh-' %}selected{% endif %}>B Rh-</option>
+                        <option value="0 Rh+" {% if personel.kan_grubu == '0 Rh+' %}selected{% endif %}>0 Rh+</option>
+                        <option value="0 Rh-" {% if personel.kan_grubu == '0 Rh-' %}selected{% endif %}>0 Rh-</option>
+                        <option value="AB Rh+" {% if personel.kan_grubu == 'AB Rh+' %}selected{% endif %}>AB Rh+</option>
+                        <option value="AB Rh-" {% if personel.kan_grubu == 'AB Rh-' %}selected{% endif %}>AB Rh-</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Acil Durum Kişisi</label>
+                    <input type="text" name="acil_durum_kisi" value="{{ personel.acil_durum_kisi }}"
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Acil Durum Telefonu</label>
+                    <input type="tel" name="acil_durum_telefon" value="{{ personel.acil_durum_telefon }}"
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+            </div>
+        </div>
+
+        <!-- Banka ve Resmi Bilgiler -->
+        <div id="resmi-bilgiler" class="scroll-mt-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary-600">account_balance</span>
+                Banka ve Resmi Bilgiler
+            </h2>
+            <p class="mb-6 text-sm text-slate-500 dark:text-slate-400">Bordro ve ödeme süreçleri için kullanılan bilgileri kontrol edin.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">SGK No</label>
+                    <input type="text" name="sgk_no" value="{{ personel.sgk_no }}"
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Vergi No</label>
+                    <input type="text" name="vergi_no" value="{{ personel.vergi_no }}"
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">IBAN</label>
+                    <input type="text" name="iban" value="{{ personel.iban }}"
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Banka Adı</label>
+                    <input type="text" name="banka_adi" value="{{ personel.banka_adi }}"
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                </div>
+            </div>
+        </div>
+
+        <!-- Profil Fotoğrafı -->
+        <div id="profil-fotografi" class="scroll-mt-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary-600">photo_camera</span>
+                Profil Fotoğrafı
+            </h2>
+            
+            <div class="flex items-center gap-6">
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Profil Fotoğrafı Güncelle</label>
+                    <input type="file" name="profil_foto" accept="image/*"
+                           class="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-slate-800 dark:text-white">
+                    <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">JPG, PNG formatında. Maksimum dosya boyutu: 5MB.</p>
+                </div>
+                {% if personel.profil_foto %}
+                <div>
+                    <img src="{{ url_for('static', filename='uploads/' + personel.profil_foto) }}" 
+                         alt="{{ personel.ad }} {{ personel.soyad }}" 
+                         class="w-20 h-20 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700">
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Butonlar -->
+        <div class="app-form-actions">
+            <a href="{{ url_for('personel_detay', id=personel.id) }}" class="btn-secondary">
+                İptal
+            </a>
+            <button type="submit" class="btn-primary">
+                Değişiklikleri Kaydet
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

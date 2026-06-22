@@ -1,0 +1,16 @@
+[Unit]
+Description=StokCari Updater (apply pending releases)
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/opt/stokcari/current
+
+EnvironmentFile=/opt/stokcari/shared/.env
+Environment=STOKCARI_BASE_DIR=/opt/stokcari
+Environment=STOKCARI_SERVICE=stokcari
+Environment=STOKCARI_HEALTH_URL=http://127.0.0.1:8000/health
+
+ExecStart=/opt/stokcari/shared/.venv/bin/python /opt/stokcari/current/deploy/updater/stokcari_updater.py

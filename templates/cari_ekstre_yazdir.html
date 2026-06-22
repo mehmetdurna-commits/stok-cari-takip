@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cari Ekstresi - {{ cari.unvan }}</title>
+    <style>
+        :root { color-scheme: light; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: #f8fafc;
+            color: #0f172a;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        .page {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 24px;
+        }
+        .sheet {
+            width: 100%;
+            max-width: 980px;
+            background: #fff;
+            border-radius: 24px;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+            padding: 24px;
+        }
+        .toolbar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            border: 0;
+            border-radius: 999px;
+            padding: 10px 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .btn-primary { background: #2563eb; color: #fff; }
+        .btn-secondary { background: #e2e8f0; color: #0f172a; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            gap: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #cbd5e1;
+        }
+        .title { font-size: 26px; font-weight: 900; margin: 0; }
+        .muted { color: #64748b; }
+        .meta { font-size: 13px; line-height: 1.6; }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 18px;
+        }
+        .card {
+            border: 1px solid #cbd5e1;
+            border-radius: 16px;
+            padding: 14px;
+        }
+        .card-label {
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: #64748b;
+        }
+        .card-value {
+            margin-top: 6px;
+            font-size: 24px;
+            font-weight: 900;
+        }
+        .card-note {
+            margin-top: 4px;
+            font-size: 11px;
+            color: #64748b;
+        }
+        .table-wrap {
+            margin-top: 18px;
+            border: 1px solid #cbd5e1;
+            border-radius: 18px;
+            overflow: hidden;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        th, td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e2e8f0;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background: #f8fafc;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: #64748b;
+        }
+        td.num, th.num { text-align: right; }
+        .plus { color: #059669; font-weight: 800; }
+        .minus { color: #e11d48; font-weight: 800; }
+        .balance { font-weight: 900; }
+        @media print {
+            body { background: #fff; }
+            .page { padding: 0; }
+            .toolbar { display: none !important; }
+            .sheet {
+                max-width: none;
+                border-radius: 0;
+                box-shadow: none;
+                padding: 0;
+            }
+            @page { size: A4; margin: 12mm; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="sheet">
+            <div class="toolbar">
+                <button type="button" class="btn btn-secondary" onclick="window.close()">Kapat</button>
+                <button type="button" class="btn btn-primary" onclick="window.print()">Yazdır</button>
+            </div>
+
+            <div class="header">
+                <div>
+                    <h1 class="title">{{ cari.unvan }} - Cari Ekstresi</h1>
+                    <div class="meta muted">
+                        <div>{{ current_user.firma_adi if current_user.is_authenticated else 'Firma' }}</div>
+                        <div>Yazdırma tarihi: {{ generated_at|datetime_tr }}</div>
+                        {% if date_from or date_to %}
+                        <div>Dönem:
+                            {{ date_from or 'Başlangıç yok' }}
+                            -
+                            {{ date_to or 'Bugüne kadar' }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="meta">
+                    <div><strong>Cari:</strong> {{ cari.unvan }}</div>
+                    <div><strong>Tip:</strong> {{ cari.tipi or '-' }}</div>
+                    {% if cari.telefon %}<div><strong>Telefon:</strong> {{ cari.telefon }}</div>{% endif %}
+                    {% if cari.email %}<div><strong>E-posta:</strong> {{ cari.email }}</div>{% endif %}
+                </div>
+            </div>
+
+            <div class="cards">
+                <div class="card">
+                    <div class="card-label">Dönem Başı Bakiye</div>
+                    <div class="card-value">₺{{ opening_balance|abs|tr_number }}</div>
+                    <div class="card-note">
+                        {% if opening_balance > 0 %}Tahsil edilecek{% elif opening_balance < 0 %}Ödenecek{% else %}Kapalı{% endif %}
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Veresiye Satışlar</div>
+                    <div class="card-value plus">₺{{ total_plus|tr_number }}</div>
+                    <div class="card-note">Genelde veresiye satışlar</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Tahsilatlar</div>
+                    <div class="card-value minus">₺{{ total_minus|tr_number }}</div>
+                    <div class="card-note">Tahsilat, ödeme ve iadeler</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Dönem Sonu Bakiye</div>
+                    <div class="card-value">₺{{ closing_balance|abs|tr_number }}</div>
+                    <div class="card-note">
+                        {% if closing_balance > 0 %}Tahsil edilecek{% elif closing_balance < 0 %}Ödenecek{% else %}Kapalı{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tarih</th>
+                            <th>İşlem</th>
+                            <th>Ödeme</th>
+                            <th>Açıklama</th>
+                            <th class="num">Satışlar</th>
+                            <th class="num">Tahsilatlar</th>
+                            <th class="num">Kalan Bakiye</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set movement_labels = {
+                          'satis': 'Veresiye Satış',
+                          'tahsilat': 'Tahsilat',
+                          'odeme': 'Ödeme',
+                          'iade': 'İade',
+                          'satis_iptal': 'Satış İptali'
+                        } %}
+                        {% for r in rows %}
+                        {% set h = r.hareket %}
+                        <tr>
+                            <td>{{ h.tarih|datetime_tr if h.tarih else '-' }}</td>
+                            <td><strong>{{ movement_labels.get(h.islem_tipi, h.islem_tipi or '-') }}</strong></td>
+                            <td>{{ h.odeme_turu or '-' }}</td>
+                            <td>{{ h.aciklama or '-' }}</td>
+                            <td class="num plus">{% if r.signed >= 0 %}₺{{ r.signed|tr_number }}{% endif %}</td>
+                            <td class="num minus">{% if r.signed < 0 %}₺{{ (-1 * r.signed)|tr_number }}{% endif %}</td>
+                            <td class="num balance">
+                                <div>₺{{ r.balance|abs|tr_number }}</div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="muted" style="text-align:center; padding: 28px 12px;">Seçilen tarih aralığında hareket yok.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script>
+        window.addEventListener('load', () => {
+            setTimeout(() => window.print(), 150);
+        });
+    </script>
+</body>
+</html>

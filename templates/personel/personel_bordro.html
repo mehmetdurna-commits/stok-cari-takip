@@ -1,0 +1,140 @@
+{% extends '_base.html' %}
+
+{% block title %}{{ personel.ad }} {{ personel.soyad }} - Maaş Bordrosu{% endblock %}
+
+{% block head %}
+<style>
+@media print {
+    body { background: #fff !important; }
+    aside, header, nav, .no-print, #mobileCartSummary { display: none !important; }
+    main, #mainContent, .content-wrapper { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: none !important; }
+    .print-page { box-shadow: none !important; border: 0 !important; border-radius: 0 !important; }
+    .print-break-inside-avoid { break-inside: avoid; }
+}
+</style>
+{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-4">
+    <span class="material-symbols-outlined text-primary-600 font-bold">receipt_long</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Maaş Bordrosu</h1>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<div class="no-print hidden sm:flex items-center gap-2">
+    <button onclick="window.print()" class="btn-primary">
+        <span class="material-symbols-outlined text-lg">print</span>
+        Yazdır
+    </button>
+    <a href="{{ url_for('personel_detay', id=personel.id, period=payroll_summary.period) }}" class="btn-secondary">
+        <span class="material-symbols-outlined text-lg">arrow_back</span>
+        Personel Detayı
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-5xl space-y-4">
+    <div class="no-print rounded-xl border border-primary-100 bg-primary-50/70 p-4 text-sm font-semibold text-primary-700 dark:border-primary-900/40 dark:bg-primary-950/20 dark:text-primary-200">
+        Bordroyu yazdırabilir veya tarayıcıdan PDF olarak kaydedebilirsiniz.
+    </div>
+
+    <section class="print-page rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="flex flex-col gap-4 border-b border-slate-200 pb-6 dark:border-slate-800 md:flex-row md:items-start md:justify-between">
+            <div>
+                <p class="text-sm font-bold uppercase tracking-widest text-primary-600">{{ current_user.firma_adi or 'Firma' }}</p>
+                <h2 class="mt-2 text-3xl font-black text-slate-900 dark:text-white">Maaş Bordrosu</h2>
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Dönem: {{ payroll_summary.period }} · Oluşturma: {{ generated_at|datetime_tr }}</p>
+            </div>
+            <div class="rounded-xl bg-slate-50 p-4 text-right dark:bg-slate-800">
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Net Ödenecek</p>
+                <p class="mt-1 text-3xl font-black text-primary-600">₺{{ payroll_summary.net_pay|tr_number }}</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-6 py-6 md:grid-cols-2">
+            <div class="print-break-inside-avoid rounded-xl border border-slate-200 p-5 dark:border-slate-800">
+                <h3 class="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white">
+                    <span class="material-symbols-outlined text-primary-600">person</span>
+                    Personel Bilgileri
+                </h3>
+                <dl class="space-y-3 text-sm">
+                    <div class="flex justify-between gap-4"><dt class="text-slate-500">Ad Soyad</dt><dd class="font-semibold text-slate-900 dark:text-white">{{ personel.ad }} {{ personel.soyad }}</dd></div>
+                    <div class="flex justify-between gap-4"><dt class="text-slate-500">Sicil No</dt><dd class="font-semibold text-slate-900 dark:text-white">{{ personel.sicil_no }}</dd></div>
+                    <div class="flex justify-between gap-4"><dt class="text-slate-500">Departman</dt><dd class="font-semibold text-slate-900 dark:text-white">{{ personel.departman.ad if personel.departman else '-' }}</dd></div>
+                    <div class="flex justify-between gap-4"><dt class="text-slate-500">Pozisyon</dt><dd class="font-semibold text-slate-900 dark:text-white">{{ personel.pozisyon or '-' }}</dd></div>
+                    <div class="flex justify-between gap-4"><dt class="text-slate-500">Çalışma Durumu</dt><dd class="font-semibold text-slate-900 dark:text-white">{{ personel.etkin_durum }}</dd></div>
+                </dl>
+            </div>
+
+            <div class="print-break-inside-avoid rounded-xl border border-slate-200 p-5 dark:border-slate-800">
+                <h3 class="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white">
+                    <span class="material-symbols-outlined text-primary-600">account_balance</span>
+                    Banka Bilgileri
+                </h3>
+                <dl class="space-y-3 text-sm">
+                    <div class="flex justify-between gap-4"><dt class="text-slate-500">Banka</dt><dd class="font-semibold text-slate-900 dark:text-white">{{ personel.banka_adi or '-' }}</dd></div>
+                    <div class="flex justify-between gap-4"><dt class="text-slate-500">IBAN</dt><dd class="font-semibold text-slate-900 dark:text-white">{{ personel.iban or '-' }}</dd></div>
+                    <div class="flex justify-between gap-4"><dt class="text-slate-500">Ödeme Açıklaması</dt><dd class="font-semibold text-slate-900 dark:text-white">{{ payroll_summary.period }} maaş ödemesi</dd></div>
+                </dl>
+                {% if payroll_summary.missing_bank_info %}
+                <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">IBAN bilgisi eksik.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="print-break-inside-avoid overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+            <table class="w-full">
+                <thead class="bg-slate-50 dark:bg-slate-800">
+                    <tr>
+                        <th class="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">Kalem</th>
+                        <th class="px-5 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Tutar</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                    <tr>
+                        <td class="px-5 py-3 text-sm font-semibold text-slate-900 dark:text-white">Aylık Maaş</td>
+                        <td class="px-5 py-3 text-right text-sm font-bold text-slate-900 dark:text-white">₺{{ payroll_summary.base_salary|tr_number }}</td>
+                    </tr>
+                    {% for prim in payroll_summary.primes %}
+                    <tr>
+                        <td class="px-5 py-3 text-sm text-slate-700 dark:text-slate-300">Prim · {{ prim.prim_tipi }}</td>
+                        <td class="px-5 py-3 text-right text-sm font-bold text-green-700">+ ₺{{ prim.tutar|tr_number }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% for avans in payroll_summary.advances %}
+                    <tr>
+                        <td class="px-5 py-3 text-sm text-slate-700 dark:text-slate-300">Avans Kesintisi · {{ avans.talep_tarihi|date_tr }}</td>
+                        <td class="px-5 py-3 text-right text-sm font-bold text-amber-700">- ₺{{ avans.tutar|tr_number }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="bg-slate-50 dark:bg-slate-800">
+                    <tr>
+                        <td class="px-5 py-3 text-sm font-bold text-slate-900 dark:text-white">Brüt Toplam</td>
+                        <td class="px-5 py-3 text-right text-sm font-black text-slate-900 dark:text-white">₺{{ payroll_summary.gross_total|tr_number }}</td>
+                    </tr>
+                    <tr>
+                        <td class="px-5 py-4 text-base font-black text-slate-900 dark:text-white">Net Ödenecek</td>
+                        <td class="px-5 py-4 text-right text-xl font-black text-primary-600">₺{{ payroll_summary.net_pay|tr_number }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div class="h-28 rounded-xl border border-dashed border-slate-300 p-4 dark:border-slate-700">
+                <p class="text-sm font-bold text-slate-700 dark:text-slate-200">İşveren / Yetkili İmza</p>
+            </div>
+            <div class="h-28 rounded-xl border border-dashed border-slate-300 p-4 dark:border-slate-700">
+                <p class="text-sm font-bold text-slate-700 dark:text-slate-200">Personel İmza</p>
+            </div>
+        </div>
+
+        <p class="mt-6 text-center text-xs text-slate-500">
+            Bu bordro bilgilendirme amaçlıdır. Resmi kesinti oranları ve yasal bordro hesapları işletme muhasebecisi tarafından doğrulanmalıdır.
+        </p>
+    </section>
+</div>
+{% endblock %}

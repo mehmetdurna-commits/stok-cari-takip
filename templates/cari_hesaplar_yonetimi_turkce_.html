@@ -1,0 +1,323 @@
+{% extends '_base.html' %}
+
+{% block title %}Müşteri ve Tedarikçiler - StokCari{% endblock %}
+
+{% set is_edit = duzenle_modu|default(false) %}
+{% set should_open_modal = show_cari_modal|default(false) or is_edit %}
+
+{% block top_bar %}
+<div class="flex items-center gap-3">
+    <span class="material-symbols-outlined text-primary-600">group</span>
+    <div>
+        <h1 class="text-xl font-bold text-slate-900 dark:text-white">Müşteri ve Tedarikçiler</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400">Tahsil edilecek, ödenecek ve cari hareket takibi</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('cari_ekle') }}" id="newCariButton" class="btn-primary">
+    <span class="material-symbols-outlined text-lg">person_add</span>
+    Yeni Müşteri/Tedarikçi
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+    <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5">
+            <div class="flex items-center justify-between">
+                <p class="text-xs font-bold text-slate-500 uppercase">Toplam Hesap</p>
+                <span class="material-symbols-outlined text-slate-400">groups</span>
+            </div>
+            <p class="mt-3 text-3xl font-black text-slate-900 dark:text-white">{{ toplam_cari or 0 }}</p>
+        </div>
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5">
+            <div class="flex items-center justify-between">
+                <p class="text-xs font-bold text-slate-500 uppercase">Müşteri</p>
+                <span class="material-symbols-outlined text-emerald-500">person</span>
+            </div>
+            <p class="mt-3 text-3xl font-black text-emerald-600">{{ musteri_sayisi or 0 }}</p>
+        </div>
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5">
+            <div class="flex items-center justify-between">
+                <p class="text-xs font-bold text-slate-500 uppercase">Tedarikçi</p>
+                <span class="material-symbols-outlined text-blue-500">local_shipping</span>
+            </div>
+            <p class="mt-3 text-3xl font-black text-blue-600">{{ tedarikci_sayisi or 0 }}</p>
+        </div>
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5">
+            <div class="flex items-center justify-between">
+                <p class="text-xs font-bold text-slate-500 uppercase">Toplam Açık Bakiye</p>
+                <span class="material-symbols-outlined text-primary-600">account_balance_wallet</span>
+            </div>
+            <p class="mt-3 text-3xl font-black {{ 'text-emerald-600' if (toplam_bakiye or 0) >= 0 else 'text-rose-600' }}">₺{{ (toplam_bakiye or 0)|tr_number }}</p>
+            <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                {% if (toplam_bakiye or 0) > 0 %}
+                Tahsil edilecek toplam bakiye
+                {% elif (toplam_bakiye or 0) < 0 %}
+                Ödenecek toplam bakiye
+                {% else %}
+                Açık bakiye bulunmuyor
+                {% endif %}
+            </p>
+        </div>
+    </section>
+
+    <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+        <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+                <h2 class="text-lg font-black text-slate-900 dark:text-white">Müşteri ve Tedarikçi Listesi</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400">{{ result_count or 0 }} kayıt görüntüleniyor.</p>
+            </div>
+            <form method="GET" id="cariFilters" class="app-filter-bar w-full lg:w-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                <div class="app-filter-search">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+                    <input id="cariSearchInput" name="search" type="search" value="{{ search_query or '' }}" placeholder="Firma adı, yetkili, telefon veya e-posta ara" class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                </div>
+                <div class="app-filter-controls">
+                    <select id="cariTypeFilter" name="type" class="px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                        <option value="all" {% if selected_type == 'all' %}selected{% endif %}>Tüm hesaplar</option>
+                        <option value="Müşteri" {% if selected_type == 'Müşteri' %}selected{% endif %}>Müşteri</option>
+                        <option value="Tedarikçi" {% if selected_type == 'Tedarikçi' %}selected{% endif %}>Tedarikçi</option>
+                    </select>
+                    <button type="submit" class="btn-secondary">
+                        <span class="material-symbols-outlined text-lg">filter_alt</span>
+                        Listeyi Göster
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {% if cariler %}
+        <div class="md:hidden p-4 space-y-3">
+            {% for item in cariler %}
+            {% set balance = item.display_bakiye or 0 %}
+            <article class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <h3 class="font-black text-slate-900 dark:text-white truncate">{{ item.unvan }}</h3>
+                        <p class="mt-1 text-xs text-slate-500">{{ item.yetkili or 'Yetkili yok' }} · {{ item.telefon or 'Telefon yok' }}</p>
+                    </div>
+                    <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-bold {{ 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300' if (item.tipi or '').startswith('M') else 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300' }}">{{ item.tipi or 'Müşteri' }}</span>
+                </div>
+                <div class="mt-4 grid grid-cols-3 gap-2 text-center">
+                    <div class="rounded-lg bg-rose-50 p-2">
+                        <p class="text-[10px] font-bold uppercase text-rose-500">Ödenecek</p>
+                        <p class="mt-1 text-xs font-black text-rose-700">₺{{ (item.display_borc or 0)|tr_number }}</p>
+                    </div>
+                    <div class="rounded-lg bg-emerald-50 p-2">
+                        <p class="text-[10px] font-bold uppercase text-emerald-500">Tahsil Edilecek</p>
+                        <p class="mt-1 text-xs font-black text-emerald-700">₺{{ (item.display_alacak or 0)|tr_number }}</p>
+                    </div>
+                    <div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-2">
+                        <p class="text-[10px] font-bold uppercase text-slate-400">Kalan Bakiye</p>
+                        <p class="mt-1 text-xs font-black {{ 'text-emerald-700' if balance >= 0 else 'text-rose-700' }}">₺{{ (balance|abs)|tr_number }}</p>
+                        <p class="mt-1 text-[10px] {{ 'text-emerald-600' if balance > 0 else 'text-rose-600' if balance < 0 else 'text-slate-500' }}">
+                            {% if balance > 0 %}
+                            Tahsil edilecek
+                            {% elif balance < 0 %}
+                            Ödenecek
+                            {% else %}
+                            Kapalı
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                <div class="mt-4 grid grid-cols-3 gap-2">
+                    <a href="{{ url_for('cari_detay', id=item.id) }}" class="rounded-lg border border-slate-200 dark:border-slate-700 py-2 text-center text-xs font-bold text-slate-600 dark:text-slate-300">Detay</a>
+                    <a href="{{ url_for('cari_duzenle', id=item.id) }}" class="rounded-lg border border-blue-200 bg-blue-50 py-2 text-center text-xs font-bold text-blue-700">Düzenle</a>
+                    <form method="POST" action="{{ url_for('cari_sil', id=item.id) }}" data-confirm="Bu cari hesabı silmek istediğinize emin misiniz" data-confirm-title="Cariyi sil" data-confirm-ok="Sil">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="w-full rounded-lg border border-rose-200 bg-rose-50 py-2 text-xs font-bold text-rose-700">Sil</button>
+                    </form>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <p class="hidden md:block px-5 pt-3 text-xs text-slate-500">Tahsil edilecek = bize gelecek tutar, ödenecek = bizim ödeyeceğimiz tutar.</p>
+        <div class="hidden md:block overflow-x-auto">
+            <table class="w-full min-w-[820px]">
+                <thead class="bg-slate-50 dark:bg-slate-800/60">
+                    <tr>
+                        <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase">Cari</th>
+                        <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase">İletişim</th>
+                        <th class="text-right px-5 py-3 text-xs font-bold text-slate-500 uppercase">Ödenecek</th>
+                        <th class="text-right px-5 py-3 text-xs font-bold text-slate-500 uppercase">Tahsil Edilecek</th>
+                        <th class="text-right px-5 py-3 text-xs font-bold text-slate-500 uppercase">Kalan Bakiye</th>
+                        <th class="text-center px-5 py-3 text-xs font-bold text-slate-500 uppercase">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                    {% for item in cariler %}
+                    {% set balance = item.display_bakiye or 0 %}
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                        <td class="px-5 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="size-10 rounded-lg {{ 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20' if (item.tipi or '').startswith('M') else 'bg-blue-50 text-blue-600 dark:bg-blue-900/20' }} flex items-center justify-center">
+                                    <span class="material-symbols-outlined">{{ 'person' if (item.tipi or '').startswith('M') else 'local_shipping' }}</span>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="font-bold text-slate-900 dark:text-white truncate">{{ item.unvan }}</p>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span class="px-2 py-0.5 rounded-full text-[11px] font-bold {{ 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300' if (item.tipi or '').startswith('M') else 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300' }}">{{ item.tipi or 'Müşteri' }}</span>
+                                        <span class="text-xs text-slate-500">{{ item.yetkili or 'Yetkili yok' }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-5 py-4">
+                            <div class="text-sm text-slate-700 dark:text-slate-300">{{ item.telefon or '-' }}</div>
+                            <div class="text-xs text-slate-500 mt-1">{{ item.email or '-' }}</div>
+                        </td>
+                        <td class="px-5 py-4 text-right font-bold text-rose-600">₺{{ (item.display_borc or 0)|tr_number }}</td>
+                        <td class="px-5 py-4 text-right font-bold text-emerald-600">₺{{ (item.display_alacak or 0)|tr_number }}</td>
+                        <td class="px-5 py-4 text-right">
+                            <div class="font-black {{ 'text-emerald-600' if balance >= 0 else 'text-rose-600' }}">₺{{ (balance|abs)|tr_number }}</div>
+                            <div class="mt-1 text-[11px] {{ 'text-emerald-600' if balance > 0 else 'text-rose-600' if balance < 0 else 'text-slate-500' }}">
+                                {% if balance > 0 %}
+                                Tahsil edilecek
+                                {% elif balance < 0 %}
+                                Ödenecek
+                                {% else %}
+                                Kapalı
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-5 py-4">
+                            <div class="flex items-center justify-center gap-1">
+                                <a href="{{ url_for('cari_detay', id=item.id) }}" aria-label="{{ item.unvan }} detayını görüntüle" class="size-9 rounded-lg text-slate-400 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 flex items-center justify-center" title="Detay">
+                                    <span class="material-symbols-outlined text-lg">history</span>
+                                </a>
+                                <a href="{{ url_for('cari_duzenle', id=item.id) }}" aria-label="{{ item.unvan }} kaydını düzenle" class="size-9 rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 flex items-center justify-center" title="Düzenle">
+                                    <span class="material-symbols-outlined text-lg">edit</span>
+                                </a>
+                                <form method="POST" action="{{ url_for('cari_sil', id=item.id) }}" data-confirm="Bu cari hesabı silmek istediğinize emin misiniz" data-confirm-title="Cariyi sil" data-confirm-ok="Sil">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" aria-label="{{ item.unvan }} kaydını sil" class="size-9 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20 flex items-center justify-center" title="Sil">
+                                        <span class="material-symbols-outlined text-lg">delete</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-16 text-center">
+                            <div class="app-empty-state app-empty-state--compact">
+                                <span class="material-symbols-outlined app-empty-icon">group_off</span>
+                                <h3 class="app-empty-title">Müşteri ve tedarikçi takibini buradan başlat</h3>
+                                <p class="app-empty-description">Veresiye satış, tahsilat, tedarikçi ödemesi ve açık bakiye takibi için önce cari hesap oluşturun.</p>
+                                <div class="app-empty-steps">
+                                    <span class="app-empty-step"><span class="material-symbols-outlined text-sm">looks_one</span>Cari ekle</span>
+                                    <span class="app-empty-step"><span class="material-symbols-outlined text-sm">looks_two</span>Satış veya ödeme bağla</span>
+                                    <span class="app-empty-step"><span class="material-symbols-outlined text-sm">looks_3</span>Bakiyeyi takip et</span>
+                                </div>
+                                <div class="app-empty-actions">
+                                    <a href="{{ url_for('cari_ekle') }}" class="btn-primary">
+                                        <span class="material-symbols-outlined">person_add</span>
+                                        İlk hesabı ekle
+                                    </a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include '_pagination.html' %}
+    </section>
+</div>
+
+<div id="cariModal" role="dialog" aria-modal="true" aria-labelledby="cariModalTitle" class="fixed inset-0 z-[100] {{ 'flex' if should_open_modal else 'hidden' }} items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" data-close-cari-modal></div>
+    <div class="relative z-10 w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        <form action="{{ url_for('cari_duzenle', id=cari.id) if is_edit else url_for('cari_ekle') }}" method="POST" class="p-6 space-y-5">
+            <div class="flex items-start justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+                <div>
+                    <h2 id="cariModalTitle" class="text-xl font-black text-slate-900 dark:text-white">{{ 'Hesabı düzenle' if is_edit else 'Yeni müşteri/tedarikçi' }}</h2>
+                    <p class="text-sm text-slate-500 mt-1">{{ 'Müşteri veya tedarikçi bilgilerini güncelleyin.' if is_edit else 'Müşteri veya tedarikçi kaydı oluşturun.' }}</p>
+                </div>
+                <a href="{{ url_for('cariler') }}" aria-label="Cari penceresini kapat" class="size-9 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center">
+                    <span class="material-symbols-outlined">close</span>
+                </a>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="cariTipi" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Hesap türü</label>
+                    <select id="cariTipi" name="tipi" class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                        <option value="Müşteri" {% if is_edit and cari.tipi == 'Müşteri' %}selected{% endif %}>Müşteri</option>
+                        <option value="Tedarikçi" {% if is_edit and cari.tipi == 'Tedarikçi' %}selected{% endif %}>Tedarikçi</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="cariUnvan" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Firma / Kişi adı *</label>
+                    <input id="cariUnvan" name="unvan" required value="{{ cari.unvan if is_edit else '' }}" class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="ABC Ltd. Şti.">
+                </div>
+                <div>
+                    <label for="cariYetkili" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Yetkili</label>
+                    <input id="cariYetkili" name="yetkili" value="{{ cari.yetkili if is_edit else '' }}" class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="Ad Soyad">
+                </div>
+                <div>
+                    <label for="cariTelefon" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Telefon</label>
+                    <input id="cariTelefon" name="telefon" type="tel" value="{{ cari.telefon if is_edit else '' }}" class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="05xx xxx xx xx">
+                </div>
+                <div>
+                    <label for="cariEmail" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">E-posta</label>
+                    <input id="cariEmail" name="email" type="email" value="{{ cari.email if is_edit else '' }}" class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="info@firma.com">
+                </div>
+                <div>
+                    <label for="cariVergiDairesi" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Vergi dairesi</label>
+                    <input id="cariVergiDairesi" name="vergi_dairesi" value="{{ cari.vergidairesi if is_edit else '' }}" class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                </div>
+                <div>
+                    <label for="cariVergiNumarasi" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Vergi numarası</label>
+                    <input id="cariVergiNumarasi" name="vergi_numarasi" value="{{ cari.vergi_numarasi if is_edit else '' }}" class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                </div>
+                <div class="md:col-span-2">
+                    <label for="cariAdres" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Adres</label>
+                    <textarea id="cariAdres" name="adres" rows="3" class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="Adres">{{ cari.adres if is_edit else '' }}</textarea>
+                </div>
+            </div>
+
+            <div class="app-form-actions">
+                <a href="{{ url_for('cariler') }}" class="btn-secondary">Vazgeç</a>
+                <button type="submit" class="btn-primary">{{ 'Güncelle' if is_edit else 'Kaydet' }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('[data-close-cari-modal]').forEach((element) => {
+    element.addEventListener('click', () => {
+        window.location.href = "{{ url_for('cariler') }}";
+    });
+});
+
+const filterForm = document.getElementById('cariFilters');
+const searchInput = document.getElementById('cariSearchInput');
+const typeFilter = document.getElementById('cariTypeFilter');
+let searchTimer;
+
+document.getElementById('cariUnvan').focus();
+
+searchInput.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => filterForm.requestSubmit(), 400);
+});
+typeFilter.addEventListener('change', () => filterForm.requestSubmit());
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && document.getElementById('cariModal').classList.contains('flex')) {
+        window.location.href = "{{ url_for('cariler') }}";
+    }
+});
+</script>
+{% endblock %}

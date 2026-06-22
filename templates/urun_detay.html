@@ -1,0 +1,176 @@
+{% extends '_base.html' %}
+
+{% block title %}{{ urun.urun_adi }} - Ürün Detayı{% endblock %}
+
+{% block top_bar %}
+<div class="flex items-center gap-4">
+    <a href="{{ url_for('urunler') }}" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-500">
+        <span class="material-symbols-outlined">arrow_back</span>
+    </a>
+    <span class="material-symbols-outlined text-primary-600 font-bold">inventory_2</span>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Ürün Detayı</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6 pb-20">
+    <!-- Main Header Card -->
+    <div class="card p-8 bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 overflow-hidden relative group">
+        <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div class="space-y-4">
+                <div class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 uppercase tracking-wider">
+                    {{ urun.kategori or 'Genel Kategori' }}
+                </div>
+                <div>
+                    <h2 class="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{{ urun.urun_adi }}</h2>
+                    <p class="text-slate-500 dark:text-slate-400 font-medium mt-1">Barkod: <span class="font-mono">{{ urun.barkod }}</span></p>
+                </div>
+            </div>
+            
+            <div class="flex flex-col items-end gap-2">
+                <div class="text-sm font-bold text-slate-400 uppercase tracking-widest">Satış Fiyatı</div>
+                <div class="flex items-baseline gap-1">
+                    <span class="text-2xl font-bold text-primary-600">₺</span>
+                    <span class="text-5xl font-black text-primary-600 tracking-tighter">{{ (urun.satis_fiyati or 0)|tr_number }}</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Background Decoration -->
+        <span class="material-symbols-outlined absolute -bottom-10 -right-10 text-[200px] text-slate-200/20 dark:text-white/5 rotate-12 pointer-events-none group-hover:rotate-0 transition-transform duration-700">inventory_2</span>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Stock Status Card -->
+        <div class="lg:col-span-2 space-y-6">
+            <div class="card p-6">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">inventory</span>
+                    Stok Durumu
+                </h3>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="p-6 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Mevcut Miktar</p>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-4xl font-black text-slate-900 dark:text-white">{{ urun.stok_miktari|int }}</span>
+                            <span class="text-slate-500 font-bold">{{ urun.birim or 'Adet' }}</span>
+                        </div>
+                        
+                        {% if urun.stok_miktari <= urun.kritik_stok %}
+                        <div class="mt-4 flex items-center gap-2 text-red-600 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg text-sm font-bold">
+                            <span class="material-symbols-outlined text-sm">warning</span>
+                            Kritik Stok Seviyesi!
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="p-6 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Kritik Seviye</p>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-4xl font-black text-slate-900 dark:text-white">{{ urun.kritik_stok|int }}</span>
+                            <span class="text-slate-500 font-bold">{{ urun.birim or 'Adet' }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-sm font-bold text-slate-500">Stok Doluluk Oranı</span>
+                        <span class="text-sm font-black text-primary-600">
+                            {% if urun.stok_miktari > 0 and urun.kritik_stok > 0 %}
+                                %{{ ((urun.stok_miktari / (urun.kritik_stok * 5)) * 100 if urun.stok_miktari < (urun.kritik_stok * 5) else 100)|tr_number(0) }}
+                            {% else %}
+                                %0
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                        {% set percentage = (urun.stok_miktari / (urun.kritik_stok * 5)) * 100 if urun.kritik_stok > 0 else 0 %}
+                        <div class="h-full {% if urun.stok_miktari <= urun.kritik_stok %}bg-red-500{% else %}bg-primary-500{% endif %} transition-all duration-1000" 
+                             style="width: {{ percentage if percentage < 100 else 100 }}%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Price Analysis Card -->
+            <div class="card p-6">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary-600">payments</span>
+                    Fiyat ve Kar Analizi
+                </h3>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500 font-medium">Alış Fiyatı</span>
+                            <span class="font-bold text-slate-900 dark:text-white">₺{{ (urun.alis_fiyati or 0)|tr_number }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500 font-medium">Satış Fiyatı</span>
+                            <span class="font-bold text-primary-600">₺{{ (urun.satis_fiyati or 0)|tr_number }}</span>
+                        </div>
+                        <div class="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                            <span class="text-slate-500 font-bold">Birim Kar</span>
+                            <span class="text-xl font-black text-green-600">₺{{ ((urun.satis_fiyati or 0) - (urun.alis_fiyati or 0))|tr_number }}</span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col items-center justify-center p-6 bg-green-50 dark:bg-green-900/10 rounded-2xl border border-green-100 dark:border-green-900/20">
+                        <p class="text-xs font-bold text-green-700 dark:text-green-400 uppercase tracking-widest mb-2">Kar Marjı</p>
+                        <div class="text-4xl font-black text-green-600">
+                            {% if urun.alis_fiyati and urun.alis_fiyati > 0 %}
+                                %{{ "%.1f"|format(((urun.satis_fiyati - urun.alis_fiyati) / urun.alis_fiyati) * 100) }}
+                            {% else %}
+                                %0
+                            {% endif %}
+                        </div>
+                        <p class="text-xs text-green-600/70 font-medium mt-1">Alış üzerinden brüt kar</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Info -->
+        <div class="space-y-6">
+            <!-- Quick Actions -->
+            <div class="card p-6 bg-primary-600 border-none shadow-lg shadow-primary-500/30">
+                <h3 class="text-white font-bold mb-6">Hızlı İşlemler</h3>
+                <div class="space-y-3">
+                    <a href="{{ url_for('urun_duzenle', id=urun.id) }}" class="flex items-center gap-3 w-full p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all font-bold">
+                        <span class="material-symbols-outlined">edit</span>
+                        Ürünü Düzenle
+                    </a>
+                    <a href="{{ url_for('pos') }}" class="flex items-center gap-3 w-full p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all font-bold">
+                        <span class="material-symbols-outlined">shopping_cart</span>
+                        Satış Yap (POS)
+                    </a>
+                    <a href="{{ url_for('urunler') }}" class="flex items-center gap-3 w-full p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all font-bold">
+                        <span class="material-symbols-outlined">add_box</span>
+                        Stok Girişi
+                    </a>
+                </div>
+            </div>
+
+            <!-- Meta Data Card -->
+            <div class="card p-6">
+                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">Sistem Bilgileri</h3>
+                <div class="space-y-4">
+                    <div class="flex flex-col">
+                        <span class="text-xs text-slate-500 font-medium">Eklenme Tarihi</span>
+                        <span class="text-sm font-bold text-slate-900 dark:text-white">{{ urun.eklenme_tarihi|date_tr('%d %B %Y') if urun.eklenme_tarihi else '-' }}</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-xs text-slate-500 font-medium">Toplam Stok Değeri (Satış)</span>
+                        <span class="text-sm font-bold text-slate-900 dark:text-white">₺{{ ((urun.stok_miktari or 0) * (urun.satis_fiyati or 0))|tr_number }}</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-xs text-slate-500 font-medium">Beklenen Toplam Kar</span>
+                        <span class="text-sm font-bold text-green-600">₺{{ ((urun.stok_miktari or 0) * ((urun.satis_fiyati or 0) - (urun.alis_fiyati or 0)))|tr_number }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
