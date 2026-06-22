@@ -1,54 +1,159 @@
 # StokCari
 
-Bu proje, Python Flask tabanlı bir stok, cari ve POS yönetim uygulamasıdır.
+StokCari; küçük ve orta ölçekli işletmeler için geliştirilen, Flask tabanlı bulut uyumlu bir işletme yönetim uygulamasıdır.  
+Stok, cari, hızlı satış (POS), ön muhasebe, teklif, iade, personel ve platform yönetimi modüllerini tek yapıda toplar.
 
-## Kurulum
+## Öne Çıkan Modüller
 
-1. Sanal ortam oluşturun ve aktif edin:
-   ```bash
-   python -m venv .venv
-   .\.venv\Scripts\Activate.ps1
-   ```
-2. Bağımlılıkları yükleyin:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Yerel ayar dosyasını oluşturun:
-   ```powershell
-   Copy-Item .env.example .env
-   ```
-   `.env` içindeki `PLATFORM_ADMIN_EMAILS` ve `PLATFORM_ADMIN_PASSWORD`
-   değerlerini kendi bilgilerinizle değiştirin. Bu dosya uygulama başlarken
-   otomatik yüklenir ve Git'e eklenmez.
+- `Ürünler / Stok`
+  - ürün kartları, kategori ve depo yönetimi
+  - kritik stok takibi
+  - stok giriş / çıkış işlemleri
+  - toplu stok içe aktarma ön izlemesi
+  - toplu fiyat güncelleme
 
-## Çalıştırma
+- `Cariler`
+  - müşteri / tedarikçi kartları
+  - tahsilat ve ödeme akışları
+  - cari hareketleri ve ekstre
+  - yazdırılabilir cari hesap dökümü
 
-```bash
+- `Hızlı Satış (POS)`
+  - barkod ve ürün adına göre hızlı ürün ekleme
+  - tek ekran sepet + ödeme akışı
+  - nakit / kart / veresiye satış
+  - KDV ve iskonto hesapları
+  - fiş yazdırma ve tekrar yazdırma altyapısı
+  - hızlı ürün ekleme desteği
+
+- `Ön Muhasebe`
+  - varsayılan hesaplar: `Nakit Kasa`, `Banka Hesabı`, `POS`
+  - para giriş / çıkış kayıtları
+  - hesap detayları ve hareket geçmişi
+  - hesaplar arası transfer
+  - kasa sayımı / mutabakat
+  - finansal rapor ekranları
+
+- `Teklif Yönetimi`
+  - teklif oluşturma ve düzenleme
+  - kalem, iskonto ve KDV ile teklif hazırlama
+  - teklif detay / yazdırma
+
+- `İade İşlemleri`
+  - ürün / para iadesi kayıtları
+  - stok ve finans etkilerinin işlenmesi
+  - iade hareket geçmişi
+
+- `Personel Yönetimi`
+  - personel kartları ve departman yapısı
+  - izin, avans ve prim kayıtları
+  - bordro ön izleme
+  - toplu maaş bordrosu ve banka listesi
+  - personel finans geçmişi
+
+- `Ayarlar`
+  - kullanıcı tercihleri
+  - tablo sayfalama tercihi
+  - kategori / depo yönetimi
+  - POS entegrasyon ayarları
+  - kullanıcı rehberi ve hakkında alanları
+
+- `Süper Admin / Platform Yönetimi`
+  - firma ve kullanıcı yönetimi
+  - sistem yönetimi sekmeleri
+  - test merkezi
+  - destek talepleri
+  - yedekleme ve servis sağlığı alanları
+
+## Teknik Yapı
+
+- Backend: `Python Flask`
+- Veritabanı: varsayılan olarak `SQLite`
+- ORM: `Flask-SQLAlchemy`
+- Şablonlar: `Jinja2`
+- Arayüz: `Tailwind tabanlı özel şablon yapısı`
+
+## Yerel Kurulum
+
+### 1) Sanal ortam oluştur
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+### 2) Bağımlılıkları yükle
+
+```powershell
+pip install -r requirements.txt
+```
+
+### 3) Ortam dosyasını oluştur
+
+```powershell
+Copy-Item .env.example .env
+```
+
+`.env` içindeki temel alanları kendi ortamına göre düzenle:
+
+- `SECRET_KEY`
+- `DATABASE_URL`
+- `PLATFORM_ADMIN_EMAILS`
+
+## Uygulamayı Çalıştırma
+
+```powershell
 python run.py
 ```
 
-Uygulama `http://localhost:5000` adresinde çalışır.
+Varsayılan adres:
+
+```text
+http://localhost:5000
+```
 
 ## Testler
 
-```bash
-pytest
+Tüm ana test dosyasını çalıştırmak için:
+
+```powershell
+pytest tests/test_app.py
 ```
 
-## Ön Muhasebe (Hesaplar)
+Projede uygulamanın ana akışlarını doğrulayan testler bulunur:
 
-- Hesaplar ekranı: `/onmuhasebe/hesaplar`
-- Hesap ekstresi: `/onmuhasebe/hesaplar/<id>`
-- Varsayılan hesaplar otomatik oluşur: `Nakit Kasa`, `Banka Hesabı`, `POS`
-- Para hareketleri `CashTransaction` üzerinden tutulur ve her hareket bir hesaba (`Account`) bağlanır.
-- Hesap ekstresinden manuel fiş (giriş/çıkış) ve hesaplar arası transfer eklenebilir.
-- Mutabakat (kasa sayımı): `/onmuhasebe/mutabakat` (fark varsa otomatik “Sayım Farkı” fişi oluşur).
-- Ön muhasebe raporları: `/onmuhasebe/raporlar` (tarih + hesap filtresi, kırılımlar ve son hareketler).
-- POS ödeme ekranında “Hesap” seçimi yapılabilir; “Cari Hesap/Veresiye” seçilirse kasa hareketi oluşturulmaz.
-- Cari ödeme/tahsilat modallarında “Hesap” seçimi yapılabilir (boş bırakılırsa otomatik eşleşir).
+- POS satış akışı
+- cari hareketleri
+- ön muhasebe
+- personel / bordro
+- iade
+- yazdırma şablonları
+- yetki ve platform akışları
 
-## Üretim için öneriler
+## Git Kullanımı
 
-- `SECRET_KEY` ve `DATABASE_URL` çevre değişkenlerini ayarlayın.
-- HTTPS kullanıyorsanız `SESSION_COOKIE_SECURE=True` yapın.
-- Veritabanı olarak SQLite yerine PostgreSQL ya da MySQL tercih edin.
+Bu projede Git geçmişi klasik `.git` yerine `.repo-git2` yapısı ile kullanılmaktadır.
+
+Detaylar için:
+
+- `GIT_KULLANIMI.md`
+- `GIT_GERI_ALMA_REHBERI.md`
+
+## Üretim Notları
+
+- üretimde `SQLite` yerine `PostgreSQL` veya `MySQL` tercih edilmesi önerilir
+- `SECRET_KEY` sabit ve güvenli olmalıdır
+- HTTPS arkasında çalıştırılmalıdır
+- düzenli yedekleme ve log takibi yapılmalıdır
+- canlı ortamda demo veri araçları kapalı tutulmalıdır
+
+## Mevcut Ürün Yaklaşımı
+
+StokCari şu alanlara odaklanır:
+
+- hırdavat
+- market / perakende
+- servis ve teknik işletmeler
+- küçük ve orta ölçekli ticari ekipler
+
+Amaç; karmaşık ERP dili yerine, günlük operasyonu hızlı ve anlaşılır hale getiren kullanıcı odaklı bir yönetim paneli sunmaktır.
