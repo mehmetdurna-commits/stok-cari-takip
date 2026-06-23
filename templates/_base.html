@@ -10,8 +10,7 @@
     {% set canonical_base = (_site.get('url') or request.host_url.rstrip('/')) %}
     {% set canonical_url = canonical_base ~ request.path %}
     {% set og_image = (_site.get('og_image') or (canonical_base ~ '/static/og.svg')) %}
-    {# Pilot launch: keep pages out of search indexes until SEO is enabled. #}
-    <meta name="robots" content="noindex, nofollow">
+    <meta name="robots" content="{{ 'index, follow' if _site.get('seo_public_mode') else 'noindex, nofollow' }}">
     <link rel="canonical" href="{{ canonical_url }}">
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
     <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">

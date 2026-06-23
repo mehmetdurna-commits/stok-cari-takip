@@ -1520,12 +1520,18 @@ def site_config():
     )
     site_og_image = platform_setting('site_og_image', '') or app.config.get('SITE_OG_IMAGE', '')
     site_og_image = (site_og_image or '').strip()
+    seo_closed_mode = platform_setting_bool('seo_closed_mode', True)
+    seo_indexing_enabled = platform_setting_bool('seo_indexing_enabled', False)
+    seo_public_mode = seo_indexing_enabled and not seo_closed_mode
     return {
         'url': site_url,
         'platform_name': platform_name,
         'name': site_name,
         'description': site_description,
         'og_image': site_og_image,
+        'seo_closed_mode': seo_closed_mode,
+        'seo_indexing_enabled': seo_indexing_enabled,
+        'seo_public_mode': seo_public_mode,
     }
 
 
@@ -4003,9 +4009,8 @@ def add_operational_headers(response):
     if request.endpoint != 'static':
         response.headers.setdefault('Cache-Control', 'no-store, max-age=0')
 
-    # Pilot launch: keep every page out of search indexes until SEO is enabled.
     try:
-        if request.endpoint not in {'static', 'health_check'}:
+        if request.endpoint not in {'static', 'health_check'} and not site_config().get('seo_public_mode'):
             response.headers.setdefault('X-Robots-Tag', 'noindex, nofollow')
     except Exception:
         pass
@@ -4106,10 +4111,19 @@ def health_check():
 
 @app.route('/robots.txt')
 def robots_txt():
-    lines = [
-        "User-agent: *",
-        "Disallow: /",
-    ]
+    cfg = site_config()
+    site_url = (cfg.get('url') or app.config.get('SITE_URL') or request.host_url.rstrip('/')).rstrip('/')
+    if cfg.get('seo_public_mode'):
+        lines = [
+            "User-agent: *",
+            "Allow: /",
+            f"Sitemap: {site_url}/sitemap.xml",
+        ]
+    else:
+        lines = [
+            "User-agent: *",
+            "Disallow: /",
+        ]
     return current_app.response_class("\n".join(lines) + "\n", mimetype="text/plain")
 
 
@@ -4128,7 +4142,7 @@ def sitemap_xml():
     ]
 
     xml_lines = [
-        '<xml version="1.0" encoding="UTF-8">',
+        '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     ]
     for loc, lastmod in urls:
@@ -7995,6 +8009,8 @@ def super_admin_dashboard():
         'default_plan': platform_setting('default_plan', 'demo'),
         'default_user_limit': platform_setting_int('default_user_limit', 1),
         'default_product_limit': platform_setting_int('default_product_limit', 10),
+        'seo_closed_mode': platform_setting_bool('seo_closed_mode', True),
+        'seo_indexing_enabled': platform_setting_bool('seo_indexing_enabled', False),
         'site_url': platform_setting('site_url', app.config.get('SITE_URL', '')),
         'site_name': platform_setting('site_name', app.config.get('SITE_NAME', 'StokCari')),
         'site_description': platform_setting('site_description', app.config.get('SITE_DESCRIPTION', '')),
@@ -8383,6 +8399,8 @@ def super_admin_update_system_controls():
     data_export_locked = request.form.get('data_export_locked') == 'on'
     owner_approval_required = request.form.get('owner_approval_required') == 'on'
     notice_enabled = request.form.get('global_notice_enabled') == 'on'
+    seo_closed_mode = request.form.get('seo_closed_mode') == 'on'
+    seo_indexing_enabled = request.form.get('seo_indexing_enabled') == 'on'
     terminate_sessions = request.form.get('terminate_sessions') == 'on'
     default_plan = request.form.get('default_plan') or platform_setting('default_plan', 'demo')
     if default_plan not in {'demo', 'standart', 'profesyonel'}:
@@ -8423,6 +8441,8 @@ def super_admin_update_system_controls():
     set_platform_setting('site_name', (request.form.get('site_name') or '').strip()[:120], 'SEO site adi')
     set_platform_setting('site_description', (request.form.get('site_description') or '').strip()[:240], 'SEO site aciklamasi')
     set_platform_setting('site_og_image', (request.form.get('site_og_image') or '').strip()[:240], 'SEO OpenGraph gorsel URL')
+    set_platform_setting('seo_closed_mode', 'on' if seo_closed_mode else 'off', 'Arama motorlarina karsi kapali mod')
+    set_platform_setting('seo_indexing_enabled', 'on' if seo_indexing_enabled else 'off', 'Arama motorlarina acik SEO modu')
 
     set_platform_setting('smtp_host', (request.form.get('smtp_host') or '').strip()[:200], 'SMTP host')
     set_platform_setting('smtp_port', (request.form.get('smtp_port') or '').strip()[:6], 'SMTP port')
