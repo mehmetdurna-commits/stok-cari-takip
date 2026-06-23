@@ -28,10 +28,10 @@ class AppConfig:
     RUN_PORT = int(os.environ.get("FLASK_RUN_PORT", "5000"))
 
     SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")
-    SITE_NAME = os.environ.get("SITE_NAME", "StokCari")
+    SITE_NAME = os.environ.get("SITE_NAME", "Esstok")
     SITE_DESCRIPTION = os.environ.get(
         "SITE_DESCRIPTION",
-        "Stok, cari, POS ve teklif yönetimi için web tabanlı işletme uygulaması.",
+        "Küçük işletmeler için bulut tabanlı stok, cari, POS ve personel yönetimi.",
     )
     SITE_OG_IMAGE = os.environ.get("SITE_OG_IMAGE", "").strip()
 
@@ -56,7 +56,7 @@ class AppConfig:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "Lax")
     SESSION_COOKIE_SECURE = bool_from_env("SESSION_COOKIE_SECURE", IS_PRODUCTION)
-    SESSION_COOKIE_NAME = os.environ.get("SESSION_COOKIE_NAME", "stokcari_session")
+    SESSION_COOKIE_NAME = os.environ.get("SESSION_COOKIE_NAME", "esstok_session")
     PERMANENT_SESSION_LIFETIME = timedelta(hours=int(os.environ.get("SESSION_HOURS", "12")))
 
     REMEMBER_COOKIE_HTTPONLY = True

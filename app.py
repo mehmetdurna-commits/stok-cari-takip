@@ -4175,7 +4175,7 @@ def api_notifications():
                 'icon': 'event_busy',
                 'title': 'Destek süresi doldu',
                 'message': f'{expired_subscriptions} firman?n destek süresi doldu.',
-                'time': 'GÖncel',
+                'time': 'Güncel',
                 'url': url_for('super_admin_dashboard') + '#companies'
             })
 
@@ -4183,13 +4183,13 @@ def api_notifications():
             notifications.append({
                 'type': 'success',
                 'icon': 'verified',
-                'title': 'Her ?ey yolunda',
+                'title': 'Herşey yolunda',
                 'message': 'Bekleyen destek talebi veya kritik platform uyarisi yok.',
-                'time': 'GÖncel',
+                'time': 'Güncel',
                 'url': url_for('super_admin_dashboard')
             })
 
-        actionable_count = len([item for item in notifications if item['title'] != 'Her ?ey yolunda'])
+        actionable_count = len([item for item in notifications if item['title'] != 'Herşey yolunda'])
         return jsonify({'success': True, 'count': actionable_count, 'notifications': notifications[:6]})
 
     tenant_ids = tenant_user_ids()
@@ -4264,7 +4264,7 @@ def api_notifications():
             'url': url_for('dashboard')
         })
 
-    actionable_count = len([item for item in notifications if item['title'] != 'Her ?ey yolunda'])
+    actionable_count = len([item for item in notifications if item['title'] != 'Herşey yolunda'])
     return jsonify({'success': True, 'count': actionable_count, 'notifications': notifications[:6]})
 
 # Uygulama Ba?lat?c? (Mod?l Se?imi)

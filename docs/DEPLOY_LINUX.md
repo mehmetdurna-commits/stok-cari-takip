@@ -20,7 +20,7 @@ Bu doküman, uygulamayı en yaygın ve genel kabul görmüş senaryo ile (Linux 
 `.env.example` dosyasını temel alın ve aşağıdakileri mutlaka ayarlayın:
 
 - `APP_ENV=production`
-- `SITE_URL=https://www.maxad.com` (canonical/OG/sitemap için)
+- `SITE_URL=https://www.esstok.com` (canonical/OG/sitemap için)
 - `SECRET_KEY` (zorunlu, uzun ve rastgele)
 - `SECURITY_PASSWORD_SALT` (zorunlu, uzun ve rastgele)
 - `DATABASE_URL` (prod'da SQLite önerilmez)
@@ -50,7 +50,7 @@ gunicorn -c gunicorn.conf.py wsgi:application
 
 ## 6) Nginx reverse proxy (örnek)
 
-Hazır şablon: `deploy/nginx/www.maxad.com.conf`
+Hazır şablon: `deploy/nginx/www.esstok.com.conf`
 
 `/etc/nginx/sites-available/stokcari` gibi:
 

@@ -1,6 +1,6 @@
 {% extends '_base.html' %}
 
-{% set site_name = site_config().get('name', config.get('SITE_NAME', 'StokCari')) %}
+{% set site_name = site_config().get('name', config.get('SITE_NAME', 'Esstok')) %}
 {% block title %}{{ site_name }} - Bulut Tabanlı Stok, Cari ve POS Yönetimi{% endblock %}
 {% block og_description %}Küçük işletmeler için bulut tabanlı POS, stok, cari, personel ve ön muhasebe yönetimi. Satış yapın, stok takip edin, tahsilatları izleyin.{% endblock %}
 
@@ -217,7 +217,7 @@
                 <div class="max-w-3xl">
                     <p class="text-xs font-black uppercase tracking-widest text-primary-600">Çözümler</p>
                     <h2 class="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">İşletmenin günlük akışına göre modüller.</h2>
-                    <p class="mt-4 text-lg leading-8 text-slate-600">PayTR tarzı ürün kategorisi mantığını bizim dünyaya çevirdik: kasa, stok, cari ve personel ayrı ayrı ama aynı panelde.</p>
+                    <p class="mt-4 text-lg leading-8 text-slate-600">Ürün modüllerini küçük işletme akışına göre sadeleştirdik: kasa, stok, cari ve personel ayrı ayrı ama aynı panelde.</p>
                 </div>
                 <a href="{{ url_for('kayit') }}" class="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-primary-700">
                     Hemen Başla
@@ -254,7 +254,7 @@
             <div class="lg:col-span-5">
                 <p class="text-xs font-black uppercase tracking-widest text-primary-600">Panelden Yönet</p>
                 <h2 class="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Raporlama dahil kritik işler tek yerden görünür.</h2>
-                <p class="mt-4 leading-8 text-slate-600">PayTR’nin mağaza paneli hissini, bizim işletme panelimize uyarladık: satışlar, stok, cari, kasa/banka ve işlem geçmişi aynı çatı altında.</p>
+                <p class="mt-4 leading-8 text-slate-600">İşletme panelini günlük kullanıma göre düzenledik: satışlar, stok, cari, kasa/banka ve işlem geçmişi aynı çatı altında.</p>
                 <div class="mt-8 grid gap-3">
                     {% set panel_items = [
                         ('Grafikler', 'Satış, tahsilat, stok ve kasa hareketleri daha okunur hale gelir.'),

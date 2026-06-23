@@ -21,7 +21,7 @@
     <path d="M39 20v45" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity="0.55"/>
   </g>
 
-  <text x="250" y="235" font-size="56" font-family="Inter, system-ui, -apple-system, Segoe UI, Arial" fill="#fff" font-weight="800">StokCari</text>
+  <text x="250" y="235" font-size="56" font-family="Inter, system-ui, -apple-system, Segoe UI, Arial" fill="#fff" font-weight="800">Esstok</text>
   <text x="250" y="290" font-size="28" font-family="Inter, system-ui, -apple-system, Segoe UI, Arial" fill="#e2e8f0" font-weight="600">Stok • Cari • POS • Teklif</text>
   <text x="250" y="360" font-size="42" font-family="Inter, system-ui, -apple-system, Segoe UI, Arial" fill="#fff" font-weight="900">Tek panelden yönetin.</text>
   <text x="250" y="410" font-size="24" font-family="Inter, system-ui, -apple-system, Segoe UI, Arial" fill="#cbd5e1" font-weight="500">Web tabanlı işletme yönetimi</text>
