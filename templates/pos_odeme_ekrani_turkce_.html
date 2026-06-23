@@ -195,6 +195,9 @@
     let saleData = null;
     let currentInput = '';
     let selectedMethod = 'cash';
+    const POS_STORAGE_SCOPE = {{ ('user:' ~ current_user.id) | tojson }};
+    const POS_CART_STORAGE_KEY = `posCart:${POS_STORAGE_SCOPE}`;
+    const POS_SALE_STORAGE_KEY = `posSaleData:${POS_STORAGE_SCOPE}`;
     const ACCOUNTS = {{ (accounts_json or [])|tojson }};
     let selectedAccountId = null;
     const FIRM_NAME = {{ (firm_name or 'StokCari')|tojson }};
@@ -274,7 +277,7 @@
     }
     
     try {
-        saleData = JSON.parse(localStorage.getItem('posSaleData') || '{}');
+        saleData = JSON.parse(localStorage.getItem(POS_SALE_STORAGE_KEY) || '{}');
     } catch(e) {
         console.error('Sale data parse error:', e);
     }
@@ -462,8 +465,8 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    localStorage.removeItem('posCart');
-                    localStorage.removeItem('posSaleData');
+                    localStorage.removeItem(POS_CART_STORAGE_KEY);
+                    localStorage.removeItem(POS_SALE_STORAGE_KEY);
                     
                     // Başarılı bildirim
                     showNotification(result.message, 'success');

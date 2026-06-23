@@ -236,6 +236,9 @@
 <script>
     const productsData = JSON.parse('{{ urunler|tojson|safe if urunler else "[]" }}');
     const carilerData = JSON.parse('{{ cariler|tojson|safe if cariler else "[]" }}');
+    const POS_STORAGE_SCOPE = {{ ('user:' ~ current_user.id) | tojson }};
+    const POS_CART_STORAGE_KEY = `posCart:${POS_STORAGE_SCOPE}`;
+    const POS_SALE_STORAGE_KEY = `posSaleData:${POS_STORAGE_SCOPE}`;
     let cart = [];
     let currentCustomer = null;
     let paymentInProgress = false;
@@ -294,7 +297,7 @@
         const searchInput = document.getElementById('searchInput');
         if (barcodeInput) barcodeInput.focus();
 
-        const savedCart = localStorage.getItem('posCart');
+        const savedCart = localStorage.getItem(POS_CART_STORAGE_KEY);
         if (savedCart) {
             try {
                 cart = JSON.parse(savedCart);
@@ -703,7 +706,7 @@
             mobileSummary.classList.add('hidden');
             if (mobileCount) mobileCount.textContent = '0 ürün';
             if (mobileTotal) mobileTotal.textContent = formatTRY(0);
-            localStorage.setItem('posCart', '[]');
+            localStorage.setItem(POS_CART_STORAGE_KEY, '[]');
             updatePaymentPreview();
             return;
         }
@@ -737,7 +740,7 @@
         mobileSummary.classList.remove('hidden');
         if (mobileCount) mobileCount.textContent = `${totalItems} ürün`;
         if (mobileTotal) mobileTotal.textContent = formatTRY(totals.total);
-        localStorage.setItem('posCart', JSON.stringify(cart));
+        localStorage.setItem(POS_CART_STORAGE_KEY, JSON.stringify(cart));
         updatePaymentPreview();
     }
 
@@ -902,8 +905,8 @@
 
             applySaleToScreen();
             cart = [];
-            localStorage.removeItem('posCart');
-            localStorage.removeItem('posSaleData');
+            localStorage.removeItem(POS_CART_STORAGE_KEY);
+            localStorage.removeItem(POS_SALE_STORAGE_KEY);
             updateCart();
             if (receivedInput) receivedInput.value = '';
             updatePaymentPreview();

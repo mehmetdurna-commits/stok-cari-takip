@@ -11847,7 +11847,7 @@ def gunluk_satislar():
                     return redirect(url_for('gunluk_satislar'))
 
                 if satis.durum == 'iptal':
-                    flash('Bu satış zaten iptal edilmi?!', 'warning')
+                    flash('Bu satış zaten iptal edilmiş!', 'warning')
                     return redirect(url_for('gunluk_satislar'))
 
                 # Stoklar? geri ekle
