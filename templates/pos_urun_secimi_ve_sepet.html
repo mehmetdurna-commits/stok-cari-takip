@@ -882,14 +882,18 @@
             customerId: customerId,
             paymentMethod: method,
             receivedAmount: receivedAmount,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            csrf_token: '{{ csrf_token() }}'
         };
 
         setPaymentBusy(true);
         try {
             const response = await fetch('{{ url_for("pos_satis") }}', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
                 body: JSON.stringify(saleData)
             });
             const result = await response.json();
