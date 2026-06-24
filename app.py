@@ -9245,7 +9245,7 @@ def cikis():
     clear_login_session()
     for key in ('platform_admin_id', 'login_at', '_id', '_csrf_token'):
         session.pop(key, None)
-    flash('??k?? yap?ld?.', 'success')
+    flash('Cikis yapildi.', 'success')
     return redirect(url_for('giris'))
 
 # Kurumsal Sistem Y?netimi
