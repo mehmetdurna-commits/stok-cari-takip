@@ -9210,21 +9210,25 @@ def support_tickets():
         if priority not in SUPPORT_PRIORITY_LABELS:
             priority = 'normal'
 
-        ticket = SupportTicket(
-            organization_id=organization.id,
-            requester_id=current_user.id,
-            subject=subject[:180],
-            category=category,
-            priority=priority,
-            status='waiting_admin',
-        )
-        db.session.add(ticket)
-        db.session.flush()
         try:
+            ticket = SupportTicket(
+                organization_id=organization.id,
+                requester_id=current_user.id,
+                subject=subject[:180],
+                category=category,
+                priority=priority,
+                status='waiting_admin',
+            )
+            db.session.add(ticket)
+            db.session.flush()
             attachment_data = save_support_attachment(request.files.get('screenshot'))
         except ValueError as exc:
             db.session.rollback()
             flash(str(exc), 'error')
+            return redirect(url_for('support_tickets'))
+        except Exception:
+            db.session.rollback()
+            flash('Destek talebi olusturulamadi.', 'error')
             return redirect(url_for('support_tickets'))
         db.session.add(SupportTicketMessage(
             ticket_id=ticket.id,
@@ -9233,9 +9237,13 @@ def support_tickets():
             is_staff_reply=False,
             **attachment_data,
         ))
-        platform_audit('SUPPORT_TICKET_CREATE', f'Destek talebi acildi: #{ticket.id}', 'SupportTicket', ticket.id)
-        sync_support_ticket_action(ticket)
         db.session.commit()
+        try:
+            platform_audit('SUPPORT_TICKET_CREATE', f'Destek talebi acildi: #{ticket.id}', 'SupportTicket', ticket.id)
+            sync_support_ticket_action(ticket)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
         flash('Destek talebiniz alindi.', 'success')
         return redirect(url_for('support_ticket_detail', ticket_id=ticket.id))
 
