@@ -8496,6 +8496,32 @@ def super_admin_update_system_controls():
     return redirect(url_for('super_admin_dashboard') + '#platform-system')
 
 
+@app.route('/super-admin/system/smtp', methods=['POST'])
+@login_required
+@platform_admin_required
+@platform_permission_required('settings_manage')
+def super_admin_update_smtp_settings():
+    try:
+        set_platform_setting('smtp_host', (request.form.get('smtp_host') or '').strip()[:200], 'SMTP host')
+        set_platform_setting('smtp_port', (request.form.get('smtp_port') or '').strip()[:6], 'SMTP port')
+        set_platform_setting('smtp_use_tls', 'on' if request.form.get('smtp_use_tls') == 'on' else 'off', 'SMTP TLS')
+        set_platform_setting('smtp_use_ssl', 'on' if request.form.get('smtp_use_ssl') == 'on' else 'off', 'SMTP SSL')
+        set_platform_setting('smtp_username', (request.form.get('smtp_username') or '').strip()[:200], 'SMTP username')
+        set_platform_setting('smtp_from_email', (request.form.get('smtp_from_email') or '').strip()[:200], 'SMTP From email')
+        set_platform_setting('smtp_from_name', (request.form.get('smtp_from_name') or '').strip()[:120], 'SMTP From name')
+        smtp_password = request.form.get('smtp_password') or ''
+        if smtp_password.strip():
+            set_platform_setting('smtp_password', smtp_password, 'SMTP password (stored)')
+
+        platform_audit('PLATFORM_SETTINGS_UPDATE', 'SMTP ayarlari guncellendi.')
+        db.session.commit()
+        flash('SMTP ayarlari kaydedildi.', 'success')
+    except Exception:
+        db.session.rollback()
+        flash('SMTP ayarlari kaydedilemedi.', 'error')
+    return redirect(url_for('super_admin_dashboard') + '#platform-system')
+
+
 @app.route('/super-admin/system/self-test', methods=['POST'])
 @login_required
 @platform_admin_required
