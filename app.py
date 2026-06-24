@@ -3627,23 +3627,28 @@ def audit_log(action, resource_type):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
+            log = None
             if current_user.is_authenticated:
-                log = AuditLog(
-                    user_id=current_user.id,
-                    action=action,
-                    resource_type=resource_type,
-                    resource_id=kwargs.get('id') or request.form.get('id') or request.args.get('id'),
-                    details=f'{audit_resource_label(resource_type)} islemi yapildi: {audit_action_label(action)}',
-                    ip_address=request.remote_addr,
-                    user_agent=request.headers.get('User-Agent', ''),
-                    session_id=session.get('_id', '')
-                )
-                db.session.add(log)
-                db.session.commit()
+                try:
+                    log = AuditLog(
+                        user_id=current_user.id,
+                        action=action,
+                        resource_type=resource_type,
+                        resource_id=kwargs.get('id') or request.form.get('id') or request.args.get('id'),
+                        details=f'{audit_resource_label(resource_type)} islemi yapildi: {audit_action_label(action)}',
+                        ip_address=request.remote_addr,
+                        user_agent=request.headers.get('User-Agent', ''),
+                        session_id=session.get('_id', '')
+                    )
+                    db.session.add(log)
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+                    log = None
 
             result = f(*args, **kwargs)
 
-            if (current_user.is_authenticated and hasattr(result, 'status_code') and
+            if (log is not None and current_user.is_authenticated and hasattr(result, 'status_code') and
                     result.status_code in [200, 201, 204]):
                 try:
                     log.status = 'completed'
