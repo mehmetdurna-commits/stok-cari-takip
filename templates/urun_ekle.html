@@ -378,9 +378,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (alisFiyati > 0 && satisFiyati > 0) {
             const margin = ((satisFiyati - alisFiyati) / alisFiyati * 100).toFixed(1);
             profitMarginElement.textContent = `+${margin}%`;
-            profitMarginElement.className = margin >= 0  
-                'text-lg font-bold text-green-600 dark:text-green-400' : 
-                'text-lg font-bold text-red-600 dark:text-red-400';
+            profitMarginElement.className = margin >= 0
+                ? 'text-lg font-bold text-green-600 dark:text-green-400'
+                : 'text-lg font-bold text-red-600 dark:text-red-400';
         } else {
             profitMarginElement.textContent = '-%';
             profitMarginElement.className = 'text-lg font-bold text-slate-400';
@@ -518,9 +518,9 @@ function triggerProfitMarginCalculation() {
         if (alisFiyati > 0 && satisFiyati > 0) {
             const margin = ((satisFiyati - alisFiyati) / alisFiyati * 100).toFixed(1);
             profitMarginElement.textContent = `+${margin}%`;
-            profitMarginElement.className = margin >= 0  
-                'text-lg font-bold text-green-600 dark:text-green-400' : 
-                'text-lg font-bold text-red-600 dark:text-red-400';
+            profitMarginElement.className = margin >= 0
+                ? 'text-lg font-bold text-green-600 dark:text-green-400'
+                : 'text-lg font-bold text-red-600 dark:text-red-400';
         } else {
             profitMarginElement.textContent = '-%';
             profitMarginElement.className = 'text-lg font-bold text-slate-400';
