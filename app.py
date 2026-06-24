@@ -8961,8 +8961,12 @@ def super_admin_support_ticket_detail(ticket_id):
         return redirect(url_for('super_admin_dashboard') + '#platform-support')
 
     if request.method == 'POST':
-        ticket.status = request.form.get('status') or ticket.status
-        ticket.priority = request.form.get('priority') or ticket.priority
+        requested_status = (request.form.get('status') or '').strip()
+        requested_priority = (request.form.get('priority') or '').strip()
+        if requested_status in SUPPORT_STATUS_LABELS:
+            ticket.status = requested_status
+        if requested_priority in SUPPORT_PRIORITY_LABELS:
+            ticket.priority = requested_priority
         message = (request.form.get('message') or '').strip()
         if message:
             try:
@@ -8984,9 +8988,13 @@ def super_admin_support_ticket_detail(ticket_id):
         else:
             ticket.closed_at = None
         ticket.updated_at = datetime.now(timezone.utc)
-        platform_audit('SUPPORT_TICKET_UPDATE', f'Destek talebi guncellendi: #{ticket.id}', 'SupportTicket', ticket.id)
-        sync_support_ticket_action(ticket)
         db.session.commit()
+        try:
+            platform_audit('SUPPORT_TICKET_UPDATE', f'Destek talebi guncellendi: #{ticket.id}', 'SupportTicket', ticket.id)
+            sync_support_ticket_action(ticket)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
         flash('Destek talebi guncellendi.', 'success')
         return redirect(url_for('super_admin_support_ticket_detail', ticket_id=ticket.id))
 
