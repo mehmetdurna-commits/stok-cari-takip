@@ -9227,20 +9227,26 @@ def support_attachment(message_id, filename):
 @app.route('/cikis', methods=['GET', 'POST'])
 @login_required
 def cikis():
-    # Audit log kaydı
-    audit_logout = AuditLog(
-        user_id=current_user.id,
-        action='LOGOUT',
-        resource_type='User',
-        ip_address=request.remote_addr,
-        user_agent=request.headers.get('User-Agent', ''),
-        session_id=session.get('_id', '')
-    )
-    db.session.add(audit_logout)
-    db.session.commit()
+    try:
+        audit_logout = AuditLog(
+            user_id=current_user.id,
+            action='LOGOUT',
+            resource_type='User',
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent', ''),
+            session_id=session.get('_id', '')
+        )
+        db.session.add(audit_logout)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
     logout_user()
-    return redirect(url_for('index'))
+    clear_login_session()
+    for key in ('platform_admin_id', 'login_at', '_id', '_csrf_token'):
+        session.pop(key, None)
+    flash('??k?? yap?ld?.', 'success')
+    return redirect(url_for('giris'))
 
 # Kurumsal Sistem Y?netimi
 
