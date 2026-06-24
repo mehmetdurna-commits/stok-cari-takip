@@ -1520,6 +1520,8 @@ def site_config():
     )
     site_og_image = platform_setting('site_og_image', '') or app.config.get('SITE_OG_IMAGE', '')
     site_og_image = (site_og_image or '').strip()
+    ga4_code = platform_setting('ga4_code', '') or ''
+    search_console_code = platform_setting('search_console_code', '') or ''
     seo_closed_mode = platform_setting_bool('seo_closed_mode', True)
     seo_indexing_enabled = platform_setting_bool('seo_indexing_enabled', False)
     seo_public_mode = seo_indexing_enabled and not seo_closed_mode
@@ -1529,6 +1531,8 @@ def site_config():
         'name': site_name,
         'description': site_description,
         'og_image': site_og_image,
+        'ga4_code': ga4_code,
+        'search_console_code': search_console_code,
         'seo_closed_mode': seo_closed_mode,
         'seo_indexing_enabled': seo_indexing_enabled,
         'seo_public_mode': seo_public_mode,
@@ -8042,6 +8046,8 @@ def super_admin_dashboard():
         'site_name': platform_setting('site_name', app.config.get('SITE_NAME', 'StokCari')),
         'site_description': platform_setting('site_description', app.config.get('SITE_DESCRIPTION', '')),
         'site_og_image': platform_setting('site_og_image', app.config.get('SITE_OG_IMAGE', '')),
+        'ga4_code': platform_setting('ga4_code', ''),
+        'search_console_code': platform_setting('search_console_code', ''),
         'smtp_host': platform_setting('smtp_host', app.config.get('SMTP_HOST', '')),
         'smtp_port': platform_setting('smtp_port', str(app.config.get('SMTP_PORT', 587))),
         'smtp_username': platform_setting('smtp_username', app.config.get('SMTP_USERNAME', '')),
@@ -8468,6 +8474,8 @@ def super_admin_update_system_controls():
     set_platform_setting('site_name', (request.form.get('site_name') or '').strip()[:120], 'SEO site adi')
     set_platform_setting('site_description', (request.form.get('site_description') or '').strip()[:240], 'SEO site aciklamasi')
     set_platform_setting('site_og_image', (request.form.get('site_og_image') or '').strip()[:240], 'SEO OpenGraph gorsel URL')
+    set_platform_setting('ga4_code', (request.form.get('ga4_code') or '').strip()[:8000], 'GA4 izleme kodu')
+    set_platform_setting('search_console_code', (request.form.get('search_console_code') or '').strip()[:4000], 'Search Console dogrulama kodu')
     set_platform_setting('seo_closed_mode', 'on' if seo_closed_mode else 'off', 'Arama motorlarina karsi kapali mod')
     set_platform_setting('seo_indexing_enabled', 'on' if seo_indexing_enabled else 'off', 'Arama motorlarina acik SEO modu')
 

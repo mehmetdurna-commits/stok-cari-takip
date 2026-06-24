@@ -25,6 +25,12 @@
     <meta name="twitter:title" content="{{ self.title()|striptags }}">
     <meta name="twitter:description" content="{{ site_description }}">
     <meta name="twitter:image" content="{{ og_image }}">
+    {% if _site.get('search_console_code') %}
+    {{ _site.get('search_console_code') | safe }}
+    {% endif %}
+    {% if _site.get('ga4_code') %}
+    {{ _site.get('ga4_code') | safe }}
+    {% endif %}
     <title>{% block title %}{{ platform_name }}{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
