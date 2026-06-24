@@ -3593,6 +3593,25 @@ def send_password_reset_email(user, reset_url):
     send_email_smtp(to_email=user.email, subject=subject, text_body=text_body, html_body=html_body)
 
 
+def send_smtp_test_email(to_email):
+    site_name = site_config().get('name') or app.config.get('SITE_NAME', 'StokCari')
+    current_time = local_now().strftime('%d.%m.%Y %H:%M')
+    subject = f'{site_name} - SMTP test'
+    text_body = (
+        f'Bu bir test e-postasidir.\n\n'
+        f'Gonderim zamani: {current_time}\n'
+        f'Platform: {site_name}\n'
+        f'Alici: {to_email}\n'
+    )
+    html_body = (
+        f'<p>Bu bir test e-postasidir.</p>'
+        f'<p><strong>Gonderim zamani:</strong> {current_time}</p>'
+        f'<p><strong>Platform:</strong> {site_name}</p>'
+        f'<p><strong>Alici:</strong> {to_email}</p>'
+    )
+    send_email_smtp(to_email=to_email, subject=subject, text_body=text_body, html_body=html_body)
+
+
 def audit_log(action, resource_type):
     def decorator(f):
         @wraps(f)
@@ -5580,11 +5599,13 @@ def sifremi_unuttum():
             try:
                 if smtp_is_configured():
                     send_password_reset_email(user, reset_url)
+                    flash('Sifre sifirlama baglantisi e-posta adresinize gonderildi.', 'success')
                 else:
                     current_app.logger.error('SMTP not configured; cannot send password reset email.')
-            except Exception:
+                    flash('SMTP ayarlari eksik. Mail gonderilemedi.', 'error')
+            except Exception as error:
                 current_app.logger.exception('Password reset email send failed')
-            flash('Şifre sıfırlama bağlantısı e-posta adresinize gönderildi.', 'success')
+                flash(f'Mail gonderilemedi: {safe_exception_message(error)}', 'error')
         else:
             app.logger.info('Password reset link for %s: %s', user.email, reset_url)
             flash(f'Geliştirme modu: Şifre sıfırlama bağlantısı: {reset_url}', 'success')
@@ -8526,6 +8547,25 @@ def super_admin_update_smtp_settings():
         db.session.rollback()
 
     flash('SMTP ayarlari kaydedildi.', 'success')
+    return redirect(url_for('super_admin_dashboard') + '#platform-system')
+
+
+@app.route('/super-admin/system/smtp/test', methods=['POST'])
+@login_required
+@platform_admin_required
+@platform_permission_required('settings_manage')
+def super_admin_test_smtp_settings():
+    to_email = (request.form.get('test_email') or current_user.email or '').strip().lower()
+    if not to_email:
+        flash('Test icin bir e-posta adresi gerekli.', 'warning')
+        return redirect(url_for('super_admin_dashboard') + '#platform-system')
+
+    try:
+        send_smtp_test_email(to_email)
+        flash(f'Test e-postasi gonderildi: {to_email}', 'success')
+    except Exception as error:
+        db.session.rollback()
+        flash(f'Test e-postasi gonderilemedi: {safe_exception_message(error)}', 'error')
     return redirect(url_for('super_admin_dashboard') + '#platform-system')
 
 
