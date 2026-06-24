@@ -8513,12 +8513,19 @@ def super_admin_update_smtp_settings():
         if smtp_password.strip():
             set_platform_setting('smtp_password', smtp_password, 'SMTP password (stored)')
 
+        db.session.commit()
+    except Exception as error:
+        db.session.rollback()
+        flash(f'SMTP ayarlari kaydedilemedi: {safe_exception_message(error)}', 'error')
+        return redirect(url_for('super_admin_dashboard') + '#platform-system')
+
+    try:
         platform_audit('PLATFORM_SETTINGS_UPDATE', 'SMTP ayarlari guncellendi.')
         db.session.commit()
-        flash('SMTP ayarlari kaydedildi.', 'success')
     except Exception:
         db.session.rollback()
-        flash('SMTP ayarlari kaydedilemedi.', 'error')
+
+    flash('SMTP ayarlari kaydedildi.', 'success')
     return redirect(url_for('super_admin_dashboard') + '#platform-system')
 
 
