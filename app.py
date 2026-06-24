@@ -3447,7 +3447,8 @@ def clear_login_session():
 
 def wants_json_response():
     return (
-        request.path.startswith('/api/')
+        request.is_json
+        or request.path.startswith('/api/')
         or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         or request.accept_mimetypes.best == 'application/json'
     )
