@@ -1,7 +1,7 @@
 {% extends '_base.html' %}
 {% block title %}Günlük Satışlar - Stok ve Cari Takip{% endblock %}
 {% block top_bar %}
-<div class="flex items-center gap-4">
+<div class="min-w-0 flex items-center gap-3">
     <span class="material-symbols-outlined text-primary-600 font-bold">receipt_long</span>
     <h1 class="text-xl font-bold text-slate-900 dark:text-white">Günlük Satışlar</h1>
 </div>
@@ -93,8 +93,8 @@
 {% set iptal_satis = satislar|selectattr('durum', 'equalto', 'iptal')|list %}
 {% set toplam_ciro = tamamlanan_satis|map(attribute='genel_toplam')|sum %}
 
-<div class="mx-auto max-w-7xl space-y-6">
-    <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+<div class="space-y-5 lg:space-y-6">
+    <section class="rounded-3xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div class="min-w-0">
                 <p class="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Satış Akışı</p>
@@ -115,7 +115,7 @@
         </div>
     </section>
 
-    <section class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div class="flex items-center justify-between gap-3">
                 <div>
@@ -158,7 +158,7 @@
     </section>
 
     <section class="rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+        <div class="border-b border-slate-200 px-4 py-4 sm:px-5 dark:border-slate-800">
             <div class="flex flex-col gap-3">
                 <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -167,13 +167,12 @@
                     </div>
                     <span id="dailySalesVisibleCount" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{{ satislar|length }} kayıt</span>
                 </div>
-                <div>
-                    <div class="flex flex-col gap-3 lg:flex-row">
+                <div class="flex flex-col gap-3 xl:flex-row">
                         <div class="relative min-w-0 flex-1">
                             <span class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
                             <input id="dailySalesSearchInput" type="text" placeholder="Fatura no, cari, ürün veya ödeme tipi ara..." oninput="filterDailySales()" class="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm font-medium text-slate-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
                         </div>
-                        <div class="relative w-full lg:w-64">
+                        <div class="relative w-full xl:w-64">
                             <span class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">tune</span>
                             <select id="dailySalesStatusFilter" onchange="filterDailySales()" class="w-full appearance-none rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-10 text-sm font-semibold text-slate-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
                                 <option value="all">Tümü</option>
@@ -195,9 +194,9 @@
             {% for satis in satislar %}
             {% set odeme_turu = payment_methods.get(satis.id, 'Peşin') %}
             <article data-sale-card data-status="{{ satis.durum }}" data-payment="{{ odeme_turu }}" data-search="{{ satis.fatura_no }} {{ satis.cari.unvan if satis.cari else 'Peşin satış' }} {{ odeme_turu }} {{ satis.depo or 'Ana Depo' }} {% for kalem in satis.kalemler %}{{ kalem.urun_adi }} {{ kalem.birim }} {% endfor %}" class="rounded-3xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950/30 dark:hover:border-slate-700 {{ 'opacity-70' if satis.durum == 'iptal' }}">
-                <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div class="flex flex-col gap-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
                     <div class="min-w-0 flex-1 space-y-4">
-                        <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                             <div class="min-w-0">
                                 <div class="flex items-center gap-2">
                                     <span class="material-symbols-outlined text-slate-400">receipt</span>
@@ -239,7 +238,7 @@
                             </div>
                         </div>
 
-                        <div class="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(260px,0.7fr)]">
+                        <div class="grid gap-4 2xl:grid-cols-[minmax(0,1.6fr)_minmax(260px,0.7fr)]">
                             <div class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                                 <p class="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">Ürün Kalemleri</p>
                                 <div class="space-y-2">

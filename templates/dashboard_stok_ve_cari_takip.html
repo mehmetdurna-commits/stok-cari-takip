@@ -3,7 +3,7 @@
 {% block title %}İşletme Paneli - Stok ve Cari Takip{% endblock %}
 
 {% block top_bar %}
-<div class="flex items-center gap-4">
+<div class="min-w-0 flex items-center gap-3">
     <span class="material-symbols-outlined text-primary-600 font-bold">dashboard</span>
     <h1 class="text-xl font-bold text-slate-900 dark:text-white">İşletme Paneli</h1>
 </div>
@@ -14,9 +14,9 @@
 {% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto space-y-8">
+<div class="space-y-6 lg:space-y-8">
     <!-- First Impression Panel -->
-    <section class="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <section class="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 lg:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div class="absolute right-0 top-0 h-48 w-48 translate-x-16 -translate-y-16 rounded-full bg-primary-100 blur-3xl dark:bg-primary-900/30"></div>
         <div class="relative grid grid-cols-1 gap-6 xl:grid-cols-[1.3fr_0.7fr]">
             <div>
@@ -27,7 +27,7 @@
                 <h2 class="mt-4 text-3xl font-black tracking-tight text-slate-900 dark:text-white">Hoş geldiniz, {{ current_user.firma_adi or 'Kullanıcı' }}.</h2>
                 <p class="mt-2 max-w-2xl text-base leading-7 text-slate-500 dark:text-slate-400">Satış, stok, cari ve ödeme akışlarını tek ekrandan takip edin. Önce hızlı işlem yapın, sonra detaylı raporlara inin.</p>
 
-                <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     <a href="{{ url_for('pos') }}" class="inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-primary-700">
                         <span class="material-symbols-outlined text-lg">point_of_sale</span>
                         Satış Yap
@@ -43,7 +43,7 @@
                 </div>
             </div>
 
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-800/60">
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-800/60">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Bugünün Özeti</p>
@@ -75,7 +75,7 @@
 
 
     <!-- Başlangıç Rehberi -->
-    <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+    <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 lg:p-6 shadow-sm">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-5">
             <div>
                 <div class="inline-flex items-center gap-2 rounded-full bg-primary-50 px-3 py-1 text-xs font-bold text-primary-700 dark:bg-primary-900/20 dark:text-primary-300 mb-3">
@@ -96,7 +96,7 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {% for step in onboarding_steps %}
             <article class="rounded-xl border {{ 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/40 dark:bg-emerald-950/10' if step.done else 'border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-800/40' }} p-4">
                 <div class="flex items-start gap-3">
@@ -127,7 +127,7 @@
     </section>
 
     <!-- Operation Center -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <a href="{{ url_for('urunler') }}" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 hover:border-amber-400 transition-colors">
             <div class="flex items-start gap-4">
                 <div class="size-11 bg-amber-50 dark:bg-amber-900/20 rounded-lg flex items-center justify-center text-amber-600">
