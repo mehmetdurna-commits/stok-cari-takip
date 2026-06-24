@@ -9224,7 +9224,7 @@ def support_attachment(message_id, filename):
     )
 
 
-@app.route('/cikis', methods=['POST'])
+@app.route('/cikis', methods=['GET', 'POST'])
 @login_required
 def cikis():
     # Audit log kaydı
@@ -12189,6 +12189,9 @@ def csrf_token():
 @app.before_request
 def csrf_protect():
     if not app.config.get('WTF_CSRF_ENABLED', True):
+        return
+
+    if request.endpoint == 'cikis':
         return
 
     if request.method in {'POST', 'PUT', 'PATCH', 'DELETE'}:
