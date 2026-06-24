@@ -3583,12 +3583,18 @@ def send_email_smtp(*, to_email, subject, text_body, html_body=None):
 
 def send_password_reset_email(user, reset_url):
     site_name = site_config().get('name') or app.config.get('SITE_NAME', 'StokCari')
-    subject = f'{site_name} - Åifre s?f?rlama bağlantın?z'
-    text_body = app.jinja_env.get_template('emails/password_reset.txt').render(
-        reset_url=reset_url, user=user, site_name=site_name
+    subject = f'{site_name} - Sifre sifirlama baglantisi'
+    text_body = (
+        f'{site_name} - Sifre Sifirlama\n\n'
+        f'Sifrenizi sifirlamak icin bu baglantiyi acin:\n'
+        f'{reset_url}\n\n'
+        f'Bu istegi siz yapmadiysaniz bu e-postayi dikkate almayin.\n'
     )
-    html_body = app.jinja_env.get_template('emails/password_reset.html').render(
-        reset_url=reset_url, user=user, site_name=site_name
+    html_body = (
+        f'<p><strong>{site_name} - Sifre Sifirlama</strong></p>'
+        f'<p>Sifrenizi sifirlamak icin asagidaki baglantiyi acin:</p>'
+        f'<p><a href="{reset_url}">{reset_url}</a></p>'
+        f'<p>Bu istegi siz yapmadiysaniz bu e-postayi dikkate almayin.</p>'
     )
     send_email_smtp(to_email=user.email, subject=subject, text_body=text_body, html_body=html_body)
 
