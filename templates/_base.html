@@ -485,13 +485,13 @@
             flex: 0 0 auto;
         }
 
-        .app-shell-standard .app-shell-frame {
+        .app-shell-frame {
             width: 100%;
             max-width: 100rem;
             margin-inline: auto;
         }
 
-        .app-shell-standard .app-topbar {
+        .app-topbar {
             min-height: 4rem;
             height: auto;
             display: grid;
@@ -502,39 +502,39 @@
             padding-bottom: 0.75rem;
         }
 
-        .app-shell-standard .app-topbar-primary,
-        .app-shell-standard .app-topbar-secondary {
+        .app-topbar-primary,
+        .app-topbar-secondary {
             display: flex;
             align-items: center;
             gap: 0.75rem;
             min-width: 0;
         }
 
-        .app-shell-standard .app-topbar-primary {
+        .app-topbar-primary {
             flex-wrap: wrap;
         }
 
-        .app-shell-standard .app-topbar-secondary {
+        .app-topbar-secondary {
             justify-content: flex-end;
             flex-wrap: wrap;
         }
 
         @media (max-width: 640px) {
-            .app-shell-standard .app-shell-frame {
+            .app-shell-frame {
                 max-width: 100%;
             }
 
-            .app-shell-standard .app-topbar {
+            .app-topbar {
                 grid-template-columns: minmax(0, 1fr);
                 align-items: stretch;
             }
 
-            .app-shell-standard .app-topbar-secondary {
+            .app-topbar-secondary {
                 justify-content: space-between;
             }
 
-            .app-shell-standard .app-header-actions .btn-primary,
-            .app-shell-standard .app-header-actions .btn-secondary {
+            .app-header-actions .btn-primary,
+            .app-header-actions .btn-secondary {
                 min-height: 2.25rem;
                 padding: 0.5rem 0.75rem;
                 font-size: 0.8125rem;
