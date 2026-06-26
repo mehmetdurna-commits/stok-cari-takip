@@ -3460,6 +3460,55 @@ def safe_exception_message(error, default_message='Beklenmeyen bir hata oluştu.
     return str(error)
 
 
+def log_request_failure(error, status_code, label):
+    form_keys = []
+    json_keys = []
+    try:
+        form_keys = sorted(list(request.form.keys())) if request.form else []
+        if request.is_json:
+            payload = request.get_json(silent=True) or {}
+            if isinstance(payload, dict):
+                json_keys = sorted(list(payload.keys()))
+
+        current_app.logger.error(
+            '%s | status=%s endpoint=%s method=%s path=%s user_id=%s org_id=%s referrer=%s form_keys=%s json_keys=%s error=%s',
+            label,
+            status_code,
+            request.endpoint,
+            request.method,
+            request.path,
+            getattr(current_user, 'id', None) if current_user.is_authenticated else None,
+            getattr(getattr(current_user, 'organization', None), 'id', None) if current_user.is_authenticated else None,
+            request.referrer,
+            form_keys,
+            json_keys,
+            error,
+        )
+    except Exception:
+        current_app.logger.exception('Request failure log yazilamadi')
+
+    try:
+        if current_user.is_authenticated:
+            db.session.add(AuditLog(
+                user_id=current_user.id,
+                action='REQUEST_FAILED',
+                resource_type='Request',
+                details=(
+                    f'{label} | status={status_code} | endpoint={request.endpoint} | '
+                    f'method={request.method} | path={request.path} | '
+                    f'form_keys={",".join(form_keys[:20])} | '
+                    f'json_keys={",".join(json_keys[:20])} | '
+                    f'error={str(error)[:500]}'
+                )[:1900],
+                ip_address=client_ip(),
+                user_agent=(request.headers.get('User-Agent') or '')[:500],
+                session_id=session.get('_id', '')
+            ))
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
 def safe_next_url(default_endpoint, **default_values):
     next_url = (request.form.get('next') or request.args.get('next') or '').strip()
     if next_url.startswith('/') and not next_url.startswith('//') and '\\' not in next_url:
@@ -4071,6 +4120,8 @@ def handle_forbidden(error):
     if wants_json_response():
         return jsonify(success=False, message='Erişim reddedildi.'), 403
 
+    log_request_failure(error, 403, 'REQUEST_FORBIDDEN')
+
     if request.method in {'POST', 'PUT', 'PATCH', 'DELETE'}:
         flash('İşlem güvenlik doğrulaması nedeniyle tamamlanamadı. Lütfen sayfayı yenileyip tekrar deneyin.', 'error')
         return redirect(request.referrer or url_for('dashboard'), code=303)
@@ -4089,6 +4140,8 @@ def handle_server_error(error):
 
     if wants_json_response():
         return jsonify(success=False, message='Beklenmeyen bir hata oluştu.'), 500
+
+    log_request_failure(error, 500, 'REQUEST_SERVER_ERROR')
 
     if request.method in {'POST', 'PUT', 'PATCH', 'DELETE'}:
         flash('İşlem tamamlanamadı. Lütfen tekrar deneyin.', 'error')
