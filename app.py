@@ -3105,13 +3105,13 @@ def platform_audit(action, details='', resource_type='Platform', resource_id=Non
         return
     db.session.add(AuditLog(
         user_id=current_user.id,
-        action=action,
-        resource_type=resource_type,
+        action=str(action)[:100],
+        resource_type=str(resource_type)[:50],
         resource_id=resource_id,
-        details=details,
-        ip_address=request.remote_addr,
-        user_agent=request.headers.get('User-Agent', ''),
-        session_id=session.get('_id', '')
+        details=str(details)[:5000],
+        ip_address=(request.remote_addr or '')[:45],
+        user_agent=(request.headers.get('User-Agent', '') or '')[:500],
+        session_id=str(session.get('_id', '') or '')[:100]
     ))
 
 
@@ -3500,9 +3500,9 @@ def log_request_failure(error, status_code, label):
                     f'json_keys={",".join(json_keys[:20])} | '
                     f'error={str(error)[:500]}'
                 )[:1900],
-                ip_address=client_ip(),
+                ip_address=client_ip()[:45],
                 user_agent=(request.headers.get('User-Agent') or '')[:500],
-                session_id=session.get('_id', '')
+                session_id=str(session.get('_id', '') or '')[:100]
             ))
             db.session.commit()
     except Exception:
