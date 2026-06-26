@@ -2535,6 +2535,31 @@ def run_platform_workflow_test():
     sandbox_user_id = None
     sandbox_organization_id = None
     suffix = datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')
+    actor_user_id = None
+    actor_ip = ''
+    actor_user_agent = ''
+    actor_session_id = ''
+
+    try:
+        if current_user.is_authenticated:
+            actor_user_id = current_user.id
+    except Exception:
+        actor_user_id = None
+
+    try:
+        actor_ip = (client_ip() or '')[:45]
+    except Exception:
+        actor_ip = ''
+
+    try:
+        actor_user_agent = (request.headers.get('User-Agent') or '')[:500]
+    except Exception:
+        actor_user_agent = ''
+
+    try:
+        actor_session_id = str(session.get('_id', '') or '')[:100]
+    except Exception:
+        actor_session_id = ''
 
     def run_request_as(user, path, method='GET', json_payload=None, form_data=None):
         with app.test_request_context(path, method=method, json=json_payload, data=form_data):
@@ -2950,11 +2975,20 @@ def run_platform_workflow_test():
     }
     try:
         set_platform_setting('workflow_test_last_result', json.dumps(result, ensure_ascii=False), 'Son derin is akisi test raporu')
-        platform_audit(
-            'PLATFORM_WORKFLOW_TEST_RUN',
-            f"Derin is akisi testi: {result['status_label']} ({passed_count}/{len(checks)} gecti, {warning_count} uyari, {failed_count} hata).",
-            'Platform'
-        )
+        if actor_user_id and db.session.get(User, actor_user_id):
+            db.session.add(AuditLog(
+                user_id=actor_user_id,
+                action='PLATFORM_WORKFLOW_TEST_RUN'[:100],
+                resource_type='Platform'[:50],
+                resource_id=None,
+                details=(
+                    f"Derin is akisi testi: {result['status_label']} "
+                    f"({passed_count}/{len(checks)} gecti, {warning_count} uyari, {failed_count} hata)."
+                )[:5000],
+                ip_address=actor_ip,
+                user_agent=actor_user_agent,
+                session_id=actor_session_id,
+            ))
         db.session.commit()
     except Exception as exc:
         db.session.rollback()
