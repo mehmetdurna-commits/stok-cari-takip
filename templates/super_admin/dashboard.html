@@ -1060,7 +1060,7 @@ function switchSystemManagementTab(tabId, pushHash = true) {
         <form id="smtpTestForm" method="post" action="{{ url_for('super_admin_test_smtp_settings') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         </form>
-        <form id="systemDefaultsForm" method="post" action="{{ url_for('super_admin_update_system_controls') }}">
+        <form id="systemDefaultsForm" method="post" action="{{ url_for('super_admin_update_system_defaults') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         </form>
 
@@ -1531,7 +1531,7 @@ function switchSystemManagementTab(tabId, pushHash = true) {
                 </div>
 
                 <div class="flex justify-end">
-                    <button form="systemDefaultsForm" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900">
+                    <button type="submit" form="systemDefaultsForm" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900">
                         <span class="material-symbols-outlined text-lg">save</span>
                         Varsayilanlari kaydet
                     </button>

@@ -8541,6 +8541,61 @@ def super_admin_update_system_controls():
     return redirect(url_for('super_admin_dashboard') + '#platform-system')
 
 
+@app.route('/super-admin/system/defaults', methods=['POST'])
+@login_required
+@platform_admin_required
+@platform_permission_required('settings_manage')
+def super_admin_update_system_defaults():
+    default_plan = request.form.get('default_plan') or platform_setting('default_plan', 'demo')
+    if default_plan not in {'demo', 'standart', 'profesyonel'}:
+        default_plan = 'demo'
+
+    numeric_fields = {
+        'default_user_limit': (1, 500, platform_setting_int('default_user_limit', 1)),
+        'default_product_limit': (1, 1000000, platform_setting_int('default_product_limit', 10)),
+    }
+    numeric_values = {}
+    for key, (minimum, maximum, fallback) in numeric_fields.items():
+        try:
+            value = int(request.form.get(key) or fallback)
+        except (TypeError, ValueError):
+            value = fallback
+        numeric_values[key] = min(max(value, minimum), maximum)
+
+    seo_closed_mode = request.form.get('seo_closed_mode') == 'on'
+    seo_indexing_enabled = request.form.get('seo_indexing_enabled') == 'on'
+    if seo_closed_mode:
+        seo_indexing_enabled = False
+
+    set_platform_setting('platform_name', (request.form.get('platform_name') or platform_setting('platform_name', 'StokCari')).strip()[:120], 'Platform gorunen adi')
+    set_platform_setting('site_url', (request.form.get('site_url') or '').strip()[:200], 'SEO canonical base URL')
+    set_platform_setting('site_name', (request.form.get('site_name') or '').strip()[:120], 'SEO site adi')
+    set_platform_setting('site_description', (request.form.get('site_description') or '').strip()[:240], 'SEO site aciklamasi')
+    set_platform_setting('site_og_image', (request.form.get('site_og_image') or '').strip()[:240], 'SEO OpenGraph gorsel URL')
+    set_platform_setting('ga4_code', (request.form.get('ga4_code') or '').strip()[:8000], 'GA4 izleme kodu')
+    set_platform_setting('search_console_code', (request.form.get('search_console_code') or '').strip()[:4000], 'Search Console dogrulama kodu')
+    set_platform_setting('default_plan', default_plan, 'Yeni firmalar icin varsayilan paket')
+    set_platform_setting('support_email', (request.form.get('support_email') or platform_setting('support_email', '')).strip().lower()[:120], 'Destek iletisim e-postasi')
+    set_platform_setting('seo_closed_mode', 'on' if seo_closed_mode else 'off', 'Arama motorlarina karsi kapali mod')
+    set_platform_setting('seo_indexing_enabled', 'on' if seo_indexing_enabled else 'off', 'Arama motorlarina acik SEO modu')
+
+    for key, value in numeric_values.items():
+        set_platform_setting(key, value)
+
+    platform_audit(
+        'PLATFORM_SYSTEM_CONTROLS_UPDATE',
+        (
+            f'ticari_varsayilanlar_guncellendi, plan={default_plan}, '
+            f'kullanici_limit={numeric_values["default_user_limit"]}, '
+            f'urun_limit={numeric_values["default_product_limit"]}, '
+            f'seo_closed={seo_closed_mode}, seo_public={seo_indexing_enabled}'
+        )
+    )
+    db.session.commit()
+    flash('Ticari varsayilanlar guncellendi.', 'success')
+    return redirect(url_for('super_admin_dashboard') + '#platform-system-defaults')
+
+
 @app.route('/super-admin/system/smtp', methods=['POST'])
 @login_required
 @platform_admin_required
