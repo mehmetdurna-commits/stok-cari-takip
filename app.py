@@ -2409,11 +2409,18 @@ def run_platform_inventory_test(test_name):
         return result
 
     command = [sys.executable, '-m', 'pytest', f"tests/test_app.py::{test_name}", '-q']
+    test_env = os.environ.copy()
+    test_env['APP_ENV'] = 'development'
+    test_env['FLASK_ENV'] = 'development'
+    test_env['ALLOW_SQLITE_IN_PROD'] = '1'
+    if not test_env.get('DATABASE_URL'):
+        test_env['DATABASE_URL'] = 'sqlite:///stokcari.db'
     started_at = time.perf_counter()
     try:
         completed = subprocess.run(
             command,
             cwd=app.root_path,
+            env=test_env,
             capture_output=True,
             text=True,
             encoding='utf-8',
