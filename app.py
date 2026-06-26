@@ -4071,6 +4071,10 @@ def handle_forbidden(error):
     if wants_json_response():
         return jsonify(success=False, message='Erişim reddedildi.'), 403
 
+    if request.method in {'POST', 'PUT', 'PATCH', 'DELETE'}:
+        flash('İşlem güvenlik doğrulaması nedeniyle tamamlanamadı. Lütfen sayfayı yenileyip tekrar deneyin.', 'error')
+        return redirect(request.referrer or url_for('dashboard'), code=303)
+
     return render_template(
         'error.html',
         status_code=403,
@@ -4085,6 +4089,10 @@ def handle_server_error(error):
 
     if wants_json_response():
         return jsonify(success=False, message='Beklenmeyen bir hata oluştu.'), 500
+
+    if request.method in {'POST', 'PUT', 'PATCH', 'DELETE'}:
+        flash('İşlem tamamlanamadı. Lütfen tekrar deneyin.', 'error')
+        return redirect(request.referrer or url_for('dashboard'), code=303)
 
     return render_template(
         'error.html',
