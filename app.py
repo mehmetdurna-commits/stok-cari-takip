@@ -2948,13 +2948,31 @@ def run_platform_workflow_test():
         },
         'checks': checks,
     }
-    set_platform_setting('workflow_test_last_result', json.dumps(result, ensure_ascii=False), 'Son derin is akisi test raporu')
-    platform_audit(
-        'PLATFORM_WORKFLOW_TEST_RUN',
-        f"Derin is akisi testi: {result['status_label']} ({passed_count}/{len(checks)} gecti, {warning_count} uyari, {failed_count} hata).",
-        'Platform'
-    )
-    db.session.commit()
+    try:
+        set_platform_setting('workflow_test_last_result', json.dumps(result, ensure_ascii=False), 'Son derin is akisi test raporu')
+        platform_audit(
+            'PLATFORM_WORKFLOW_TEST_RUN',
+            f"Derin is akisi testi: {result['status_label']} ({passed_count}/{len(checks)} gecti, {warning_count} uyari, {failed_count} hata).",
+            'Platform'
+        )
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.exception('Derin is akisi sonucu kaydedilemedi')
+        result['status'] = 'failed'
+        result['status_label'] = 'Derin is akisi kaydi tamamlanamadi'
+        result['summary']['failed'] = max(result['summary']['failed'], 1)
+        result['checks'].append(self_test_result_item(
+            'failed',
+            'critical',
+            'Derin Is Akisi',
+            'Sonuc kaydi',
+            'Workflow test sonucu platform ayarlarina ve audit loga kaydedilebilmeli.',
+            f'Hata: {exc}',
+            'SystemSettings veya AuditLog yazimi sirasinda hata olusuyor olabilir.',
+            'workflow_test_last_result kaydi ile audit log yazimini inceleyin.',
+            'workflow_test_last_result/AuditLog'
+        ))
     return result
 
 
@@ -8736,7 +8754,13 @@ def super_admin_run_self_test():
 @platform_admin_required
 @platform_permission_required('settings_manage')
 def super_admin_run_workflow_test():
-    result = run_platform_workflow_test()
+    try:
+        result = run_platform_workflow_test()
+    except Exception as error:
+        db.session.rollback()
+        current_app.logger.exception('Derin is akisi testi route seviyesinde hata verdi')
+        flash(f'Derin akış testi çalıştırılamadı: {safe_exception_message(error)}', 'error')
+        return redirect(url_for('super_admin_dashboard') + '#platform-system')
     if result['status'] == 'passed':
         flash(result['status_label'], 'success')
     elif result['status'] == 'warning':
