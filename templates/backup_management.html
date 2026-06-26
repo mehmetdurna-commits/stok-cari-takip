@@ -61,7 +61,7 @@
 async function createBackup() {
     const response = await fetch('{{ url_for("create_backup") }}', { method: 'POST' });
     const result = await response.json();
-    showMessage(result.message || (result.success  'Yedek oluşturuldu.' : 'Yedekleme başarısız.'), result.success  'success' : 'error');
+    showMessage(result.message || (result.success ? 'Yedek oluşturuldu.' : 'Yedekleme başarısız.'), result.success ? 'success' : 'error');
     if (result.success) window.location.reload();
 }
 </script>
