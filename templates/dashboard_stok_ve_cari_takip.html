@@ -507,7 +507,15 @@
                         </td>
                         <td class="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">{{ hareket.aciklama }}</td>
                         <td class="px-5 py-4 text-sm text-slate-500 dark:text-slate-400">{{ hareket.tarih|datetime_tr('%d.%m.%Y %H:%M') if hareket.tarih else '-' }}</td>
-                        <td class="px-5 py-4 text-right text-sm font-black text-slate-900 dark:text-white">₺{{ (hareket.tutar or 0)|tr_number }}</td>
+                        <td class="px-5 py-4 text-right text-sm font-black text-slate-900 dark:text-white">
+                            {% if hareket.tutar is defined and hareket.tutar is not none %}
+                            ₺{{ hareket.tutar|tr_number }}
+                            {% elif 'Yeni Ürün:' in hareket.baslik %}
+                            —
+                            {% else %}
+                            {{ hareket.aciklama.split(' - ')|last }}
+                            {% endif %}
+                        </td>
                     </tr>
                     {% else %}
                     <tr>
