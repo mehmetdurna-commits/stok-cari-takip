@@ -7414,6 +7414,9 @@ def teklif_ekle():
     tenant_ids = tenant_user_ids()
     cariler = Cari.query.filter(Cari.user_id.in_(tenant_ids)).all()
     urunler = Urun.query.filter(Urun.user_id.in_(tenant_ids)).all()
+    selected_cari_id = request.args.get('cari_id', type=int)
+    if selected_cari_id and not any(cari.id == selected_cari_id for cari in cariler):
+        selected_cari_id = None
 
     from datetime import date
     bugun = date.today().strftime('%Y-%m-%d')
@@ -7423,7 +7426,8 @@ def teklif_ekle():
                            cariler=cariler,
                            urunler=urunler,
                            yeni_teklif_no=yeni_no,
-                           bugun=bugun)
+                           bugun=bugun,
+                           selected_cari_id=selected_cari_id)
 
 
 @app.route('/teklif/<int:id>')

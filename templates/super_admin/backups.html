@@ -12,6 +12,7 @@
 {% block header_actions %}
 <div class="flex items-center gap-2">
     <form method="post" action="{{ url_for('super_admin_run_auto_backups') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900">
             <span class="material-symbols-outlined text-lg">schedule</span>
             Auto Yedek Calistir

@@ -47,6 +47,7 @@
     </div>
 
     <form id="teklifForm" method="POST" action="{{ url_for('teklif_duzenle', id=teklif.id) if is_edit else url_for('teklif_ekle') }}" class="space-y-6">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
             <div class="border-b border-slate-200 dark:border-slate-800 p-5">
                 <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -60,7 +61,7 @@
                     <select name="cari_id" required class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary">
                         <option value="">Müşteri seçin</option>
                         {% for cari in cariler %}
-                        <option value="{{ cari.id }}" {% if is_edit and teklif.cari_id == cari.id %}selected{% endif %}>{{ cari.unvan }}</option>
+                        <option value="{{ cari.id }}" {% if (is_edit and teklif.cari_id == cari.id) or ((not is_edit) and selected_cari_id == cari.id) %}selected{% endif %}>{{ cari.unvan }}</option>
                         {% endfor %}
                     </select>
                 </div>

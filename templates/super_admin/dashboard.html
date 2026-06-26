@@ -1551,12 +1551,14 @@ function switchSystemManagementTab(tabId, pushHash = true) {
                         </div>
                         <div class="flex flex-wrap gap-2">
                             <form method="post" action="{{ url_for('super_admin_run_self_test') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">
                                     <span class="material-symbols-outlined text-lg">play_arrow</span>
                                     Hizli Teshis
                                 </button>
                             </form>
                             <form method="post" action="{{ url_for('super_admin_run_workflow_test') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800">
                                     <span class="material-symbols-outlined text-lg">account_tree</span>
                                     Derin Akis

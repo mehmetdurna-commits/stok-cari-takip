@@ -319,11 +319,11 @@
                 </div>
                 <div class="p-6">
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <a href="{{ url_for('pos') }}cari_id={{ cari.id }}" class="flex flex-col items-center gap-2 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                        <a href="{{ url_for('pos', cari_id=cari.id) }}" class="flex flex-col items-center gap-2 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                             <span class="material-symbols-outlined text-primary-600 text-2xl">shopping_cart</span>
                             <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Yeni Satış</span>
                         </a>
-                        <a href="{{ url_for('teklif_yonetimi') }}cari_id={{ cari.id }}" class="flex flex-col items-center gap-2 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                        <a href="{{ url_for('teklif_ekle', cari_id=cari.id) }}" class="flex flex-col items-center gap-2 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                             <span class="material-symbols-outlined text-blue-600 text-2xl">description</span>
                             <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Teklif Oluştur</span>
                         </a>
@@ -580,6 +580,7 @@
 {% if is_supplier %}
 <div id="paymentModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
     <form action="{{ url_for('cari_odeme', cari_id=cari.id) }}" method="POST" class="bg-white dark:bg-slate-900 rounded-xl p-6 max-w-md w-full mx-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">Tedarikçiye Ödeme Yap</h3>
         <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Bu ödeme açık bakiyeyi azaltır.</p>
         <div class="space-y-4">
@@ -621,6 +622,7 @@
 {% if not is_supplier %}
 <div id="collectionModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
     <form action="{{ url_for('cari_tahsilat', cari_id=cari.id) }}" method="POST" class="bg-white dark:bg-slate-900 rounded-xl p-6 max-w-md w-full mx-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">Müşteriden Tahsilat Al</h3>
         <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Bu tahsilat açık bakiyeyi azaltır.</p>
         <div class="space-y-4">
