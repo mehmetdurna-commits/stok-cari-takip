@@ -7869,18 +7869,39 @@ def iade():
             urun_adlari = request.form.getlist('urun_adlari[]')
             iade_miktarlari = request.form.getlist('iade_miktarlari[]')
             iade_turu = request.form.get('iade_turu', 'urun_iadesi')
+            refund_mode = (request.form.get('refund_mode') or 'payment').strip().lower()
             odeme_turu = normalize_payment_method(request.form.get('odeme_turu', 'Nakit'))
             account_id_raw = (request.form.get('account_id') or '').strip()
             account_id = int(account_id_raw) if account_id_raw.isdigit() else None
             iade_sebebi = request.form.get('iade_sebebi', '')
-            alacak_olustur = request.form.get('alacak_olustur') == 'on'
+            manuel_iade_tutari = normalize_amount(request.form.get('manuel_iade_tutari') or 0)
+            alacak_olustur = refund_mode == 'credit'
+            stok_etkili_turler = {'urun_iadesi', 'degisim'}
+            nakit_iade_destekli_turler = {'urun_iadesi', 'para_iadesi', 'hizmet_iadesi'}
+            stok_etkili = iade_turu in stok_etkili_turler
 
             if iade_turu not in ALLOWED_IADE_TURLERI:
                 flash('Geçersiz iade türü!', 'error')
                 return redirect(url_for('iade'))
 
-            if not urun_idler or not any(urun_idler):
-                flash('En az bir Ürün seçmelisiniz!', 'error')
+            if refund_mode not in {'payment', 'credit', 'exchange'}:
+                flash('Geçersiz iade sonucu seçimi!', 'error')
+                return redirect(url_for('iade'))
+
+            if stok_etkili and (not urun_idler or not any(urun_idler)):
+                flash('Bu iade türü için en az bir ürün seçmelisiniz!', 'error')
+                return redirect(url_for('iade'))
+
+            if not stok_etkili and manuel_iade_tutari <= 0:
+                flash('Bu iade türü için geçerli bir iade tutarı giriniz!', 'error')
+                return redirect(url_for('iade'))
+
+            if refund_mode == 'exchange' and not stok_etkili:
+                flash('Sadece stok / değişim seçeneği bu iade türünde kullanılamaz.', 'error')
+                return redirect(url_for('iade'))
+
+            if refund_mode == 'payment' and iade_turu not in nakit_iade_destekli_turler:
+                flash('Seçilen iade türü için doğrudan para iadesi kullanılamaz.', 'error')
                 return redirect(url_for('iade'))
 
             if account_id:
@@ -7896,39 +7917,42 @@ def iade():
 
             iade_kalemleri = []
             toplam_iade_tutari = 0
-            for i in range(len(urun_idler)):
-                try:
-                    urun_id = int(urun_idler[i])
-                    urun_adi = urun_adlari[i] if i < len(urun_adlari) else ''
-                    iade_miktari = normalize_amount(iade_miktarlari[i]) if i < len(iade_miktarlari) else 0
+            if stok_etkili:
+                for i in range(len(urun_idler)):
+                    try:
+                        urun_id = int(urun_idler[i])
+                        urun_adi = urun_adlari[i] if i < len(urun_adlari) else ''
+                        iade_miktari = normalize_amount(iade_miktarlari[i]) if i < len(iade_miktarlari) else 0
 
-                    urun = db.session.get(Urun, urun_id)
-                    if not urun or not belongs_to_current_tenant(urun):
+                        urun = db.session.get(Urun, urun_id)
+                        if not urun or not belongs_to_current_tenant(urun):
+                            continue
+
+                        if iade_miktari <= 0:
+                            flash(f'{urun.urun_adi} için geçerli bir iade miktarı giriniz!', 'error')
+                            return redirect(url_for('iade'))
+
+                        eski_stok = urun.stok_miktari or 0
+                        urun.stok_miktari = eski_stok + iade_miktari
+
+                        iade_kalemleri.append({
+                            'urun_id': urun.id,
+                            'urun_adi': urun_adi or urun.urun_adi,
+                            'miktar': iade_miktari,
+                            'birim_fiyat': urun.satis_fiyati or 0,
+                            'eski_stok': eski_stok,
+                            'yeni_stok': urun.stok_miktari
+                        })
+                        toplam_iade_tutari += iade_miktari * (urun.satis_fiyati or 0)
+
+                    except (ValueError, TypeError):
                         continue
 
-                    if iade_miktari <= 0:
-                        flash(f'{urun.urun_adi} için geçerli bir iade miktar? giriniz!', 'error')
-                        return redirect(url_for('iade'))
-
-                    eski_stok = urun.stok_miktari or 0
-                    urun.stok_miktari = eski_stok + iade_miktari
-
-                    iade_kalemleri.append({
-                        'urun_id': urun.id,
-                        'urun_adi': urun_adi or urun.urun_adi,
-                        'miktar': iade_miktari,
-                        'birim_fiyat': urun.satis_fiyati or 0,
-                        'eski_stok': eski_stok,
-                        'yeni_stok': urun.stok_miktari
-                    })
-                    toplam_iade_tutari += iade_miktari * (urun.satis_fiyati or 0)
-
-                except (ValueError, TypeError):
-                    continue
-
-            if not iade_kalemleri:
-                flash('Geçerli iade kalemi bulunamadı!', 'error')
-                return redirect(url_for('iade'))
+                if not iade_kalemleri:
+                    flash('Geçerli iade kalemi bulunamadı!', 'error')
+                    return redirect(url_for('iade'))
+            else:
+                toplam_iade_tutari = manuel_iade_tutari
 
             iade_kaydi = Iade(
                 cari_id=cari.id,
@@ -7969,8 +7993,8 @@ def iade():
                         cari_id=cari.id if cari else None
                     )
 
-            # Cari bakiye sadece alacak oluşturma se?ildiçinde etkilenir.
-            # Do?rudan para iadesi kasa/banka çıkışıyla kapandüş? için cari bakiyeyi ayr?ca de?i?tirmez.
+            # Cari bakiye sadece alacak oluşturma seçildiğinde etkilenir.
+            # Doğrudan para iadesi kasa/banka çıkışıyla kapandığı için cari bakiyeyi ayrıca değiştirmez.
             if alacak_olustur:
                 adjust_cari_account(cari, toplam_iade_tutari, 'tahsilat')
                 db.session.add(CariHareket(
@@ -7984,7 +8008,7 @@ def iade():
                     referans_tip='iade'
                 ))
 
-            if iade_turu == 'para_iadesi' and not alacak_olustur:
+            if refund_mode == 'payment':
                 create_cash_transaction(
                     cari,
                     toplam_iade_tutari,
@@ -7996,14 +8020,17 @@ def iade():
                     account_id=account_id
                 )
             db.session.commit()
-            flash(f'{len(iade_kalemleri)} Ürün için iade işlemi başarıyla tamamlandı!', 'success')
+            if stok_etkili:
+                flash(f'{len(iade_kalemleri)} Ürün için iade işlemi başarıyla tamamlandı!', 'success')
+            else:
+                flash('İade işlemi başarıyla tamamlandı!', 'success')
 
         except Exception as e:
             db.session.rollback()
-            flash(f'İade işlemi s?ras?nda hata oluştu: {str(e)}', 'error')
+            flash(f'İade işlemi sırasında hata oluştu: {str(e)}', 'error')
             return redirect(url_for('iade'))
 
-    # ?statistikler
+    # İstatistikler
     tenant_ids = tenant_user_ids()
     toplam_iade = Iade.query.filter(Iade.user_id.in_(tenant_ids)).count()
     bekleyen_iade = Iade.query.filter(Iade.user_id.in_(tenant_ids), Iade.durum == 'beklemede').count()

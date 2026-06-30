@@ -67,16 +67,33 @@
     </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start">
+
         <form id="iadeForm" method="POST" action="{{ url_for('iade') }}" class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
                 <div>
                     <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Yeni İade Kaydı</h3>
-                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Müşteri, iade ürünleri ve ödeme etkisini seçin.</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Müşteri, iade tipi ve finans sonucunu tek diyalogda yönetin.</p>
                 </div>
                 <span id="returnTotalBadge" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200">₺0,00</span>
             </div>
 
             <div class="p-5 space-y-6">
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/50">
+                        <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">1. Müşteri</p>
+                        <p class="mt-2 text-sm font-semibold text-slate-900 dark:text-white">İade hangi cari hesabına ait, önce onu seç.</p>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/50">
+                        <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">2. Sonu&#231;</p>
+                        <p class="mt-2 text-sm font-semibold text-slate-900 dark:text-white">Para iadesi, cari alacak veya sadece değişim akışını seç.</p>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/50">
+                        <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">3. Etki</p>
+                        <p class="mt-2 text-sm font-semibold text-slate-900 dark:text-white">Stok, cari ve kasa etkisini kaydetmeden önce gör.</p>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
                     <div>
                         <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Müşteri *</label>
@@ -87,39 +104,80 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">İade Türü</label>
-                            <select name="iade_turu" id="iadeTuru" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                                <option value="urun_iadesi">Ürün İadesi</option>
-                                <option value="para_iadesi">Para İadesi</option>
-                                <option value="hizmet_iadesi">Hizmet İadesi</option>
-                                <option value="degisim">Değişim</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Ödeme Türü</label>
-                            <select name="odeme_turu" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                                <option value="Nakit">Nakit</option>
-                                <option value="Havale/EFT">Havale/EFT</option>
-                                <option value="Kredi Kartı">Kredi Kartı</option>
-                                <option value="Çek">Çek</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Hesap</label>
-                            <select name="account_id" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                                <option value="">Otomatik</option>
-                                {% for a in (accounts or []) %}
-                                <option value="{{ a.id }}">{{ a.name }}{% if a.type %} ({% if a.type == 'cash' %}Kasa{% elif a.type == 'bank' %}Banka{% else %}POS{% endif %}){% endif %}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">İade Türü</label>
+                        <select name="iade_turu" id="iadeTuru" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                            <option value="urun_iadesi">Ürün İadesi</option>
+                            <option value="para_iadesi">Para İadesi</option>
+                            <option value="hizmet_iadesi">Hizmet İadesi</option>
+                            <option value="degisim">Değişim</option>
+                        </select>
                     </div>
                 </div>
 
                 <div id="cariPreview" class="hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-4"></div>
 
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-900 dark:text-white">İade Sonucu</h4>
+                            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Bu iadenin müşteri ve finans tarafında nasıl kapanacağını seçin.</p>
+                        </div>
+                        <div id="returnImpactPill" class="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 dark:bg-slate-900 dark:text-slate-300">Akış hazır</div>
+                    </div>
+                    <div class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="refund_mode" value="payment" class="peer sr-only" checked>
+                            <span class="flex h-full min-h-24 flex-col rounded-2xl border border-slate-200 bg-white p-4 text-left transition peer-checked:border-rose-500 peer-checked:bg-rose-50 dark:border-slate-700 dark:bg-slate-900 dark:peer-checked:bg-rose-950/20">
+                                <span class="text-sm font-bold text-slate-900 dark:text-white">Para iade et</span>
+                                <span class="mt-1 text-xs text-slate-500 dark:text-slate-400">Kasa / banka / POS çıkışı oluşur.</span>
+                            </span>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="refund_mode" value="credit" class="peer sr-only">
+                            <span class="flex h-full min-h-24 flex-col rounded-2xl border border-slate-200 bg-white p-4 text-left transition peer-checked:border-primary-500 peer-checked:bg-primary-50 dark:border-slate-700 dark:bg-slate-900 dark:peer-checked:bg-primary-950/20">
+                                <span class="text-sm font-bold text-slate-900 dark:text-white">Cari alacağa yaz</span>
+                                <span class="mt-1 text-xs text-slate-500 dark:text-slate-400">Nakit çıkmaz, müşteri hesabına alacak yazılır.</span>
+                            </span>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="refund_mode" value="exchange" class="peer sr-only">
+                            <span class="flex h-full min-h-24 flex-col rounded-2xl border border-slate-200 bg-white p-4 text-left transition peer-checked:border-emerald-500 peer-checked:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:peer-checked:bg-emerald-950/20">
+                                <span class="text-sm font-bold text-slate-900 dark:text-white">Sadece değişim</span>
+                                <span class="mt-1 text-xs text-slate-500 dark:text-slate-400">Stok geri girer, finansal hareket oluşmaz.</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                    <div id="manualAmountSection" class="hidden">
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">İade Tutarı *</label>
+                        <input type="number" min="0" step="0.01" name="manuel_iade_tutari" id="manuelIadeTutari" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="0,00">
+                    </div>
+                    <div id="paymentTypeSection">
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Ödeme Türü</label>
+                        <select name="odeme_turu" id="odemeTuruSelect" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                            <option value="Nakit">Nakit</option>
+                            <option value="Havale/EFT">Havale/EFT</option>
+                            <option value="Kredi Kartı">Kredi Kartı</option>
+                            <option value="Çek">Çek</option>
+                        </select>
+                    </div>
+                    <div id="accountSection">
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Hesap</label>
+                        <select name="account_id" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                            <option value="">Otomatik</option>
+                            {% for a in (accounts or []) %}
+                            <option value="{{ a.id }}">{{ a.name }}{% if a.type %} ({% if a.type == 'cash' %}Kasa{% elif a.type == 'bank' %}Banka{% else %}POS{% endif %}){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div id="returnImpactSummary" class="rounded-2xl border border-dashed border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900 lg:col-span-3">
+                        <p class="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Sistem Etkisi</p>
+                        <p id="returnImpactText" class="mt-2 text-sm font-semibold text-slate-900 dark:text-white">Seçime göre stok artar, para iadesi varsa kasa hareketi oluşur.</p>
+                    </div>
+                </div>
                 <div class="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                     <div class="px-4 py-3 bg-slate-50 dark:bg-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
@@ -308,7 +366,7 @@
     }
 
     function escapeHtml(value) {
-        return String(value " '').replace(/[&<>"']/g, char => ({
+        return String(value || '').replace(/[&<>"']/g, char => ({
             '&': '&amp;',
             '<': '&lt;',
             '>': '&gt;',
@@ -321,11 +379,24 @@
         return String(value || '-').replace(/_/g, ' ').replace(/\b\w/g, char => char.toLocaleUpperCase('tr-TR'));
     }
 
+    function currentReturnType() {
+        const select = document.getElementById('iadeTuru');
+        return select ? String(select.value || 'urun_iadesi') : 'urun_iadesi';
+    }
+
+    function currentRefundMode() {
+        return document.querySelector('input[name="refund_mode"]:checked')?.value || 'payment';
+    }
+
+    function isStockAffectingReturn() {
+        return ['urun_iadesi', 'degisim'].includes(currentReturnType());
+    }
+
     function updateCustomerPreview(option) {
         const preview = document.getElementById('cariPreview');
         if (!preview) return;
 
-        if (!option.value) {
+        if (!option || !option.value) {
             preview.classList.add('hidden');
             preview.innerHTML = '';
             return;
@@ -344,16 +415,70 @@
         preview.classList.remove('hidden');
     }
 
+    function updateReturnModeUI() {
+        const stockReturn = isStockAffectingReturn();
+        const refundMode = currentRefundMode();
+        const exchangeRadio = document.querySelector('input[name="refund_mode"][value="exchange"]');
+        const manualAmountSection = document.getElementById('manualAmountSection');
+        const paymentTypeSection = document.getElementById('paymentTypeSection');
+        const accountSection = document.getElementById('accountSection');
+        const productReturnSection = document.getElementById('productReturnSection');
+        const impactText = document.getElementById('returnImpactText');
+        const impactPill = document.getElementById('returnImpactPill');
+
+        if (exchangeRadio) {
+            exchangeRadio.disabled = !stockReturn;
+            exchangeRadio.closest('label')?.classList.toggle('opacity-50', !stockReturn);
+            exchangeRadio.closest('label')?.classList.toggle('pointer-events-none', !stockReturn);
+            if (!stockReturn && exchangeRadio.checked) {
+                const paymentRadio = document.querySelector('input[name="refund_mode"][value="payment"]');
+                if (paymentRadio) paymentRadio.checked = true;
+            }
+        }
+
+        const resolvedRefundMode = currentRefundMode();
+        if (manualAmountSection) manualAmountSection.classList.toggle('hidden', stockReturn);
+        if (productReturnSection) productReturnSection.classList.toggle('hidden', !stockReturn);
+        if (paymentTypeSection) paymentTypeSection.classList.toggle('hidden', resolvedRefundMode !== 'payment');
+        if (accountSection) accountSection.classList.toggle('hidden', resolvedRefundMode !== 'payment');
+
+        if (impactText) {
+            if (stockReturn && resolvedRefundMode === 'payment') {
+                impactText.textContent = 'Stok geri eklenir ve seçilen hesaptan para çıkışı oluşur.';
+            } else if (stockReturn && resolvedRefundMode === 'credit') {
+                impactText.textContent = 'Stok geri eklenir, nakit çıkmaz; tutar müşteri alacağına yazılır.';
+            } else if (stockReturn) {
+                impactText.textContent = 'Stok geri eklenir, finansal hareket oluşmaz; değişim akışı gibi çalışır.';
+            } else if (resolvedRefundMode === 'credit') {
+                impactText.textContent = 'Stok etkilenmez; girilen tutar müşteri alacağına yazılır.';
+            } else {
+                impactText.textContent = 'Stok etkilenmez; girilen tutar için kasa / banka / POS çıkışı oluşur.';
+            }
+        }
+
+        if (impactPill) {
+            impactPill.textContent = stockReturn
+                ? (resolvedRefundMode === 'exchange' ? 'Stok odaklı iade' : 'Stok + finans etkisi')
+                : 'Tutar odaklı iade';
+        }
+
+        updateReturnTotal();
+    }
+
     function updateReturnTotal() {
         let total = 0;
-        document.querySelectorAll('#urunListesi tr[data-product-row]').forEach(row => {
-            const quantity = Number(row.querySelector('input[name="iade_miktarlari[]"]').value || 0);
-            const price = Number(row.dataset.price || 0);
-            const lineTotal = quantity * price;
-            total += lineTotal;
-            const lineTotalEl = row.querySelector('[data-line-total]');
-            if (lineTotalEl) lineTotalEl.textContent = money(lineTotal);
-        });
+        if (isStockAffectingReturn()) {
+            document.querySelectorAll('#urunListesi tr[data-product-row]').forEach(row => {
+                const quantity = Number(row.querySelector('input[name="iade_miktarlari[]"]')?.value || 0);
+                const price = Number(row.dataset.price || 0);
+                const lineTotal = quantity * price;
+                total += lineTotal;
+                const lineTotalEl = row.querySelector('[data-line-total]');
+                if (lineTotalEl) lineTotalEl.textContent = money(lineTotal);
+            });
+        } else {
+            total = Number(document.getElementById('manuelIadeTutari')?.value || 0);
+        }
 
         const totalBadge = document.getElementById('returnTotalBadge');
         if (totalBadge) totalBadge.textContent = money(total);
@@ -365,6 +490,7 @@
     }
 
     window.urunEkle = function () {
+        if (!isStockAffectingReturn()) return;
         const modal = document.getElementById('urunEkleModal');
         if (!modal) return;
         modal.classList.remove('hidden');
@@ -458,7 +584,9 @@
         document.getElementById('iadeForm').reset();
         document.querySelectorAll('#urunListesi tr[data-product-row]').forEach(row => row.remove());
         document.getElementById('cariPreview').classList.add('hidden');
-        updateReturnTotal();
+        const paymentRadio = document.querySelector('input[name="refund_mode"][value="payment"]');
+        if (paymentRadio) paymentRadio.checked = true;
+        updateReturnModeUI();
     };
 
     window.showHistoryModal = function () {
@@ -546,12 +674,31 @@
         const cariSelect = document.getElementById('cariSelect');
         const urunArama = document.getElementById('urunArama');
         const form = document.getElementById('iadeForm');
+        const returnTypeSelect = document.getElementById('iadeTuru');
+        const manualAmountInput = document.getElementById('manuelIadeTutari');
+        const refundModeInputs = document.querySelectorAll('input[name="refund_mode"]');
 
         if (cariSelect && cariSelect.dataset.ready !== 'true') {
             cariSelect.dataset.ready = 'true';
             cariSelect.addEventListener('change', function () {
                 updateCustomerPreview(this.options[this.selectedIndex]);
             });
+        }
+
+        if (returnTypeSelect && returnTypeSelect.dataset.ready !== 'true') {
+            returnTypeSelect.dataset.ready = 'true';
+            returnTypeSelect.addEventListener('change', updateReturnModeUI);
+        }
+
+        refundModeInputs.forEach((input) => {
+            if (input.dataset.ready === 'true') return;
+            input.dataset.ready = 'true';
+            input.addEventListener('change', updateReturnModeUI);
+        });
+
+        if (manualAmountInput && manualAmountInput.dataset.ready !== 'true') {
+            manualAmountInput.dataset.ready = 'true';
+            manualAmountInput.addEventListener('input', updateReturnTotal);
         }
 
         if (urunArama && urunArama.dataset.ready !== 'true') {
@@ -562,18 +709,29 @@
         if (form && form.dataset.ready !== 'true') {
             form.dataset.ready = 'true';
             form.addEventListener('submit', function (event) {
-                const quantities = document.querySelectorAll('input[name="iade_miktarlari[]"]');
-                if (!quantities.length) {
-                    event.preventDefault();
-                    alert('En az bir ürün seçmelisiniz.');
-                    return;
+                const stockReturn = isStockAffectingReturn();
+                if (stockReturn) {
+                    const quantities = document.querySelectorAll('input[name="iade_miktarlari[]"]');
+                    if (!quantities.length) {
+                        event.preventDefault();
+                        alert('En az bir ürün seçmelisiniz.');
+                        return;
+                    }
+                    const invalid = Array.from(quantities).some(input => Number(input.value || 0) <= 0);
+                    if (invalid) {
+                        event.preventDefault();
+                        alert('İade miktarı sıfırdan büyük olmalıdır.');
+                        return;
+                    }
+                } else {
+                    const manualAmount = Number(document.getElementById('manuelIadeTutari')?.value || 0);
+                    if (manualAmount <= 0) {
+                        event.preventDefault();
+                        alert('Geçerli bir iade tutarı giriniz.');
+                        return;
+                    }
                 }
-                const invalid = Array.from(quantities).some(input => Number(input.value || 0) <= 0);
-                if (invalid) {
-                    event.preventDefault();
-                    alert('İade miktarı sıfırdan büyük olmalıdır.');
-                    return;
-                }
+
                 const submitButton = document.getElementById('submitReturnButton');
                 if (submitButton) {
                     submitButton.disabled = true;
@@ -582,7 +740,9 @@
                 }
             });
         }
-        updateReturnTotal();
+
+        updateCustomerPreview(cariSelect?.options?.[cariSelect.selectedIndex] || null);
+        updateReturnModeUI();
     }
 
     initIadePage();
