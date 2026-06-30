@@ -127,14 +127,14 @@
                     </div>
                     <div class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
                         <label class="cursor-pointer">
-                            <input type="radio" name="refund_mode" value="payment" class="peer sr-only" checked>
+                            <input type="radio" name="refund_mode" value="payment" class="peer sr-only">
                             <span class="flex h-full min-h-24 flex-col rounded-2xl border border-slate-200 bg-white p-4 text-left transition peer-checked:border-rose-500 peer-checked:bg-rose-50 dark:border-slate-700 dark:bg-slate-900 dark:peer-checked:bg-rose-950/20">
                                 <span class="text-sm font-bold text-slate-900 dark:text-white">Müşteriye para ver</span>
                                 <span class="mt-1 text-xs text-slate-500 dark:text-slate-400">Kasadan, bankadan veya POS hesabından çıkış yapılır.</span>
                             </span>
                         </label>
                         <label class="cursor-pointer">
-                            <input type="radio" name="refund_mode" value="credit" class="peer sr-only">
+                            <input type="radio" name="refund_mode" value="credit" class="peer sr-only" checked>
                             <span class="flex h-full min-h-24 flex-col rounded-2xl border border-slate-200 bg-white p-4 text-left transition peer-checked:border-primary-500 peer-checked:bg-primary-50 dark:border-slate-700 dark:bg-slate-900 dark:peer-checked:bg-primary-950/20">
                                 <span class="text-sm font-bold text-slate-900 dark:text-white">Müşteri bakiyesine yaz</span>
                                 <span class="mt-1 text-xs text-slate-500 dark:text-slate-400">Para çıkmaz, tutar müşterinin hesabına işlenir.</span>
@@ -378,7 +378,7 @@
     }
 
     function currentRefundMode() {
-        return document.querySelector('input[name="refund_mode"]:checked')?.value || 'payment';
+        return document.querySelector('input[name="refund_mode"]:checked')?.value || 'credit';
     }
 
     function isStockAffectingReturn() {
@@ -577,8 +577,8 @@
         document.getElementById('iadeForm').reset();
         document.querySelectorAll('#urunListesi tr[data-product-row]').forEach(row => row.remove());
         document.getElementById('cariPreview').classList.add('hidden');
-        const paymentRadio = document.querySelector('input[name="refund_mode"][value="payment"]');
-        if (paymentRadio) paymentRadio.checked = true;
+        const creditRadio = document.querySelector('input[name="refund_mode"][value="credit"]');
+        if (creditRadio) creditRadio.checked = true;
         updateReturnModeUI();
     };
 

@@ -6480,7 +6480,7 @@ def cari_ekstre_csv(id):
         try:
             from_dt = datetime.strptime(date_from_raw, '%Y-%m-%d')
         except ValueError:
-            flash('Ba?lang?? tarihi geçersiz.', 'error')
+            flash('Başlangıç tarihi geçersiz.', 'error')
             return redirect(url_for('cari_ekstre_csv', id=cari.id))
     if date_to_raw:
         try:
@@ -6979,7 +6979,7 @@ def onmuhasebe_hesaplar():
             try:
                 opening_balance = float(opening_balance_raw.replace(',', '.')) if opening_balance_raw else 0.0
             except ValueError:
-                flash('A??l?? bakiyesi geçersiz.', 'error')
+                flash('Açılış bakiyesi geçersiz.', 'error')
                 return redirect(url_for('onmuhasebe_hesaplar'))
 
             account = Account(
@@ -7171,7 +7171,7 @@ def onmuhasebe_hesap_detay(account_id: int):
                 islem_tipi='cikis',
                 tutar=tutar,
                 odeme_turu='Transfer',
-                aciklama=f'{note} â†’ {target.name}',
+                aciklama=f'{note} → {target.name}',
                 referans_tip='transfer',
                 ip_adresi=request.remote_addr,
                 user_agent=(request.user_agent.string or '')[:500],
@@ -7183,7 +7183,7 @@ def onmuhasebe_hesap_detay(account_id: int):
                 islem_tipi='giris',
                 tutar=tutar,
                 odeme_turu='Transfer',
-                aciklama=f'{note} â† {account.name}',
+                aciklama=f'{note} ← {account.name}',
                 referans_tip='transfer',
                 ip_adresi=request.remote_addr,
                 user_agent=(request.user_agent.string or '')[:500],
@@ -7209,7 +7209,7 @@ def onmuhasebe_hesap_detay(account_id: int):
             date_from = datetime.strptime(date_from_raw, '%Y-%m-%d')
             tx_query = tx_query.filter(CashTransaction.tarih >= date_from)
         except ValueError:
-            flash('Ba?lang?? tarihi geçersiz.', 'error')
+            flash('Başlangıç tarihi geçersiz.', 'error')
             return redirect(url_for('onmuhasebe_hesap_detay', account_id=account.id))
     if date_to_raw:
         try:
@@ -7388,7 +7388,7 @@ def onmuhasebe_raporlar():
             date_from = datetime.strptime(date_from_raw, '%Y-%m-%d')
             tx_query = tx_query.filter(CashTransaction.tarih >= date_from)
         except ValueError:
-            flash('Ba?lang?? tarihi geçersiz.', 'error')
+            flash('Başlangıç tarihi geçersiz.', 'error')
             return redirect(url_for('onmuhasebe_raporlar'))
 
     if date_to_raw:
@@ -7409,11 +7409,11 @@ def onmuhasebe_raporlar():
     odeme_breakdown = {}
     ref_breakdown = {}
     for t in transactions:
-        key = (t.odeme_turu or 'â€”').strip()
+        key = (t.odeme_turu or '-').strip()
         odeme_breakdown.setdefault(key, {'giris': 0.0, 'cikis': 0.0})
         odeme_breakdown[key][t.islem_tipi] += float(t.tutar or 0)
 
-        rkey = (t.referans_tip or 'â€”').strip()
+        rkey = (t.referans_tip or '-').strip()
         ref_breakdown.setdefault(rkey, {'giris': 0.0, 'cikis': 0.0})
         ref_breakdown[rkey][t.islem_tipi] += float(t.tutar or 0)
 
@@ -7427,7 +7427,7 @@ def onmuhasebe_raporlar():
     for t in transactions:
         if t.islem_tipi != 'cikis':
             continue
-        desc = (t.aciklama or 'â€”').strip()
+        desc = (t.aciklama or '-').strip()
         expense_map[desc] = expense_map.get(desc, 0.0) + float(t.tutar or 0)
     top_expenses = sorted(expense_map.items(), key=lambda x: x[1], reverse=True)[:10]
 
@@ -7678,7 +7678,7 @@ def raporlar():
     toplam_satis_deger = sum(s.genel_toplam or 0 for s in aktif_satislar)
     toplam_stok_deger = sum((u.stok_miktari or 0) * (u.satis_fiyati or 0) for u in urunler)
 
-    # Naive datetime kullanarak kar??laçtırma hatas?n? ?nle
+    # Naive datetime kullanarak karşılaştırma hatasını önle
     simdi = datetime.now(timezone.utc)
     ay_basi = simdi.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
@@ -7869,16 +7869,22 @@ def iade():
             urun_adlari = request.form.getlist('urun_adlari[]')
             iade_miktarlari = request.form.getlist('iade_miktarlari[]')
             iade_turu = request.form.get('iade_turu', 'urun_iadesi')
-            refund_mode = (request.form.get('refund_mode') or 'payment').strip().lower()
+            raw_refund_mode = request.form.get('refund_mode')
             odeme_turu = normalize_payment_method(request.form.get('odeme_turu', 'Nakit'))
             account_id_raw = (request.form.get('account_id') or '').strip()
             account_id = int(account_id_raw) if account_id_raw.isdigit() else None
             iade_sebebi = request.form.get('iade_sebebi', '')
             manuel_iade_tutari = normalize_amount(request.form.get('manuel_iade_tutari') or 0)
-            alacak_olustur = refund_mode == 'credit'
             stok_etkili_turler = {'urun_iadesi', 'degisim'}
             nakit_iade_destekli_turler = {'urun_iadesi', 'para_iadesi', 'hizmet_iadesi'}
             stok_etkili = iade_turu in stok_etkili_turler
+            if raw_refund_mode:
+                refund_mode = raw_refund_mode.strip().lower()
+            elif request.form.get('alacak_olustur') == 'on':
+                refund_mode = 'credit'
+            else:
+                refund_mode = 'exchange' if stok_etkili else 'payment'
+            alacak_olustur = refund_mode == 'credit'
 
             if iade_turu not in ALLOWED_IADE_TURLERI:
                 flash('Geçersiz iade türü!', 'error')
@@ -7891,6 +7897,17 @@ def iade():
             if stok_etkili and (not urun_idler or not any(urun_idler)):
                 flash('Bu iade türü için en az bir ürün seçmelisiniz!', 'error')
                 return redirect(url_for('iade'))
+
+            if not stok_etkili and manuel_iade_tutari <= 0 and urun_idler:
+                for i in range(len(urun_idler)):
+                    try:
+                        urun_id = int(urun_idler[i])
+                        iade_miktari = normalize_amount(iade_miktarlari[i]) if i < len(iade_miktarlari) else 0
+                        urun = db.session.get(Urun, urun_id)
+                        if urun and belongs_to_current_tenant(urun) and iade_miktari > 0:
+                            manuel_iade_tutari += iade_miktari * (urun.satis_fiyati or 0)
+                    except (ValueError, TypeError):
+                        continue
 
             if not stok_etkili and manuel_iade_tutari <= 0:
                 flash('Bu iade türü için geçerli bir iade tutarı giriniz!', 'error')
@@ -10211,7 +10228,7 @@ def execute_pos_payment_adapter(pos_settings, sale_context):
                 'status': 'connection_error',
                 'provider': provider,
                 'provider_label': provider_label,
-                'message': f'{provider_label} POS servisine ula??lamad?: {safe_exception_message(exc)}'
+                'message': f'{provider_label} POS servisine ulaşılamadı: {safe_exception_message(exc)}'
             }
 
     return {
@@ -10448,7 +10465,7 @@ def test_pos_integration_settings():
                     ('device_ip', 'Cihaz IP / adres'),
                     ('device_port', 'Port'),
                     ('terminal_id', 'Terminal ID'),
-                    ('merchant_id', '??yeri No'),
+                    ('merchant_id', 'İşyeri No'),
                     ('device_serial', 'Cihaz seri no'),
                 ):
                     if not pos_settings.get(field):
@@ -10457,7 +10474,7 @@ def test_pos_integration_settings():
                 for field, label in (
                     ('service_url', 'Servis URL'),
                     ('terminal_id', 'Terminal ID'),
-                    ('merchant_id', '??yeri No'),
+                    ('merchant_id', 'İşyeri No'),
                     ('api_key', 'API anahtar?'),
                 ):
                     if not pos_settings.get(field):
@@ -10547,7 +10564,7 @@ def manage_categories():
         if urun_sayisi > 0:
             return jsonify({'success': False,
                             'message': f'Kategoride {urun_sayisi} Ürün var. '
-                                       'Önce Ürünleri silin veya ba?ka kategoriye ta??y?n.'})
+                                       'Önce Ürünleri silin veya başka kategoriye taşıyın.'})
 
         kategori = Category.query.filter_by(user_id=current_user.id, name=category_name).first()
         if not kategori:
@@ -10616,7 +10633,7 @@ def manage_warehouses():
 
         urun_sayisi = tenant_query(Urun).filter_by(depo_adi=depot_name).count()
         if urun_sayisi > 0:
-            return jsonify({'success': False, 'message': f'Depoda {urun_sayisi} Ürün var. Önce Ürünleri ta??y?n.'})
+            return jsonify({'success': False, 'message': f'Depoda {urun_sayisi} Ürün var. Önce Ürünleri taşıyın.'})
 
         depo = Warehouse.query.filter_by(user_id=current_user.id, name=depot_name).first()
         if not depo:
@@ -10673,7 +10690,7 @@ def transfer_products():
 
         if errors:
             db.session.rollback()
-            return jsonify({'success': False, 'message': f'Ta??ma iptal edildi. Hatalar: {"; ".join(errors[:5])}'})
+            return jsonify({'success': False, 'message': f'Taşıma iptal edildi. Hatalar: {"; ".join(errors[:5])}'})
         if not source_products:
             db.session.rollback()
             return jsonify({'success': False, 'message': 'Taşınacak geçerli Ürün bulunamadı'})
@@ -10692,7 +10709,7 @@ def transfer_products():
                                   old_target_stock, target_product.stok_miktari, description)
 
         db.session.commit()
-        return jsonify({'success': True, 'message': f'{len(source_products)} Ürün başarıyla ta??nd?'})
+        return jsonify({'success': True, 'message': f'{len(source_products)} Ürün başarıyla taşındı'})
 
     except Exception as e:
         db.session.rollback()
@@ -11129,7 +11146,7 @@ def kategori_kaydet():
         if not yeni_ad:
             return jsonify({'success': False, 'message': 'Kategori ad? boş olamaz'})
 
-        # E?er d?zenleme ise (eski_ad varsa), eski kategorideki Ürünleri yeni kategoriye ta??
+        # Eğer düzenleme ise (eski_ad varsa), eski kategorideki Ürünleri yeni kategoriye taşı
         if eski_ad and eski_ad != yeni_ad:
             urunler = tenant_query(Urun).filter_by(kategori=eski_ad).all()
             for urun in urunler:
@@ -11203,7 +11220,7 @@ def iade_gecmisi():
 @login_required
 def iade_istatistikleri():
     try:
-        # İade türü da??l?m?
+        # İade türü dağılımı
         iade_turleri = {}
         iadeler = tenant_query(Iade).all()
         for iade in iadeler:
@@ -12000,7 +12017,7 @@ def stok_giris():
                            selected_stock_status=selected_stock_status,
                            import_preview=import_preview)
 
-# Stok Çıkış ??lemi
+# Stok Çıkış İşlemi
 
 
 @app.route('/stok/cikis', methods=['GET', 'POST'])
@@ -12194,7 +12211,7 @@ def gunluk_satislar():
                             cari_id=satis.cari_id
                         )
 
-                # Sadece cari hesabı ger?ekten bor?land?r?lm?? satışlar? ters kayda al.
+                # Sadece cari hesabı gerçekten borçlandırılmış satışları ters kayda al.
                 cari = None
                 original_cari_sale_movement = None
                 if satis.cari_id:

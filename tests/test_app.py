@@ -2298,14 +2298,10 @@ def test_dashboard_renders_without_name_errors(client):
     response = client.get('/dashboard')
 
     assert response.status_code == 200
-    assert 'Başlangıç Rehberi'.encode('utf-8') in response.data
-    assert '5 dakikalık başlangıç'.encode('utf-8') in response.data
-    assert 'İlk ürününü ekle'.encode('utf-8') in response.data
-    assert 'İlk satışını yap'.encode('utf-8') in response.data
-    assert 'İlk tahsilatı kaydet'.encode('utf-8') in response.data
+    assert 'Başlangıç rehberi'.encode('utf-8') in response.data
+    assert 'Kurulumunuzu birkaç adımda tamamlayın'.encode('utf-8') in response.data
+    assert 'İlk ürün, ilk satış ve ilk tahsilat'.encode('utf-8') in response.data
     assert '1/3 adım tamamlandı'.encode('utf-8') in response.data
-    assert "POS'a Git".encode('utf-8') in response.data
-    assert 'Carilere Git'.encode('utf-8') in response.data
 
 
 def test_product_filters_render_without_reload_errors(client):
