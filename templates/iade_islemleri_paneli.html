@@ -73,7 +73,7 @@
             <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
                 <div>
                     <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Yeni İade Kaydı</h3>
-                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Müşteri, iade tipi ve finans sonucunu tek diyalogda yönetin.</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Müşteriyi seçin, iadenin nasıl kapanacağını belirleyin, kaydedin.</p>
                 </div>
                 <span id="returnTotalBadge" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200">₺0,00</span>
             </div>
@@ -82,15 +82,15 @@
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/50">
                         <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">1. Müşteri</p>
-                        <p class="mt-2 text-sm font-semibold text-slate-900 dark:text-white">İade hangi cari hesabına ait, önce onu seç.</p>
+                        <p class="mt-2 text-sm font-semibold text-slate-900 dark:text-white">İade hangi müşteriye ait?</p>
                     </div>
                     <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/50">
-                        <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">2. Sonu&#231;</p>
-                        <p class="mt-2 text-sm font-semibold text-slate-900 dark:text-white">Para iadesi, cari alacak veya sadece değişim akışını seç.</p>
+                        <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">2. İşlem</p>
+                        <p class="mt-2 text-sm font-semibold text-slate-900 dark:text-white">Ürün mü, para mı, değişim mi?</p>
                     </div>
                     <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/50">
                         <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">3. Etki</p>
-                        <p class="mt-2 text-sm font-semibold text-slate-900 dark:text-white">Stok, cari ve kasa etkisini kaydetmeden önce gör.</p>
+                        <p class="mt-2 text-sm font-semibold text-slate-900 dark:text-white">Sistem ne yapacak?</p>
                     </div>
                 </div>
 
@@ -105,12 +105,12 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">İade Türü</label>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Ne iade ediliyor?</label>
                         <select name="iade_turu" id="iadeTuru" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
                             <option value="urun_iadesi">Ürün İadesi</option>
-                            <option value="para_iadesi">Para İadesi</option>
+                            <option value="para_iadesi">Sadece Tutar İadesi</option>
                             <option value="hizmet_iadesi">Hizmet İadesi</option>
-                            <option value="degisim">Değişim</option>
+                            <option value="degisim">Ürün Değişimi</option>
                         </select>
                     </div>
                 </div>
@@ -120,8 +120,8 @@
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
                     <div class="flex items-start justify-between gap-3">
                         <div>
-                            <h4 class="text-sm font-bold text-slate-900 dark:text-white">İade Sonucu</h4>
-                            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Bu iadenin müşteri ve finans tarafında nasıl kapanacağını seçin.</p>
+                            <h4 class="text-sm font-bold text-slate-900 dark:text-white">İade nasıl kapansın?</h4>
+                            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Kullanıcının anlayacağı tek karar: para ver, bakiyeye yaz veya değişim yap.</p>
                         </div>
                         <div id="returnImpactPill" class="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 dark:bg-slate-900 dark:text-slate-300">Akış hazır</div>
                     </div>
@@ -129,22 +129,22 @@
                         <label class="cursor-pointer">
                             <input type="radio" name="refund_mode" value="payment" class="peer sr-only" checked>
                             <span class="flex h-full min-h-24 flex-col rounded-2xl border border-slate-200 bg-white p-4 text-left transition peer-checked:border-rose-500 peer-checked:bg-rose-50 dark:border-slate-700 dark:bg-slate-900 dark:peer-checked:bg-rose-950/20">
-                                <span class="text-sm font-bold text-slate-900 dark:text-white">Para iade et</span>
-                                <span class="mt-1 text-xs text-slate-500 dark:text-slate-400">Kasa / banka / POS çıkışı oluşur.</span>
+                                <span class="text-sm font-bold text-slate-900 dark:text-white">Müşteriye para ver</span>
+                                <span class="mt-1 text-xs text-slate-500 dark:text-slate-400">Kasadan, bankadan veya POS hesabından çıkış yapılır.</span>
                             </span>
                         </label>
                         <label class="cursor-pointer">
                             <input type="radio" name="refund_mode" value="credit" class="peer sr-only">
                             <span class="flex h-full min-h-24 flex-col rounded-2xl border border-slate-200 bg-white p-4 text-left transition peer-checked:border-primary-500 peer-checked:bg-primary-50 dark:border-slate-700 dark:bg-slate-900 dark:peer-checked:bg-primary-950/20">
-                                <span class="text-sm font-bold text-slate-900 dark:text-white">Cari alacağa yaz</span>
-                                <span class="mt-1 text-xs text-slate-500 dark:text-slate-400">Nakit çıkmaz, müşteri hesabına alacak yazılır.</span>
+                                <span class="text-sm font-bold text-slate-900 dark:text-white">Müşteri bakiyesine yaz</span>
+                                <span class="mt-1 text-xs text-slate-500 dark:text-slate-400">Para çıkmaz, tutar müşterinin hesabına işlenir.</span>
                             </span>
                         </label>
                         <label class="cursor-pointer">
                             <input type="radio" name="refund_mode" value="exchange" class="peer sr-only">
                             <span class="flex h-full min-h-24 flex-col rounded-2xl border border-slate-200 bg-white p-4 text-left transition peer-checked:border-emerald-500 peer-checked:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:peer-checked:bg-emerald-950/20">
-                                <span class="text-sm font-bold text-slate-900 dark:text-white">Sadece değişim</span>
-                                <span class="mt-1 text-xs text-slate-500 dark:text-slate-400">Stok geri girer, finansal hareket oluşmaz.</span>
+                                <span class="text-sm font-bold text-slate-900 dark:text-white">Sadece değişim yap</span>
+                                <span class="mt-1 text-xs text-slate-500 dark:text-slate-400">Ürün stoğa döner, para hareketi oluşmaz.</span>
                             </span>
                         </label>
                     </div>
@@ -152,7 +152,7 @@
 
                 <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
                     <div id="manualAmountSection" class="hidden">
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">İade Tutarı *</label>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">İade Edilecek Tutar *</label>
                         <input type="number" min="0" step="0.01" name="manuel_iade_tutari" id="manuelIadeTutari" class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="0,00">
                     </div>
                     <div id="paymentTypeSection">
@@ -174,11 +174,11 @@
                         </select>
                     </div>
                     <div id="returnImpactSummary" class="rounded-2xl border border-dashed border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900 lg:col-span-3">
-                        <p class="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Sistem Etkisi</p>
-                        <p id="returnImpactText" class="mt-2 text-sm font-semibold text-slate-900 dark:text-white">Seçime göre stok artar, para iadesi varsa kasa hareketi oluşur.</p>
+                        <p class="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Kısa Özet</p>
+                        <p id="returnImpactText" class="mt-2 text-sm font-semibold text-slate-900 dark:text-white">Seçime göre stok, müşteri bakiyesi ve kasa hareketi otomatik ayarlanır.</p>
                     </div>
                 </div>
-                <div class="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <div id="productReturnSection" class="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                     <div class="px-4 py-3 bg-slate-50 dark:bg-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
                             <h4 class="text-sm font-bold text-slate-900 dark:text-white">İade Kalemleri</h4>
@@ -218,13 +218,6 @@
                     <textarea name="iade_sebebi" rows="4" required class="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="İade nedenini kısa ve net şekilde yazın"></textarea>
                 </div>
 
-                <label class="flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-4 cursor-pointer">
-                    <input type="checkbox" name="alacak_olustur" id="alacakOlustur" class="mt-1 rounded border-slate-300 text-primary-600 focus:ring-primary-500">
-                    <span>
-                        <span class="block text-sm font-semibold text-slate-800 dark:text-slate-200">Müşteri için alacak oluştur</span>
-                        <span class="block text-xs text-slate-500 dark:text-slate-400 mt-1">Nakit çıkışı yerine cari hesabına iade alacağı yansıtılır.</span>
-                    </span>
-                </label>
             </div>
 
             <div class="p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex flex-col sm:flex-row justify-end gap-3">
@@ -444,22 +437,22 @@
 
         if (impactText) {
             if (stockReturn && resolvedRefundMode === 'payment') {
-                impactText.textContent = 'Stok geri eklenir ve seçilen hesaptan para çıkışı oluşur.';
+                impactText.textContent = 'Ürün stoğa geri eklenir, seçilen hesaptan müşteriye para çıkışı yapılır.';
             } else if (stockReturn && resolvedRefundMode === 'credit') {
-                impactText.textContent = 'Stok geri eklenir, nakit çıkmaz; tutar müşteri alacağına yazılır.';
+                impactText.textContent = 'Ürün stoğa geri eklenir, para çıkmaz; tutar müşteri bakiyesine yazılır.';
             } else if (stockReturn) {
-                impactText.textContent = 'Stok geri eklenir, finansal hareket oluşmaz; değişim akışı gibi çalışır.';
+                impactText.textContent = 'Ürün stoğa geri eklenir, para veya bakiye hareketi oluşturulmaz.';
             } else if (resolvedRefundMode === 'credit') {
-                impactText.textContent = 'Stok etkilenmez; girilen tutar müşteri alacağına yazılır.';
+                impactText.textContent = 'Stok etkilenmez; girilen tutar müşteri bakiyesine yazılır.';
             } else {
-                impactText.textContent = 'Stok etkilenmez; girilen tutar için kasa / banka / POS çıkışı oluşur.';
+                impactText.textContent = 'Stok etkilenmez; girilen tutar seçilen hesaptan müşteriye ödenir.';
             }
         }
 
         if (impactPill) {
             impactPill.textContent = stockReturn
-                ? (resolvedRefundMode === 'exchange' ? 'Stok odaklı iade' : 'Stok + finans etkisi')
-                : 'Tutar odaklı iade';
+                ? (resolvedRefundMode === 'exchange' ? 'Değişim işlemi' : 'Ürün + ödeme işlemi')
+                : 'Tutar işlemi';
         }
 
         updateReturnTotal();
