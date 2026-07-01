@@ -2548,8 +2548,8 @@ def test_onmuhasebe_hesap_detay_allows_manual_tx_and_transfer(client):
     assert resp.status_code == 200
 
 
-    assert 'Para Hareketi Ekle'.encode('utf-8') in resp.data
-    assert 'Hareketi Kaydet'.encode('utf-8') in resp.data
+    assert 'Para Hareketi Ekle'.encode('utf-8') not in resp.data
+    assert 'Hareketi Kaydet'.encode('utf-8') not in resp.data
 
     with app.app_context():
         owner = User.query.filter_by(email='test@example.com').first()

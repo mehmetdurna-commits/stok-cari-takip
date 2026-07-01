@@ -32,7 +32,7 @@
     </a>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
     <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
       <h2 class="text-sm font-bold text-slate-900 dark:text-white mb-3">Filtre</h2>
       <form method="get" class="grid grid-cols-1 gap-3">
@@ -57,35 +57,6 @@
           <div class="text-lg font-extrabold text-rose-600 mt-1">{{ (sum_cikis)|tr_number }}</div>
         </div>
       </div>
-    </div>
-
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
-      <h2 class="text-sm font-bold text-slate-900 dark:text-white mb-3">Para Hareketi Ekle</h2>
-      <form method="post" class="grid grid-cols-1 gap-3">
-        <input type="hidden" name="action" value="tx">
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-500 mb-1">Hareket Yönü</label>
-            <select name="islem_tipi" class="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-950">
-              <option value="giris">Para Girişi</option>
-              <option value="cikis">Para Çıkışı</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-500 mb-1">Tarih</label>
-            <input type="date" name="tarih" class="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-950">
-          </div>
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-500 mb-1">Tutar</label>
-          <input name="tutar" required inputmode="decimal" class="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-950" placeholder="0.00">
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-500 mb-1">Açıklama</label>
-          <input name="aciklama" class="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-950" placeholder="Örn: Kargo masrafı">
-        </div>
-        <button class="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-bold">Hareketi Kaydet</button>
-      </form>
     </div>
 
     <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
