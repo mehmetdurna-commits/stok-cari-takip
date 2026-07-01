@@ -152,18 +152,18 @@
                 <span class="material-symbols-outlined text-base">receipt_long</span>
                 Hareketler
               </a>
-              <form method="post" class="inline-flex">
+              <form method="post" class="inline-flex" data-skip-loading="true">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="action" value="toggle">
                 <input type="hidden" name="account_id" value="{{ a.id }}">
                 {% if a.active %}
-                  <button type="submit" class="inline-flex min-w-[140px] items-center justify-center gap-1.5 rounded-xl border border-rose-100 bg-white px-4 py-2 text-xs font-black text-rose-700 hover:bg-rose-50 transition dark:border-rose-900/30 dark:bg-slate-900 dark:text-rose-300">
-                    <span class="material-symbols-outlined shrink-0 text-sm leading-none">pause_circle</span>
+                  <button type="submit" class="btn-secondary inline-flex min-w-[140px] items-center justify-center gap-1.5 rounded-xl border border-rose-100 bg-white px-4 py-2 text-xs font-black text-rose-700 hover:bg-rose-50 transition dark:border-rose-900/30 dark:bg-slate-900 dark:text-rose-300">
+                    <span class="material-symbols-outlined shrink-0 text-sm leading-none text-rose-600">pause_circle</span>
                     <span class="inline-block whitespace-nowrap leading-none">Pasif Yap</span>
                   </button>
                 {% else %}
-                  <button type="submit" class="inline-flex min-w-[140px] items-center justify-center gap-1.5 rounded-xl border border-emerald-100 bg-white px-4 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-50 transition dark:border-emerald-900/30 dark:bg-slate-900 dark:text-emerald-300">
-                    <span class="material-symbols-outlined shrink-0 text-sm leading-none">play_circle</span>
+                  <button type="submit" class="btn-secondary inline-flex min-w-[140px] items-center justify-center gap-1.5 rounded-xl border border-emerald-100 bg-white px-4 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-50 transition dark:border-emerald-900/30 dark:bg-slate-900 dark:text-emerald-300">
+                    <span class="material-symbols-outlined shrink-0 text-sm leading-none text-emerald-600">play_circle</span>
                     <span class="inline-block whitespace-nowrap leading-none">Aktif Yap</span>
                   </button>
                 {% endif %}
