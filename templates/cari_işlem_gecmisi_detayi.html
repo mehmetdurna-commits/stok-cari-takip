@@ -378,9 +378,9 @@
                     <div class="space-y-3">
                         {% for hareket in hareketler[:5] %}
                         <div class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                            <div class="size-8 {% if hareket.islem_tipi == 'odeme' %}bg-green-100 dark:bg-green-900/20{% elif hareket.islem_tipi == 'tahsilat' %}bg-blue-100 dark:bg-blue-900/20{% else %}bg-orange-100 dark:bg-orange-900/20{% endif %} rounded-lg flex items-center justify-center">
-                                <span class="material-symbols-outlined {% if hareket.islem_tipi == 'odeme' %}text-green-600{% elif hareket.islem_tipi == 'tahsilat' %}text-blue-600{% else %}text-orange-600{% endif %} text-sm">
-                                    {% if hareket.islem_tipi == 'odeme' %}payments{% elif hareket.islem_tipi == 'tahsilat' %}request_quote{% else %}receipt_long{% endif %}
+                            <div class="size-8 {% if hareket.islem_tipi == 'odeme' %}bg-green-100 dark:bg-green-900/20{% elif hareket.islem_tipi == 'tahsilat' %}bg-blue-100 dark:bg-blue-900/20{% elif hareket.islem_tipi in ['iade', 'iade_bilgi'] %}bg-rose-100 dark:bg-rose-900/20{% else %}bg-orange-100 dark:bg-orange-900/20{% endif %} rounded-lg flex items-center justify-center">
+                                <span class="material-symbols-outlined {% if hareket.islem_tipi == 'odeme' %}text-green-600{% elif hareket.islem_tipi == 'tahsilat' %}text-blue-600{% elif hareket.islem_tipi in ['iade', 'iade_bilgi'] %}text-rose-600{% else %}text-orange-600{% endif %} text-sm">
+                                    {% if hareket.islem_tipi == 'odeme' %}payments{% elif hareket.islem_tipi == 'tahsilat' %}request_quote{% elif hareket.islem_tipi in ['iade', 'iade_bilgi'] %}assignment_return{% else %}receipt_long{% endif %}
                                 </span>
                             </div>
                             <div class="flex-1">
@@ -391,6 +391,10 @@
                                     Tahsilat
                                     {% elif hareket.islem_tipi == 'satis' %}
                                     Veresiye Satış
+                                    {% elif hareket.islem_tipi == 'iade' %}
+                                    İade
+                                    {% elif hareket.islem_tipi == 'iade_bilgi' %}
+                                    Para İadesi
                                     {% else %}
                                     İşlem
                                     {% endif %}
@@ -399,12 +403,16 @@
                                 <p class="text-xs text-slate-500 dark:text-slate-400">{{ hareket.tarih|datetime_tr }}</p>
                             </div>
                             <div class="text-right">
-                                <span class="text-sm font-semibold {% if hareket.islem_tipi == 'odeme' %}text-green-600{% elif hareket.islem_tipi == 'tahsilat' %}text-blue-600{% else %}text-orange-600{% endif %}">₺{{ (hareket.tutar)|tr_number }}</span>
+                                <span class="text-sm font-semibold {% if hareket.islem_tipi == 'odeme' %}text-green-600{% elif hareket.islem_tipi == 'tahsilat' %}text-blue-600{% elif hareket.islem_tipi in ['iade', 'iade_bilgi'] %}text-rose-600{% else %}text-orange-600{% endif %}">₺{{ (hareket.tutar)|tr_number }}</span>
                                 <p class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                                     {% if hareket.islem_tipi == 'odeme' or hareket.islem_tipi == 'tahsilat' %}
                                     Açık bakiyeyi azaltır
                                     {% elif hareket.islem_tipi == 'satis' %}
                                     Açık bakiyeyi artırır
+                                    {% elif hareket.islem_tipi == 'iade' %}
+                                    Açık bakiyeyi azaltır
+                                    {% elif hareket.islem_tipi == 'iade_bilgi' %}
+                                    Bilgi amaçlı kayıt
                                     {% else %}
                                     Cari hareketi
                                     {% endif %}
@@ -538,25 +546,33 @@
                         <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                             <td class="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">{{ hareket.tarih|datetime_tr }}</td>
                             <td class="py-3 px-4">
-                                <span class="px-2 py-1 {% if hareket.islem_tipi == 'odeme' %}bg-green-100 text-green-700{% elif hareket.islem_tipi == 'tahsilat' %}bg-blue-100 text-blue-700{% else %}bg-orange-100 text-orange-700{% endif %} text-xs rounded-full">
+                                <span class="px-2 py-1 {% if hareket.islem_tipi == 'odeme' %}bg-green-100 text-green-700{% elif hareket.islem_tipi == 'tahsilat' %}bg-blue-100 text-blue-700{% elif hareket.islem_tipi in ['iade', 'iade_bilgi'] %}bg-rose-100 text-rose-700{% else %}bg-orange-100 text-orange-700{% endif %} text-xs rounded-full">
                                     {% if hareket.islem_tipi == 'odeme' %}
                                     Ödeme
                                     {% elif hareket.islem_tipi == 'tahsilat' %}
                                     Tahsilat
                                     {% elif hareket.islem_tipi == 'satis' %}
                                     Veresiye Satış
+                                    {% elif hareket.islem_tipi == 'iade' %}
+                                    İade
+                                    {% elif hareket.islem_tipi == 'iade_bilgi' %}
+                                    Para İadesi
                                     {% else %}
                                     İşlem
                                     {% endif %}
                                 </span>
                             </td>
                             <td class="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">{{ hareket.odeme_turu or '-' }}</td>
-                            <td class="py-3 px-4 font-semibold {% if hareket.islem_tipi == 'odeme' %}text-green-600{% elif hareket.islem_tipi == 'tahsilat' %}text-blue-600{% else %}text-orange-600{% endif %}">₺{{ (hareket.tutar)|tr_number }}</td>
+                            <td class="py-3 px-4 font-semibold {% if hareket.islem_tipi == 'odeme' %}text-green-600{% elif hareket.islem_tipi == 'tahsilat' %}text-blue-600{% elif hareket.islem_tipi in ['iade', 'iade_bilgi'] %}text-rose-600{% else %}text-orange-600{% endif %}">₺{{ (hareket.tutar)|tr_number }}</td>
                             <td class="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">
                                 {% if hareket.islem_tipi == 'odeme' or hareket.islem_tipi == 'tahsilat' %}
                                 Açık bakiyeyi azaltır
                                 {% elif hareket.islem_tipi == 'satis' %}
                                 Açık bakiyeyi artırır
+                                {% elif hareket.islem_tipi == 'iade' %}
+                                Açık bakiyeyi azaltır
+                                {% elif hareket.islem_tipi == 'iade_bilgi' %}
+                                Bilgi amaçlı kayıt
                                 {% else %}
                                 Cari hareketi
                                 {% endif %}

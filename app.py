@@ -6340,12 +6340,15 @@ def cari_statement_signed_amount(hareket: "CariHareket") -> float:
 
     Uygulamadaki mevcut veri modeline göre:
     - 'satis' cari.alacak'? arttürür -> bakiye (alacak - borc) artar
-    - 'tahsilat', 'odeme', 'iade' alacağı azaltır -> bakiye azal?r
+    - 'tahsilat', 'odeme', 'iade' alacağı azaltır -> bakiye azalır
+    - 'iade_bilgi' sadece cari detay hareketidir -> bakiye değişmez
     """
     tip = (hareket.islem_tipi or '').strip().lower()
     amount = float(hareket.tutar or 0)
     if tip == 'satis':
         return amount
+    if tip == 'iade_bilgi':
+        return 0.0
     return -amount
 
 
@@ -8036,6 +8039,16 @@ def iade():
                     referans_tip='iade',
                     account_id=account_id
                 )
+                db.session.add(CariHareket(
+                    cari_id=cari.id,
+                    user_id=current_user.id,
+                    islem_tipi='iade_bilgi',
+                    tutar=toplam_iade_tutari,
+                    aciklama=f'{iade_turu} - {iade_sebebi}',
+                    odeme_turu=odeme_turu,
+                    referans_id=iade_kaydi.id,
+                    referans_tip='iade'
+                ))
             db.session.commit()
             if stok_etkili:
                 flash(f'{len(iade_kalemleri)} Ürün için iade işlemi başarıyla tamamlandı!', 'success')
