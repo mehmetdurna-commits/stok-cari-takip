@@ -1127,6 +1127,70 @@ def test_super_admin_updates_organization_limits_and_modules(client):
         assert owner.urun_limiti == 250
 
 
+def test_super_admin_reset_organization_clears_operational_data(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        organization = ensure_user_organization(owner)
+        owner.is_platform_admin = True
+        owner.platform_role = 'owner'
+        owner_email = owner.email
+        organization_name = organization.name
+        organization_id = organization.id
+
+        account = Account(user_id=owner.id, type='cash', name='Test Kasa', currency='TRY', opening_balance=100)
+        product = Urun(user_id=owner.id, urun_adi='Test Urun', satis_fiyati=100, stok_miktari=5)
+        customer = Cari(user_id=owner.id, unvan='Test Musteri', tipi='Musteri', alacak=100)
+        db.session.add_all([account, product, customer])
+        db.session.flush()
+
+        sale = Satis(
+            user_id=owner.id,
+            cari_id=customer.id,
+            fatura_no='POS-RESET-001',
+            ara_toplam=100,
+            genel_toplam=100,
+        )
+        db.session.add(sale)
+        db.session.flush()
+        db.session.add_all([
+            SatisKalemi(satis_id=sale.id, urun_id=product.id, urun_adi=product.urun_adi, miktar=1, birim_fiyat=100, toplam=100),
+            CashTransaction(user_id=owner.id, account_id=account.id, cari_id=customer.id, islem_tipi='giris', tutar=100),
+            CariHareket(user_id=owner.id, cari_id=customer.id, islem_tipi='satis', tutar=100),
+            StokHareket(user_id=owner.id, urun_id=product.id, islem_tipi='cikis', miktar=1),
+            SupportTicket(organization_id=organization.id, requester_id=owner.id, subject='Reset testi', category='technical'),
+            ActionItem(organization_id=organization.id, source_type='manual', source_id=1, title='Reset aksiyonu'),
+            SubscriptionPayment(organization_id=organization.id, plan='standart', amount=500, status='paid'),
+            BackupLog(filename='reset-test.zip', file_size=10, user_id=owner.id),
+        ])
+        db.session.commit()
+
+    response = client.post(
+        f'/super-admin/organizations/{organization_id}/reset',
+        data={'reset_confirm': 'SIFIRLA'},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert '#companies' in response.headers['Location']
+    with app.app_context():
+        organization = db.session.get(Organization, organization_id)
+        owner = User.query.filter_by(email=owner_email).first()
+        assert organization is not None
+        assert organization.name == organization_name
+        assert owner is not None
+        assert owner.organization_id == organization_id
+        assert Urun.query.filter_by(user_id=owner.id).count() == 0
+        assert Cari.query.filter_by(user_id=owner.id).count() == 0
+        assert Satis.query.filter_by(user_id=owner.id).count() == 0
+        assert CashTransaction.query.filter_by(user_id=owner.id).count() == 0
+        assert SupportTicket.query.filter_by(organization_id=organization_id).count() == 0
+        assert ActionItem.query.filter_by(organization_id=organization_id).count() == 0
+        assert BackupLog.query.filter_by(user_id=owner.id).count() == 0
+        assert SubscriptionPayment.query.filter_by(organization_id=organization_id).count() == 1
+        assert Account.query.filter_by(user_id=owner.id).count() == 3
+        assert AuditLog.query.filter_by(action='PLATFORM_ORGANIZATION_RESET', user_id=owner.id).first() is not None
+
+
 def test_super_admin_embeds_company_users_inside_company_management(client):
     with app.app_context():
         owner = User.query.filter_by(email='test@example.com').first()

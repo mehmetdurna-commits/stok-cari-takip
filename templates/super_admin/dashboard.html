@@ -631,6 +631,7 @@ function switchSystemManagementTab(tabId, pushHash = true) {
 
                 <form method="post" action="{{ url_for('super_admin_update_organization', organization_id=org.id) }}" class="border-t border-slate-200 dark:border-slate-800">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="reset_confirm" value="">
                 <div class="grid gap-5 p-5 lg:grid-cols-[1.2fr_1fr]">
                     <div class="space-y-4">
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -756,6 +757,10 @@ function switchSystemManagementTab(tabId, pushHash = true) {
                             <button type="submit" formaction="{{ url_for('super_admin_impersonate', organization_id=org.id) }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
                                 <span class="material-symbols-outlined text-lg">support_agent</span>
                                 Destek girisi
+                            </button>
+                            <button type="submit" formaction="{{ url_for('super_admin_reset_organization', organization_id=org.id) }}" class="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200" onclick="const code = prompt('Bu firmanin tum islem verileri silinecek. Firma kayit ve kullanici bilgileri korunacak. Onay icin SIFIRLA yazin.'); if (code === 'SIFIRLA') { this.form.reset_confirm.value = code; return true; } return false;">
+                                <span class="material-symbols-outlined text-lg">restart_alt</span>
+                                Sıfırla
                             </button>
                         </div>
                     </div>

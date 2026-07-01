@@ -151,6 +151,7 @@ AUDIT_ACTION_LABELS = {
     'PLATFORM_SETTINGS_UPDATE': 'Sistem ayarlari guncellendi',
     'PLATFORM_SYSTEM_CONTROLS_UPDATE': 'Sistem yonetimi guncellendi',
     'PLATFORM_LOCK_BLOCKED': 'Kilitli islem engellendi',
+    'PLATFORM_ORGANIZATION_RESET': 'Firma sifirlandi',
     'PLATFORM_SELF_TEST_RUN': 'Test robotu calistirildi',
     'PLATFORM_WORKFLOW_TEST_RUN': 'Derin is akisi testi calistirildi',
     'PLATFORM_SINGLE_TEST_RUN': 'Tekil test calistirildi',
@@ -8293,6 +8294,72 @@ def organization_usage(organization):
     }
 
 
+def reset_organization_operational_data(organization):
+    user_ids = organization_user_ids(organization)
+    if not user_ids:
+        return {}
+
+    deleted_counts = {}
+
+    def delete_records(label, query):
+        count = query.delete(synchronize_session=False)
+        deleted_counts[label] = count
+        return count
+
+    satis_ids = [row[0] for row in db.session.query(Satis.id).filter(Satis.user_id.in_(user_ids)).all()]
+    teklif_ids = [row[0] for row in db.session.query(Teklif.id).filter(Teklif.user_id.in_(user_ids)).all()]
+    iade_ids = [row[0] for row in db.session.query(Iade.id).filter(Iade.user_id.in_(user_ids)).all()]
+    personel_ids = [row[0] for row in db.session.query(Personel.id).filter(Personel.user_id.in_(user_ids)).all()]
+    action_ids = [row[0] for row in db.session.query(ActionItem.id).filter_by(organization_id=organization.id).all()]
+    ticket_ids = [row[0] for row in db.session.query(SupportTicket.id).filter_by(organization_id=organization.id).all()]
+    account_ids = [row[0] for row in db.session.query(Account.id).filter(Account.user_id.in_(user_ids)).all()]
+
+    if satis_ids:
+        delete_records('satis_kalemleri', SatisKalemi.query.filter(SatisKalemi.satis_id.in_(satis_ids)))
+    if teklif_ids:
+        delete_records('teklif_kalemleri', TeklifKalemi.query.filter(TeklifKalemi.teklif_id.in_(teklif_ids)))
+    if iade_ids:
+        delete_records('iade_kalemleri', IadeKalem.query.filter(IadeKalem.iade_id.in_(iade_ids)))
+    if personel_ids:
+        delete_records('personel_performans', PersonelPerformans.query.filter(PersonelPerformans.personel_id.in_(personel_ids)))
+        delete_records('egitim_kayitlari', EgitimKaydi.query.filter(EgitimKaydi.personel_id.in_(personel_ids)))
+        delete_records('maas_kayitlari', MaasKaydi.query.filter(MaasKaydi.personel_id.in_(personel_ids)))
+        delete_records('primler', Prim.query.filter(Prim.personel_id.in_(personel_ids)))
+        delete_records('avanslar', Avans.query.filter(Avans.personel_id.in_(personel_ids)))
+        delete_records('izinler', Izin.query.filter(Izin.personel_id.in_(personel_ids)))
+    if action_ids:
+        delete_records('aksiyon_gecmisi', ActionItemEvent.query.filter(ActionItemEvent.action_item_id.in_(action_ids)))
+    if ticket_ids:
+        delete_records('destek_mesajlari', SupportTicketMessage.query.filter(SupportTicketMessage.ticket_id.in_(ticket_ids)))
+
+    delete_records('satislar', Satis.query.filter(Satis.user_id.in_(user_ids)))
+    delete_records('teklifler', Teklif.query.filter(Teklif.user_id.in_(user_ids)))
+    delete_records('iadeler', Iade.query.filter(Iade.user_id.in_(user_ids)))
+    delete_records('cari_hareketleri', CariHareket.query.filter(CariHareket.user_id.in_(user_ids)))
+    delete_records('stok_hareketleri', StokHareket.query.filter(StokHareket.user_id.in_(user_ids)))
+    delete_records('nakit_hareketleri', CashTransaction.query.filter(CashTransaction.user_id.in_(user_ids)))
+    if account_ids:
+        delete_records('mutabakatlar', AccountReconciliation.query.filter(AccountReconciliation.account_id.in_(account_ids)))
+    delete_records('hesaplar', Account.query.filter(Account.user_id.in_(user_ids)))
+    delete_records('urunler', Urun.query.filter(Urun.user_id.in_(user_ids)))
+    delete_records('cariler', Cari.query.filter(Cari.user_id.in_(user_ids)))
+    delete_records('kategoriler', Category.query.filter(Category.user_id.in_(user_ids)))
+    delete_records('depolar', Warehouse.query.filter(Warehouse.user_id.in_(user_ids)))
+    delete_records('personeller', Personel.query.filter(Personel.user_id.in_(user_ids)))
+    delete_records('departmanlar', Departman.query.filter(Departman.user_id.in_(user_ids)))
+    delete_records('destek_talepleri', SupportTicket.query.filter_by(organization_id=organization.id))
+    delete_records('aksiyonlar', ActionItem.query.filter_by(organization_id=organization.id))
+    delete_records('yedek_kayitlari', BackupLog.query.filter(BackupLog.user_id.in_(user_ids)))
+    delete_records('kullanici_ayarlari', SystemSettings.query.filter(SystemSettings.user_id.in_(user_ids)))
+    delete_records('denetim_kayitlari', AuditLog.query.filter(AuditLog.user_id.in_(user_ids)))
+
+    db.session.flush()
+    for user in User.query.filter(User.id.in_(user_ids)).all():
+        ensure_default_accounts_for_user(user.id)
+
+    return deleted_counts
+
+
 def organization_360_context(organization):
     user_ids = organization_user_ids(organization)
     tickets = SupportTicket.query.filter_by(organization_id=organization.id).order_by(SupportTicket.updated_at.desc()).limit(8).all()
@@ -8480,6 +8547,54 @@ def super_admin_update_organization(organization_id):
     )
     db.session.commit()
     flash('Firma ayarlari guncellendi.', 'success')
+    return redirect(url_for('super_admin_dashboard') + '#companies')
+
+
+@app.route('/super-admin/organizations/<int:organization_id>/reset', methods=['POST'])
+@login_required
+@platform_admin_required
+@platform_permission_required('organizations_manage')
+def super_admin_reset_organization(organization_id):
+    locked = require_platform_owner_for_locked_action(
+        'dangerous_operations_locked',
+        'Riskli islem kilitli. Firma sifirlama islemi platform sahibi tarafindan yapilmali.',
+        'companies'
+    )
+    if locked:
+        return locked
+
+    if not is_platform_owner_user(current_user):
+        flash('Firma sifirlama islemini sadece platform sahibi yapabilir.', 'error')
+        return redirect(url_for('super_admin_dashboard') + '#companies')
+
+    organization = db.session.get(Organization, organization_id)
+    if not organization or not is_customer_organization(organization):
+        abort(404)
+
+    if request.form.get('reset_confirm') != 'SIFIRLA':
+        flash('Firma sifirlama icin onay alinmadi.', 'error')
+        return redirect(url_for('super_admin_dashboard') + '#companies')
+
+    try:
+        deleted_counts = reset_organization_operational_data(organization)
+        deleted_summary = ', '.join(
+            f'{label}: {count}'
+            for label, count in deleted_counts.items()
+            if count
+        ) or 'silinen islem kaydi yok'
+        platform_audit(
+            'PLATFORM_ORGANIZATION_RESET',
+            f'{organization.name} sifirlandi. Firma kayit ve kullanici bilgileri korundu. Silinenler: {deleted_summary}',
+            'Organization',
+            organization.id,
+        )
+        db.session.commit()
+        flash(f'{organization.name} sifirlandi. Firma kayit bilgileri korundu.', 'success')
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Firma sifirlama hatasi')
+        flash('Firma sifirlanirken hata olustu.', 'error')
+
     return redirect(url_for('super_admin_dashboard') + '#companies')
 
 
