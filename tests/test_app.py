@@ -2815,6 +2815,63 @@ def test_iade_urun_iadesi_cari_alacak_olustur_does_not_touch_cash(client):
         assert CashTransaction.query.filter_by(user_id=owner.id, referans_tip='iade').count() == 0
 
 
+def test_iade_credit_return_updates_cari_statement_balance(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        product = Urun.query.filter_by(user_id=owner.id).first()
+        cari = Cari.query.filter_by(user_id=owner.id).first()
+        product_id = product.id
+        cari_id = cari.id
+        cari.alacak = 100.0
+        cari.borc = 0.0
+        db.session.add(CariHareket(
+            cari_id=cari.id,
+            user_id=owner.id,
+            islem_tipi='satis',
+            tutar=100.0,
+            aciklama='Veresiye satis test',
+            odeme_turu='Alacak',
+            referans_id=501,
+            referans_tip='satis'
+        ))
+        db.session.commit()
+
+    response = client.post('/iade', data={
+        'cari_id': str(cari_id),
+        'urun_idler[]': [str(product_id)],
+        'urun_adlari[]': ['Test Urun'],
+        'iade_miktarlari[]': ['1'],
+        'iade_turu': 'urun_iadesi',
+        'refund_mode': 'credit',
+        'iade_sebebi': 'Ekstre iade testi',
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        cari = db.session.get(Cari, cari_id)
+        iade = Iade.query.filter_by(user_id=owner.id).order_by(Iade.id.desc()).first()
+        iade_hareket = CariHareket.query.filter_by(
+            cari_id=cari_id,
+            referans_tip='iade',
+            referans_id=iade.id,
+            islem_tipi='iade'
+        ).first()
+        context = build_cari_ekstre_context(cari, [owner.id])
+
+        assert iade_hareket is not None
+        assert float(cari.alacak or 0) == 0.0
+        assert context['closing_balance'] == 0.0
+        assert context['total_plus'] == 100.0
+        assert context['total_minus'] == 100.0
+        assert [row['hareket'].islem_tipi for row in context['rows']] == ['satis', 'iade']
+
+    detail_response = client.get(f'/cari/{cari_id}')
+    assert detail_response.status_code == 200
+    assert 'İade'.encode('utf-8') in detail_response.data
+    assert 'Ekstre iade testi'.encode('utf-8') in detail_response.data
+
+
 def test_iade_urun_iadesi_without_credit_only_restocks(client):
     with app.app_context():
         owner = User.query.filter_by(email='test@example.com').first()
@@ -2899,7 +2956,20 @@ def test_iade_para_iadesi_creates_only_cash_out_on_selected_account(client):
         assert cash_tx is not None
         assert cash_tx.account_id == bank_id
         assert cash_tx.tutar == 100.0
-        assert cari_move is None
+        assert cari_move is not None
+        assert cari_move.islem_tipi == 'iade_bilgi'
+        assert cari_move.tutar == 100.0
+
+        context = build_cari_ekstre_context(cari, [owner.id])
+        assert any(
+            row['hareket'].id == cari_move.id and row['signed'] == 0.0
+            for row in context['rows']
+        )
+
+    detail_response = client.get(f'/cari/{cari_id}')
+    assert detail_response.status_code == 200
+    assert 'Para İadesi'.encode('utf-8') in detail_response.data
+    assert 'Para iadesi test'.encode('utf-8') in detail_response.data
 
 
 def test_iade_rejects_invalid_return_type_without_stock_change(client):
