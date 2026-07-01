@@ -2,6 +2,16 @@
 
 {% block title %}Ön Muhasebe - Hesaplar{% endblock %}
 
+{% block top_bar %}
+<div class="min-w-0 flex items-center gap-3">
+  <span class="material-symbols-outlined text-primary-600 font-bold">account_balance</span>
+  <div class="min-w-0">
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Ön Muhasebe</h1>
+    <p class="text-xs text-slate-500 dark:text-slate-400">Kasa, banka ve POS hesapları</p>
+  </div>
+</div>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-6xl mx-auto space-y-6 pb-20">
   <section class="rounded-[2rem] border border-blue-100 bg-gradient-to-br from-sky-50 via-white to-indigo-50 p-6 md:p-8 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
