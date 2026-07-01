@@ -7666,6 +7666,7 @@ def raporlar():
     urunler = Urun.query.filter(Urun.user_id.in_(tenant_ids)).all()
     cariler = Cari.query.filter(Cari.user_id.in_(tenant_ids)).all()
     satislar = Satis.query.filter(Satis.user_id.in_(tenant_ids)).all()
+    nakit_hareketleri = CashTransaction.query.filter(CashTransaction.user_id.in_(tenant_ids)).all()
     aktif_satislar = [s for s in satislar if s.durum != 'iptal']
 
     # Temel istatistikler
@@ -7680,6 +7681,7 @@ def raporlar():
     net_bakiye = toplam_cari_alacak - toplam_cari_borc
     toplam_satis_deger = sum(s.genel_toplam or 0 for s in aktif_satislar)
     toplam_stok_deger = sum((u.stok_miktari or 0) * (u.satis_fiyati or 0) for u in urunler)
+    ortalama_satis = (toplam_satis_deger / len(aktif_satislar)) if aktif_satislar else 0
 
     # Naive datetime kullanarak karşılaştırma hatasını önle
     simdi = datetime.now(timezone.utc)
@@ -7695,6 +7697,50 @@ def raporlar():
                 s_tarih = s.tarih.replace(tzinfo=timezone.utc)
             if s_tarih >= ay_basi:
                 aylik_satis += (s.genel_toplam or 0)
+
+    def month_shift(dt_value, months_back):
+        month_index = dt_value.month - months_back
+        year = dt_value.year
+        while month_index <= 0:
+            month_index += 12
+            year -= 1
+        return dt_value.replace(year=year, month=month_index, day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    satis_trendi = []
+    for months_back in range(5, -1, -1):
+        month_start = month_shift(simdi, months_back)
+        if month_start.month == 12:
+            month_end = month_start.replace(year=month_start.year + 1, month=1)
+        else:
+            month_end = month_start.replace(month=month_start.month + 1)
+        total = 0
+        count = 0
+        for satis in aktif_satislar:
+            if not satis.tarih:
+                continue
+            satis_tarih = satis.tarih.astimezone(timezone.utc) if satis.tarih.tzinfo else satis.tarih.replace(tzinfo=timezone.utc)
+            if month_start <= satis_tarih < month_end:
+                total += satis.genel_toplam or 0
+                count += 1
+        satis_trendi.append({
+            'label': month_start.strftime('%m.%Y'),
+            'tutar': round(total, 2),
+            'adet': count
+        })
+    max_trend_tutar = max([item['tutar'] for item in satis_trendi] or [0])
+
+    odeme_dagilimi_map = {}
+    for hareket in nakit_hareketleri:
+        if hareket.islem_tipi != 'giris':
+            continue
+        if hareket.referans_tip == 'satis_iptal':
+            continue
+        odeme_turu = hareket.odeme_turu or 'Belirtilmemiş'
+        bucket = odeme_dagilimi_map.setdefault(odeme_turu, {'label': odeme_turu, 'tutar': 0, 'adet': 0})
+        bucket['tutar'] += hareket.tutar or 0
+        bucket['adet'] += 1
+    odeme_dagilimi = sorted(odeme_dagilimi_map.values(), key=lambda item: item['tutar'], reverse=True)
+    max_odeme_tutar = max([item['tutar'] for item in odeme_dagilimi] or [0])
 
     # En ?ok satan Ürünler
     en_cok_satan_map = {}
@@ -7720,6 +7766,11 @@ def raporlar():
         kategori_analizi[kat]['urun_sayisi'] += 1
         kategori_analizi[kat]['stok_degeri'] += (urun.stok_miktari or 0) * (urun.satis_fiyati or 0)
 
+    kritik_urunler = sorted(
+        [u for u in urunler if (u.stok_miktari or 0) <= (u.kritik_stok or 0)],
+        key=lambda item: (item.stok_miktari or 0, item.urun_adi or '')
+    )[:6]
+
     return render_template('cari_hareketler_ve_finansal_analiz.html',
                            urunler=urunler,
                            cariler=cariler,
@@ -7729,10 +7780,18 @@ def raporlar():
                            toplam_cari=toplam_cari,
                            toplam_cari_borc=toplam_cari_borc,
                            toplam_cari_alacak=toplam_cari_alacak,
+                           net_bakiye=net_bakiye,
                            toplam_satis_deger=toplam_satis_deger,
+                           toplam_stok_deger=toplam_stok_deger,
+                           ortalama_satis=ortalama_satis,
                            aylik_satis=aylik_satis,
                            en_cok_satan=en_cok_satan[:5],
-                           kategori_analizi=kategori_analizi)
+                           kategori_analizi=kategori_analizi,
+                           satis_trendi=satis_trendi,
+                           max_trend_tutar=max_trend_tutar,
+                           odeme_dagilimi=odeme_dagilimi,
+                           max_odeme_tutar=max_odeme_tutar,
+                           kritik_urunler=kritik_urunler)
 
 # İade İşlemleri
 # Cari Ödeme İşlemleri
