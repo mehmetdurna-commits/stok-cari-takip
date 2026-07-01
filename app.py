@@ -7041,12 +7041,31 @@ def onmuhasebe_hesaplar():
     totals_by_account = {row.account_id: row for row in aggregates}
 
     account_rows = []
+    account_summary = {
+        'cash': 0.0,
+        'bank': 0.0,
+        'pos': 0.0,
+        'total_giris': 0.0,
+        'total_cikis': 0.0,
+        'net': 0.0,
+        'active_count': 0,
+        'passive_count': 0,
+    }
     for account in accounts:
         row = totals_by_account.get(account.id)
         sum_giris = float(row.sum_giris or 0.0) if row else 0.0
         sum_cikis = float(row.sum_cikis or 0.0) if row else 0.0
         opening_balance = float(account.opening_balance or 0.0)
         balance = opening_balance + sum_giris - sum_cikis
+        if account.active:
+            account_summary['active_count'] += 1
+            if account.type in ('cash', 'bank', 'pos'):
+                account_summary[account.type] += balance
+        else:
+            account_summary['passive_count'] += 1
+        account_summary['total_giris'] += sum_giris
+        account_summary['total_cikis'] += sum_cikis
+        account_summary['net'] += balance
         account_rows.append({
             'account': account,
             'opening_balance': opening_balance,
@@ -7055,7 +7074,7 @@ def onmuhasebe_hesaplar():
             'balance': balance,
         })
 
-    return render_template('onmuhasebe_hesaplar.html', account_rows=account_rows)
+    return render_template('onmuhasebe_hesaplar.html', account_rows=account_rows, account_summary=account_summary)
 
 
 @app.route('/onmuhasebe/hesaplar/<int:account_id>', methods=['GET', 'POST'])

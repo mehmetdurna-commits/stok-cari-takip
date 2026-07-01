@@ -2411,6 +2411,37 @@ def test_onmuhasebe_hesaplar_shows_default_accounts(client):
     assert 'Kalan Para'.encode('utf-8') in response.data
 
 
+def test_onmuhasebe_account_toggle_changes_active_state(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        ensure_default_accounts_for_user(owner.id)
+        account = Account.query.filter_by(user_id=owner.id, name='Nakit Kasa').first()
+        assert account is not None
+        account_id = account.id
+        account.active = True
+        db.session.commit()
+
+    response = client.post('/onmuhasebe/hesaplar', data={
+        'action': 'toggle',
+        'account_id': str(account_id),
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    with app.app_context():
+        account = db.session.get(Account, account_id)
+        assert account.active is False
+
+    response = client.post('/onmuhasebe/hesaplar', data={
+        'action': 'toggle',
+        'account_id': str(account_id),
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    with app.app_context():
+        account = db.session.get(Account, account_id)
+        assert account.active is True
+
+
 def test_card_payment_defaults_to_pos_account(client):
     with app.app_context():
         owner = User.query.filter_by(email='test@example.com').first()
