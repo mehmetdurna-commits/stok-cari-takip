@@ -2537,6 +2537,52 @@ def test_onmuhasebe_hesaplar_allows_quick_cash_movement(client):
         assert tx.odeme_turu == 'Nakit'
 
 
+def test_onmuhasebe_hesaplar_allows_pos_valor_transfer(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        ensure_default_accounts_for_user(owner.id)
+        pos = Account.query.filter_by(user_id=owner.id, name='POS').first()
+        bank = Account.query.filter_by(user_id=owner.id, name='Banka Hesabi').first()
+        assert pos is not None
+        assert bank is not None
+        pos.active = True
+        bank.active = True
+        pos_id = pos.id
+        bank_id = bank.id
+        db.session.commit()
+
+    response = client.post('/onmuhasebe/hesaplar', data={
+        'action': 'quick_tx',
+        'account_id': str(pos_id),
+        'target_account_id': str(bank_id),
+        'islem_tipi': 'transfer',
+        'tutar': '575',
+        'aciklama': 'POS valör tahsilatı',
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        out_tx = CashTransaction.query.filter_by(
+            user_id=owner.id,
+            account_id=pos_id,
+            referans_tip='transfer',
+            islem_tipi='cikis',
+        ).first()
+        in_tx = CashTransaction.query.filter_by(
+            user_id=owner.id,
+            account_id=bank_id,
+            referans_tip='transfer',
+            islem_tipi='giris',
+        ).first()
+        assert out_tx is not None
+        assert in_tx is not None
+        assert out_tx.tutar == 575.0
+        assert in_tx.tutar == 575.0
+        assert out_tx.odeme_turu == 'Transfer'
+        assert in_tx.odeme_turu == 'Transfer'
+
+
 def test_card_payment_defaults_to_pos_account(client):
     with app.app_context():
         owner = User.query.filter_by(email='test@example.com').first()

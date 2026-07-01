@@ -7024,6 +7024,7 @@ def onmuhasebe_hesaplar():
 
         if action == 'quick_tx':
             account_id_raw = (request.form.get('account_id') or '').strip()
+            target_account_id_raw = (request.form.get('target_account_id') or '').strip()
             islem_tipi = (request.form.get('islem_tipi') or '').strip()
             tutar_raw = (request.form.get('tutar') or '').strip()
             aciklama = (request.form.get('aciklama') or '').strip()
@@ -7037,7 +7038,7 @@ def onmuhasebe_hesaplar():
                 flash('Seçilen hesap bulunamadı veya aktif değil.', 'error')
                 return redirect(url_for('onmuhasebe_hesaplar'))
 
-            if islem_tipi not in ('giris', 'cikis'):
+            if islem_tipi not in ('giris', 'cikis', 'transfer'):
                 flash('Geçersiz hareket yönü.', 'error')
                 return redirect(url_for('onmuhasebe_hesaplar'))
 
@@ -7049,6 +7050,51 @@ def onmuhasebe_hesaplar():
 
             if tutar <= 0:
                 flash('Tutar sıfırdan büyük olmalı.', 'error')
+                return redirect(url_for('onmuhasebe_hesaplar'))
+
+            if islem_tipi == 'transfer':
+                if not target_account_id_raw.isdigit():
+                    flash('Aktarım yapılacak hedef hesabı seçiniz.', 'error')
+                    return redirect(url_for('onmuhasebe_hesaplar'))
+
+                target = db.session.get(Account, int(target_account_id_raw))
+                if not target or target.user_id not in tenant_ids or not target.active:
+                    flash('Hedef hesap bulunamadı veya aktif değil.', 'error')
+                    return redirect(url_for('onmuhasebe_hesaplar'))
+
+                if target.id == account.id:
+                    flash('Aynı hesaba aktarım yapılamaz.', 'error')
+                    return redirect(url_for('onmuhasebe_hesaplar'))
+
+                note = aciklama or ('POS valör tahsilatı' if account.type == 'pos' and target.type == 'bank' else 'Hesaplar arası transfer')
+                db.session.add(CashTransaction(
+                    user_id=account.user_id,
+                    account_id=account.id,
+                    cari_id=None,
+                    tarih=datetime.now(timezone.utc),
+                    islem_tipi='cikis',
+                    tutar=tutar,
+                    odeme_turu='Transfer',
+                    aciklama=f'{note} -> {target.name}',
+                    referans_tip='transfer',
+                    ip_adresi=request.remote_addr,
+                    user_agent=(request.user_agent.string or '')[:500],
+                ))
+                db.session.add(CashTransaction(
+                    user_id=target.user_id,
+                    account_id=target.id,
+                    cari_id=None,
+                    tarih=datetime.now(timezone.utc),
+                    islem_tipi='giris',
+                    tutar=tutar,
+                    odeme_turu='Transfer',
+                    aciklama=f'{note} <- {account.name}',
+                    referans_tip='transfer',
+                    ip_adresi=request.remote_addr,
+                    user_agent=(request.user_agent.string or '')[:500],
+                ))
+                db.session.commit()
+                flash('Para aktarımı tamamlandı.', 'success')
                 return redirect(url_for('onmuhasebe_hesaplar'))
 
             odeme_turu = {
