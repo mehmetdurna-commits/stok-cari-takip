@@ -2442,6 +2442,37 @@ def test_onmuhasebe_account_toggle_changes_active_state(client):
         assert account.active is True
 
 
+def test_onmuhasebe_hesaplar_allows_quick_cash_movement(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        ensure_default_accounts_for_user(owner.id)
+        account = Account.query.filter_by(user_id=owner.id, name='Nakit Kasa').first()
+        assert account is not None
+        account_id = account.id
+        account.active = True
+        db.session.commit()
+
+    response = client.post('/onmuhasebe/hesaplar', data={
+        'action': 'quick_tx',
+        'account_id': str(account_id),
+        'islem_tipi': 'cikis',
+        'tutar': '125,50',
+        'aciklama': 'Kargo ödemesi',
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    with app.app_context():
+        tx = CashTransaction.query.filter_by(
+            account_id=account_id,
+            referans_tip='manual',
+            islem_tipi='cikis',
+            aciklama='Kargo ödemesi',
+        ).first()
+        assert tx is not None
+        assert tx.tutar == 125.50
+        assert tx.odeme_turu == 'Nakit'
+
+
 def test_card_payment_defaults_to_pos_account(client):
     with app.app_context():
         owner = User.query.filter_by(email='test@example.com').first()

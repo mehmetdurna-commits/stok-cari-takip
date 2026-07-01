@@ -7021,6 +7021,58 @@ def onmuhasebe_hesaplar():
             flash('Hesap durumu güncellendi.', 'success')
             return redirect(url_for('onmuhasebe_hesaplar'))
 
+        if action == 'quick_tx':
+            account_id_raw = (request.form.get('account_id') or '').strip()
+            islem_tipi = (request.form.get('islem_tipi') or '').strip()
+            tutar_raw = (request.form.get('tutar') or '').strip()
+            aciklama = (request.form.get('aciklama') or '').strip()
+
+            if not account_id_raw.isdigit():
+                flash('Hesap seçiniz.', 'error')
+                return redirect(url_for('onmuhasebe_hesaplar'))
+
+            account = db.session.get(Account, int(account_id_raw))
+            if not account or account.user_id not in tenant_ids or not account.active:
+                flash('Seçilen hesap bulunamadı veya aktif değil.', 'error')
+                return redirect(url_for('onmuhasebe_hesaplar'))
+
+            if islem_tipi not in ('giris', 'cikis'):
+                flash('Geçersiz hareket yönü.', 'error')
+                return redirect(url_for('onmuhasebe_hesaplar'))
+
+            try:
+                tutar = round(float(tutar_raw.replace(',', '.')), 2)
+            except (TypeError, ValueError):
+                flash('Tutar geçersiz.', 'error')
+                return redirect(url_for('onmuhasebe_hesaplar'))
+
+            if tutar <= 0:
+                flash('Tutar sıfırdan büyük olmalı.', 'error')
+                return redirect(url_for('onmuhasebe_hesaplar'))
+
+            odeme_turu = {
+                'cash': 'Nakit',
+                'bank': 'Banka',
+                'pos': 'POS',
+            }.get(account.type, 'Nakit')
+
+            db.session.add(CashTransaction(
+                user_id=account.user_id,
+                account_id=account.id,
+                cari_id=None,
+                tarih=datetime.now(timezone.utc),
+                islem_tipi=islem_tipi,
+                tutar=tutar,
+                odeme_turu=odeme_turu,
+                aciklama=aciklama or ('Hızlı para girişi' if islem_tipi == 'giris' else 'Hızlı para çıkışı'),
+                referans_tip='manual',
+                ip_adresi=request.remote_addr,
+                user_agent=(request.user_agent.string or '')[:500],
+            ))
+            db.session.commit()
+            flash('Para hareketi kaydedildi.', 'success')
+            return redirect(url_for('onmuhasebe_hesaplar'))
+
         flash('Geçersiz işlem.', 'error')
         return redirect(url_for('onmuhasebe_hesaplar'))
 
