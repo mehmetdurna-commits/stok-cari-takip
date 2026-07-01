@@ -2583,6 +2583,57 @@ def test_onmuhasebe_hesaplar_allows_pos_valor_transfer(client):
         assert in_tx.odeme_turu == 'Transfer'
 
 
+def test_onmuhasebe_hesaplar_rejects_manual_pos_movement(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        ensure_default_accounts_for_user(owner.id)
+        pos = Account.query.filter_by(user_id=owner.id, name='POS').first()
+        assert pos is not None
+        pos.active = True
+        pos_id = pos.id
+        db.session.commit()
+
+    response = client.post('/onmuhasebe/hesaplar', data={
+        'action': 'quick_tx',
+        'account_id': str(pos_id),
+        'islem_tipi': 'giris',
+        'tutar': '575',
+        'aciklama': 'Yanlis POS girisi',
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    with app.app_context():
+        assert CashTransaction.query.filter_by(account_id=pos_id, aciklama='Yanlis POS girisi').first() is None
+
+
+def test_onmuhasebe_hesaplar_rejects_pos_transfer_to_cash(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        ensure_default_accounts_for_user(owner.id)
+        pos = Account.query.filter_by(user_id=owner.id, name='POS').first()
+        cash = Account.query.filter_by(user_id=owner.id, name='Nakit Kasa').first()
+        assert pos is not None
+        assert cash is not None
+        pos.active = True
+        cash.active = True
+        pos_id = pos.id
+        cash_id = cash.id
+        db.session.commit()
+
+    response = client.post('/onmuhasebe/hesaplar', data={
+        'action': 'quick_tx',
+        'account_id': str(pos_id),
+        'target_account_id': str(cash_id),
+        'islem_tipi': 'transfer',
+        'tutar': '575',
+        'aciklama': 'Yanlis POS kasa aktarimi',
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    with app.app_context():
+        assert CashTransaction.query.filter_by(account_id=pos_id, aciklama='Yanlis POS kasa aktarimi').first() is None
+
+
 def test_card_payment_defaults_to_pos_account(client):
     with app.app_context():
         owner = User.query.filter_by(email='test@example.com').first()

@@ -12,6 +12,69 @@
 </div>
 {% endblock %}
 
+{% block scripts %}
+{{ super() }}
+<script>
+(() => {
+  const form = document.querySelector('[data-money-movement-form]');
+  if (!form) return;
+
+  const source = form.querySelector('[data-money-movement-source]');
+  const movementType = form.querySelector('[data-money-movement-type]');
+  const target = form.querySelector('[data-money-movement-target]');
+  const description = form.querySelector('input[name="aciklama"]');
+
+  function selectedType(select) {
+    return select?.selectedOptions?.[0]?.dataset?.accountType || '';
+  }
+
+  function firstTargetByType(type, exceptValue) {
+    return Array.from(target.options).find((option) => (
+      option.value &&
+      option.value !== exceptValue &&
+      option.dataset.accountType === type
+    ));
+  }
+
+  function syncMoneyMovement() {
+    const sourceType = selectedType(source);
+    const sourceId = source.value;
+
+    Array.from(target.options).forEach((option) => {
+      option.hidden = option.value === sourceId;
+      option.disabled = option.value === sourceId;
+    });
+
+    if (sourceType === 'pos') {
+      movementType.value = 'transfer';
+      movementType.querySelectorAll('option').forEach((option) => {
+        option.disabled = option.value !== 'transfer';
+      });
+      const bankTarget = firstTargetByType('bank', sourceId);
+      if (bankTarget) target.value = bankTarget.value;
+      if (description && !description.value.trim()) {
+        description.placeholder = 'POS valör tahsilatı';
+      }
+      return;
+    }
+
+    movementType.querySelectorAll('option').forEach((option) => {
+      option.disabled = false;
+    });
+
+    if (movementType.value === 'transfer' && (!target.value || target.value === sourceId)) {
+      const nextTarget = firstTargetByType('bank', sourceId) || firstTargetByType('cash', sourceId) || firstTargetByType('pos', sourceId);
+      target.value = nextTarget ? nextTarget.value : '';
+    }
+  }
+
+  source.addEventListener('change', syncMoneyMovement);
+  movementType.addEventListener('change', syncMoneyMovement);
+  syncMoneyMovement();
+})();
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-6xl mx-auto space-y-6 pb-20">
   <section class="rounded-[2rem] border border-blue-100 bg-gradient-to-br from-sky-50 via-white to-indigo-50 p-6 md:p-8 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
@@ -113,11 +176,11 @@
 
         <div class="lg:col-span-3">
           <label class="mb-1 block text-xs font-black uppercase tracking-widest text-slate-500">Kaynak Hesap</label>
-          <select name="account_id" required class="w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-950">
+          <select name="account_id" required class="w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-950" data-money-movement-source>
             {% for row in account_rows %}
               {% set a = row.account %}
               {% if a.active %}
-              <option value="{{ a.id }}">{{ a.name }} · {% if a.type == 'cash' %}Kasa{% elif a.type == 'bank' %}Banka{% else %}POS{% endif %}</option>
+              <option value="{{ a.id }}" data-account-type="{{ a.type }}">{{ a.name }} · {% if a.type == 'cash' %}Kasa{% elif a.type == 'bank' %}Banka{% else %}POS{% endif %}</option>
               {% endif %}
             {% endfor %}
           </select>
@@ -139,7 +202,7 @@
             {% for row in account_rows %}
               {% set a = row.account %}
               {% if a.active %}
-              <option value="{{ a.id }}">{{ a.name }} · {% if a.type == 'cash' %}Kasa{% elif a.type == 'bank' %}Banka{% else %}POS{% endif %}</option>
+              <option value="{{ a.id }}" data-account-type="{{ a.type }}">{{ a.name }} · {% if a.type == 'cash' %}Kasa{% elif a.type == 'bank' %}Banka{% else %}POS{% endif %}</option>
               {% endif %}
             {% endfor %}
           </select>

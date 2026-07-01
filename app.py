@@ -7042,6 +7042,10 @@ def onmuhasebe_hesaplar():
                 flash('Geçersiz hareket yönü.', 'error')
                 return redirect(url_for('onmuhasebe_hesaplar'))
 
+            if account.type == 'pos' and islem_tipi != 'transfer':
+                flash('POS hesabı için sadece bankaya aktarım yapılabilir.', 'error')
+                return redirect(url_for('onmuhasebe_hesaplar'))
+
             try:
                 tutar = round(float(tutar_raw.replace(',', '.')), 2)
             except (TypeError, ValueError):
@@ -7064,6 +7068,10 @@ def onmuhasebe_hesaplar():
 
                 if target.id == account.id:
                     flash('Aynı hesaba aktarım yapılamaz.', 'error')
+                    return redirect(url_for('onmuhasebe_hesaplar'))
+
+                if account.type == 'pos' and target.type != 'bank':
+                    flash('POS valör tahsilatı sadece banka hesabına aktarılabilir.', 'error')
                     return redirect(url_for('onmuhasebe_hesaplar'))
 
                 note = aciklama or ('POS valör tahsilatı' if account.type == 'pos' and target.type == 'bank' else 'Hesaplar arası transfer')
