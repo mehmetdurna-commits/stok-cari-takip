@@ -11,8 +11,10 @@
 
     .report-hero {
         background:
-            radial-gradient(circle at top left, rgba(59, 130, 246, 0.22), transparent 34%),
-            linear-gradient(135deg, #0f172a 0%, #111827 48%, #1e3a8a 100%);
+            radial-gradient(circle at top left, rgba(14, 165, 233, 0.18), transparent 34%),
+            radial-gradient(circle at bottom right, rgba(99, 102, 241, 0.14), transparent 38%),
+            linear-gradient(135deg, #f8fbff 0%, #eef6ff 48%, #e8f0ff 100%);
+        border: 1px solid rgba(148, 163, 184, 0.28);
     }
 
     .report-bar {
@@ -121,26 +123,26 @@
         <p>{{ current_user.firma_adi if current_user.is_authenticated else 'Firma' }} · Yazdırma tarihi: {{ now()|datetime_tr }}</p>
     </div>
 
-    <section class="report-hero rounded-[2rem] p-6 md:p-8 text-white shadow-xl overflow-hidden relative">
-        <div class="absolute right-8 top-8 hidden lg:flex size-24 rounded-full bg-white/10 items-center justify-center">
-            <span class="material-symbols-outlined text-5xl text-cyan-200">monitoring</span>
+    <section class="report-hero rounded-[2rem] p-6 md:p-8 text-slate-900 shadow-sm overflow-hidden relative">
+        <div class="absolute right-8 top-8 hidden lg:flex size-24 rounded-full bg-white/70 ring-1 ring-blue-100 items-center justify-center">
+            <span class="material-symbols-outlined text-5xl text-blue-500">monitoring</span>
         </div>
         <div class="relative max-w-3xl">
-            <div class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-cyan-100">
+            <div class="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/70 px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-blue-700 shadow-sm">
                 <span class="material-symbols-outlined text-sm">insights</span>
                 Canlı işletme özeti
             </div>
             <h2 class="mt-5 text-3xl md:text-5xl font-black tracking-tight">Satış, stok ve cari durumunu tek ekranda oku.</h2>
-            <p class="mt-4 text-sm md:text-base text-slate-200 leading-7">
+            <p class="mt-4 text-sm md:text-base text-slate-600 leading-7">
                 Küçük işletmeler için sade raporlama: bugün ne olmuş, hangi ürün satmış, stokta risk var mı ve cari dengesi ne söylüyor?
             </p>
         </div>
         <div class="no-print flex flex-col sm:flex-row sm:flex-wrap gap-3 relative mt-6">
-            <button onclick="window.print()" class="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-black text-slate-900 shadow-lg hover:bg-slate-100 transition">
+            <button onclick="window.print()" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-black text-white shadow-sm hover:bg-slate-800 transition">
                 <span class="material-symbols-outlined text-base">print</span>
                 Raporu Yazdır
             </button>
-            <a href="{{ url_for('gunluk_satislar') }}" class="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-black text-white hover:bg-white/15 transition">
+            <a href="{{ url_for('gunluk_satislar') }}" class="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-white px-4 py-2.5 text-sm font-black text-blue-700 shadow-sm hover:bg-blue-50 transition">
                 <span class="material-symbols-outlined text-base">receipt_long</span>
                 Günlük Satışlara Git
             </a>
