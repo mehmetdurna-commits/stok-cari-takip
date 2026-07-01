@@ -750,11 +750,11 @@ function switchSystemManagementTab(tabId, pushHash = true) {
                                 <span class="material-symbols-outlined text-lg">monitoring</span>
                                 Firma 360
                             </a>
-                            <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">
+                            <button type="submit" class="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200">
                                 <span class="material-symbols-outlined text-lg">save</span>
                                 Kaydet
                             </button>
-                            <button type="submit" formaction="{{ url_for('super_admin_impersonate', organization_id=org.id) }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
+                            <button type="submit" formaction="{{ url_for('super_admin_impersonate', organization_id=org.id) }}" class="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
                                 <span class="material-symbols-outlined text-lg">support_agent</span>
                                 Destek girisi
                             </button>
