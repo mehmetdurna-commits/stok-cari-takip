@@ -491,6 +491,12 @@
             margin-inline: auto;
         }
 
+        body[data-endpoint]:not([data-endpoint="dashboard"]) .app-shell-frame > .max-w-6xl,
+        body[data-endpoint]:not([data-endpoint="dashboard"]) .app-shell-frame > .mx-auto.max-w-6xl,
+        body[data-endpoint]:not([data-endpoint="dashboard"]) .app-shell-frame > .max-w-\[1200px\] {
+            max-width: 80rem !important;
+        }
+
         .app-topbar {
             min-height: 4rem;
             height: auto;
@@ -1412,7 +1418,7 @@
     {% endif %}
     {% block head %}{% endblock %}
 </head>
-<body class="bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 antialiased {{ 'app-shell-standard' if not ((request.endpoint or '').startswith('super_admin')) else '' }}">
+<body data-endpoint="{{ request.endpoint or '' }}" class="bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 antialiased {{ 'app-shell-standard' if not ((request.endpoint or '').startswith('super_admin')) else '' }}">
     {% set is_auth = current_user.is_authenticated %}
     <div class="flex h-dvh min-h-screen overflow-hidden">
         {% if is_auth %}
