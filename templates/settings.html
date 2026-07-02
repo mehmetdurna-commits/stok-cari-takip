@@ -1934,6 +1934,10 @@ function handleCompanyLogoSelected(event) {
 async function updateProfile() {
     const form = document.getElementById('profile-form');
     const formData = new FormData(form);
+    const logoInput = document.getElementById('company-logo-input');
+    if (logoInput && logoInput.files && logoInput.files[0]) {
+        formData.set('firma_logo', logoInput.files[0]);
+    }
     
     try {
         const response = await fetch('/api/settings/profile', {
@@ -1947,8 +1951,9 @@ async function updateProfile() {
             if (result.logo_url) {
                 const preview = document.getElementById('company-logo-preview');
                 if (preview) {
-                    preview.innerHTML = `<img src="${result.logo_url}" alt="Firma logosu" class="h-full w-full object-contain bg-white p-3">`;
+                    preview.innerHTML = `<img src="${result.logo_url}?v=${Date.now()}" alt="Firma logosu" class="h-full w-full object-contain bg-white p-3">`;
                 }
+                if (logoInput) logoInput.value = '';
             }
         } else {
             showMessage(result.message, 'error');
