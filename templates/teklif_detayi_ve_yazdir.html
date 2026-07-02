@@ -53,8 +53,8 @@
         line-height: 1.35 !important;
     }
     .quote-header {
-        padding: 8mm 0 5mm 0 !important;
-        gap: 6mm !important;
+        padding: 4mm 0 4mm 0 !important;
+        gap: 4mm !important;
         break-inside: avoid;
     }
     .quote-brand-block {
@@ -62,23 +62,23 @@
         align-items: flex-start !important;
     }
     .quote-logo-box {
-        width: 42mm !important;
-        height: 18mm !important;
+        width: 32mm !important;
+        height: 14mm !important;
         border-radius: 8px !important;
     }
     .quote-logo-box img {
         padding: 1.5mm !important;
     }
     .quote-company-name {
-        font-size: 16px !important;
+        font-size: 12px !important;
         line-height: 1.15 !important;
         margin-bottom: 2mm !important;
     }
     .quote-company-line,
     .quote-customer-line,
     .quote-date-line {
-        font-size: 10px !important;
-        line-height: 1.25 !important;
+        font-size: 8px !important;
+        line-height: 1.18 !important;
         margin-top: 0 !important;
     }
     .quote-meta-title {
@@ -88,8 +88,8 @@
         font-size: 11px !important;
     }
     .quote-customer-section {
-        padding: 5mm 0 !important;
-        gap: 5mm !important;
+        padding: 3.5mm 0 !important;
+        gap: 3mm !important;
         break-inside: avoid;
     }
     .quote-customer-section > div > p:first-child,
@@ -98,21 +98,26 @@
         margin-bottom: 2mm !important;
     }
     .quote-customer-name {
-        font-size: 13px !important;
+        font-size: 10px !important;
     }
     .quote-info-card {
-        padding: 3mm !important;
-        border-radius: 10px !important;
+        padding: 2mm !important;
+        border-radius: 8px !important;
     }
     .quote-customer-card {
-        padding: 4mm !important;
-        border-radius: 12px !important;
-        gap: 5mm !important;
+        padding: 3mm !important;
+        border-radius: 10px !important;
+        gap: 4mm !important;
         background: #ffffff !important;
         break-inside: avoid;
+        grid-template-columns: 34mm 1fr !important;
+    }
+    .quote-meta-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        gap: 2mm !important;
     }
     .quote-info-card p {
-        font-size: 10px !important;
+        font-size: 8px !important;
         margin-top: 0 !important;
     }
     .quote-table {
@@ -195,9 +200,9 @@
     </div>
 
     <article class="quote-paper print-surface bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
-        <div class="quote-header p-8 md:p-10 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-start md:justify-between gap-8">
+        <div class="quote-header p-6 md:p-7 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-start md:justify-between gap-5">
             <div class="quote-brand-block flex items-start gap-4">
-                <div class="quote-logo-box w-64 h-24 rounded-xl bg-primary-600 text-white flex items-center justify-center overflow-hidden border border-slate-200 dark:border-slate-700">
+                <div class="quote-logo-box w-40 h-20 rounded-xl bg-primary-600 text-white flex items-center justify-center overflow-hidden border border-slate-200 dark:border-slate-700">
                     {% if current_user.firma_logo %}
                     <img src="{{ url_for('static', filename=company_logo_static_path(current_user.firma_logo)) }}" alt="{{ current_user.firma_adi }} logosu" class="h-full w-full object-contain bg-white p-2">
                     {% else %}
@@ -205,7 +210,7 @@
                     {% endif %}
                 </div>
                 <div>
-                    <h2 class="quote-company-name text-2xl font-black text-slate-900 dark:text-white">{{ current_user.firma_adi or 'StokCari' }}</h2>
+                    <h2 class="quote-company-name text-xl font-black text-slate-900 dark:text-white">{{ current_user.firma_adi or 'StokCari' }}</h2>
                     {% if current_user.yetkili_adi %}
                     <p class="quote-company-line text-sm text-slate-500 mt-1">Yetkili: {{ current_user.yetkili_adi }}</p>
                     {% endif %}
@@ -222,8 +227,8 @@
             </div>
         </div>
 
-        <div class="quote-customer-section p-8 md:p-10 border-b border-slate-200 dark:border-slate-800">
-            <div class="quote-customer-card rounded-3xl p-5 grid grid-cols-1 md:grid-cols-[1fr_1.3fr] gap-6 dark:bg-slate-900 dark:border-slate-800">
+        <div class="quote-customer-section p-5 md:p-6 border-b border-slate-200 dark:border-slate-800">
+            <div class="quote-customer-card rounded-2xl p-4 grid grid-cols-1 md:grid-cols-[1fr_2.2fr] gap-4 dark:bg-slate-900 dark:border-slate-800">
             <div>
                 <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Müşteri</p>
                 <h4 class="quote-customer-name text-lg font-black text-slate-900 dark:text-white">{{ teklif.cari.unvan if teklif.cari else '-' }}</h4>
@@ -231,7 +236,7 @@
                 <p class="quote-customer-line text-sm text-slate-500">{{ teklif.cari.telefon if teklif.cari and teklif.cari.telefon else '' }}</p>
                 <p class="quote-customer-line text-sm text-slate-500">{{ teklif.cari.adres if teklif.cari and teklif.cari.adres else '' }}</p>
             </div>
-            <div class="grid grid-cols-2 gap-3">
+            <div class="quote-meta-grid grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div class="quote-info-card rounded-2xl dark:bg-slate-800 p-4">
                     <p class="text-xs text-slate-500">Teklif No</p>
                     <p class="font-bold text-primary-600 mt-1">#{{ teklif.teklif_no }}</p>
