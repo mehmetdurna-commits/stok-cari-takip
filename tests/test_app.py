@@ -249,6 +249,28 @@ def test_product_table_uses_items_per_page_preference(client):
             settings_path.write_text(original, encoding='utf-8')
 
 
+def test_settings_profile_uploads_company_logo(client):
+    response = client.post('/api/settings/profile', data={
+        'firma_adi': 'Logo Test Firma',
+        'yetkili_adi': 'Mehmet Durna',
+        'telefon': '555',
+        'firma_logo': (BytesIO(b'fake image bytes'), 'logo.png'),
+    }, content_type='multipart/form-data')
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['success'] is True
+    assert 'company_logos/firma_logo_' in data['logo_url']
+
+    with app.app_context():
+        user = User.query.filter_by(email='test@example.com').first()
+        assert user.firma_adi == 'Logo Test Firma'
+        assert user.firma_logo.startswith('company_logos/firma_logo_')
+        logo_path = Path(app.config['UPLOAD_FOLDER']) / user.firma_logo
+        assert logo_path.exists()
+        logo_path.unlink()
+
+
 def test_settings_notifications_are_persisted(client):
     settings_path = primary_test_user_backup_dir() / 'settings.json'
     original = settings_path.read_text(encoding='utf-8') if settings_path.exists() else None

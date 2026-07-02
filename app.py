@@ -46,6 +46,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 app = Flask(__name__)
 app.config.from_object(AppConfig)
 app.json.ensure_ascii = False
+app.config.setdefault('UPLOAD_FOLDER', os.path.join(app.static_folder, 'uploads'))
 validate_runtime_config(app)
 
 if app.config.get("IS_PRODUCTION") and os.environ.get("USE_PROXY_FIX", "").strip().lower() in {"1", "true", "yes", "on"}:
@@ -359,6 +360,7 @@ class User(UserMixin, db.Model):
     vergi_dairesi = db.Column(db.String(100))
     vergi_numarasi = db.Column(db.String(100))
     adres = db.Column(db.Text)
+    firma_logo = db.Column(db.String(255))
     kayit_tarihi = db.Column(db.DateTime, default=utc_now)
     paket_tipi = db.Column(db.String(20), default='demo')  # demo, standart, profesyonel
     urun_limiti = db.Column(db.Integer, default=10)
@@ -1154,6 +1156,35 @@ def save_support_attachment(file_storage):
     }
 
 
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+COMPANY_LOGO_MAX_BYTES = 2 * 1024 * 1024
+
+
+def allowed_image_file(filename):
+    return bool(filename and '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS)
+
+
+def save_company_logo(file_storage, user_id):
+    if not file_storage or not file_storage.filename:
+        return None, None
+    if not allowed_image_file(file_storage.filename):
+        return None, 'Logo dosyası PNG, JPG, JPEG, GIF veya WEBP olmalı.'
+
+    file_storage.stream.seek(0, os.SEEK_END)
+    size = file_storage.stream.tell()
+    file_storage.stream.seek(0)
+    if size > COMPANY_LOGO_MAX_BYTES:
+        return None, 'Logo dosyası en fazla 2 MB olabilir.'
+
+    original_name = secure_filename(file_storage.filename)
+    extension = original_name.rsplit('.', 1)[-1].lower()
+    upload_root = Path(app.config['UPLOAD_FOLDER']) / 'company_logos'
+    upload_root.mkdir(parents=True, exist_ok=True)
+    filename = secure_filename(f'firma_logo_{user_id}_{int(time.time())}.{extension}')
+    file_storage.save(upload_root / filename)
+    return f'company_logos/{filename}', None
+
+
 def action_sla_hours(created_at, due_at):
     if not created_at or not due_at:
         return None
@@ -1710,6 +1741,7 @@ def build_tenant_backup_payload(user):
             'vergi_dairesi': getattr(user, 'vergi_dairesi', None),
             'vergi_numarasi': getattr(user, 'vergi_numarasi', None),
             'adres': getattr(user, 'adres', None),
+            'firma_logo': getattr(user, 'firma_logo', None),
             'paket_tipi': getattr(user, 'paket_tipi', None),
             'created_at': user.kayit_tarihi.isoformat() if getattr(user, 'kayit_tarihi', None) else None
         },
@@ -3289,6 +3321,8 @@ def ensure_database_schema():
                 connection.execute(text('ALTER TABLE user ADD COLUMN vergi_numarasi VARCHAR(100)'))
             if 'adres' not in user_columns:
                 connection.execute(text('ALTER TABLE user ADD COLUMN adres TEXT'))
+            if 'firma_logo' not in user_columns:
+                connection.execute(text('ALTER TABLE user ADD COLUMN firma_logo VARCHAR(255)'))
             if 'organization_id' not in user_columns:
                 connection.execute(text('ALTER TABLE user ADD COLUMN organization_id INTEGER'))
             if 'role' not in user_columns:
@@ -10081,6 +10115,7 @@ def create_backup():
                 'firma_adi': current_user.firma_adi,
                 'email': current_user.email,
                 'telefon': current_user.telefon,
+                'firma_logo': current_user.firma_logo,
                 'created_at': current_user.kayit_tarihi.isoformat() if current_user.kayit_tarihi else None
             },
             'urunler': [
@@ -10679,8 +10714,17 @@ def update_profile():
         current_user.firma_adi = firma_adi
         current_user.yetkili_adi = (request.form.get('yetkili_adi') or '').strip() or None
         current_user.telefon = (request.form.get('telefon') or '').strip() or None
+        logo_path, logo_error = save_company_logo(request.files.get('firma_logo'), current_user.id)
+        if logo_error:
+            return jsonify({'success': False, 'message': logo_error}), 400
+        if logo_path:
+            current_user.firma_logo = logo_path
         db.session.commit()
-        return jsonify({'success': True, 'message': 'Profil güncellendi'})
+        return jsonify({
+            'success': True,
+            'message': 'Firma bilgileri güncellendi',
+            'logo_url': url_for('static', filename=current_user.firma_logo) if current_user.firma_logo else ''
+        })
     except Exception as e:
         current_app.logger.exception('Profil guncelleme hatasi')
         return jsonify({'success': False, 'message': safe_exception_message(e)}), 500
@@ -11119,6 +11163,7 @@ def settings_backup():
                 'vergi_dairesi': current_user.vergi_dairesi,
                 'vergi_numarasi': current_user.vergi_numarasi,
                 'adres': current_user.adres,
+                'firma_logo': current_user.firma_logo,
                 'paket_tipi': current_user.paket_tipi,
                 'created_at': current_user.kayit_tarihi.isoformat() if current_user.kayit_tarihi else None
             },
@@ -11277,6 +11322,7 @@ def restore_backup():
         current_user.vergi_dairesi = user_info.get('vergi_dairesi', current_user.vergi_dairesi)
         current_user.vergi_numarasi = user_info.get('vergi_numarasi', current_user.vergi_numarasi)
         current_user.adres = user_info.get('adres', current_user.adres)
+        current_user.firma_logo = user_info.get('firma_logo', current_user.firma_logo)
 
         old_to_new_cari = {}
         for cari_data in backup_data.get('cariler', []):

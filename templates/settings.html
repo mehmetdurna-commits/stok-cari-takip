@@ -16,7 +16,7 @@
         <nav class="flex flex-wrap gap-1 p-2" role="tablist">
             <button type="button" role="tab" aria-selected="true" aria-controls="profile-content" onclick="switchTab('profile')" id="profile-tab" class="settings-tab-btn active px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
                 <span class="material-symbols-outlined text-lg">person</span>
-                Profil
+                Firma
             </button>
             <button type="button" role="tab" aria-selected="false" aria-controls="preferences-content" onclick="switchTab('preferences')" id="preferences-tab" class="settings-tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200">
                 <span class="material-symbols-outlined text-lg">tune</span>
@@ -59,10 +59,10 @@
                 <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
                     <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
                         <span class="material-symbols-outlined text-primary-600">person</span>
-                        Profil Bilgileri
+                        Firma Bilgileri
                     </h2>
                     
-                    <form class="space-y-6">
+                    <form id="profile-form" class="space-y-6" enctype="multipart/form-data">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Firma Adı</label>
@@ -132,25 +132,30 @@
                 </div>
             </div>
 
-            <!-- Profile Picture -->
+            <!-- Company Logo -->
             <div class="space-y-6">
                 <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
-                    <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-6">Profil Fotoğrafı</h3>
+                    <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-6">Firma Logosu</h3>
                     
                     <div class="flex flex-col items-center space-y-4">
                         <div class="relative">
-                            <div class="w-32 h-32 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center">
+                            <div id="company-logo-preview" class="w-32 h-32 bg-gradient-to-br from-primary-400 to-primary-600 rounded-3xl flex items-center justify-center overflow-hidden border border-slate-200 dark:border-slate-700">
+                                {% if current_user.firma_logo %}
+                                <img src="{{ url_for('static', filename=current_user.firma_logo) }}" alt="{{ current_user.firma_adi }} logosu" class="h-full w-full object-contain bg-white p-3">
+                                {% else %}
                                 <span class="material-symbols-outlined text-white text-5xl">business</span>
+                                {% endif %}
                             </div>
-                            <button class="absolute bottom-0 right-0 w-10 h-10 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-600 rounded-full flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-200">
+                            <button type="button" onclick="openCompanyLogoPicker()" class="absolute bottom-0 right-0 w-10 h-10 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-600 rounded-full flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-200">
                                 <span class="material-symbols-outlined text-slate-600 dark:text-slate-300 text-lg">camera_alt</span>
                             </button>
                         </div>
                         
                         <div class="text-center">
-                            <p class="text-sm text-slate-600 dark:text-slate-400 mb-3">JPG, PNG veya GIF formatında<br>Maksimum dosya boyutu: 2MB</p>
-                            <button class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm">
-                                Fotoğraf Yükle
+                            <p class="text-sm text-slate-600 dark:text-slate-400 mb-3">PNG, JPG, WEBP veya GIF formatında<br>Maksimum dosya boyutu: 2MB</p>
+                            <input id="company-logo-input" form="profile-form" type="file" name="firma_logo" accept="image/png,image/jpeg,image/gif,image/webp" class="hidden" onchange="handleCompanyLogoSelected(event)">
+                            <button type="button" onclick="openCompanyLogoPicker()" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-200 text-sm">
+                                Logo Yükle
                             </button>
                         </div>
                     </div>
@@ -1904,8 +1909,30 @@ async function updateCompanyInfo() {
 }
 
 // Profil güncelleme
+function openCompanyLogoPicker() {
+    const input = document.getElementById('company-logo-input');
+    if (input) input.click();
+}
+
+function handleCompanyLogoSelected(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+        showMessage('Logo dosyası en fazla 2 MB olabilir', 'error');
+        event.target.value = '';
+        return;
+    }
+    const preview = document.getElementById('company-logo-preview');
+    if (!preview) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+        preview.innerHTML = `<img src="${reader.result}" alt="Firma logosu" class="h-full w-full object-contain bg-white p-3">`;
+    };
+    reader.readAsDataURL(file);
+}
+
 async function updateProfile() {
-    const form = document.querySelector('#profile-content form');
+    const form = document.getElementById('profile-form');
     const formData = new FormData(form);
     
     try {
@@ -1916,13 +1943,19 @@ async function updateProfile() {
         
         const result = await response.json();
         if (result.success) {
-            showMessage('Profil güncellendi', 'success');
+            showMessage(result.message || 'Firma bilgileri güncellendi', 'success');
+            if (result.logo_url) {
+                const preview = document.getElementById('company-logo-preview');
+                if (preview) {
+                    preview.innerHTML = `<img src="${result.logo_url}" alt="Firma logosu" class="h-full w-full object-contain bg-white p-3">`;
+                }
+            }
         } else {
             showMessage(result.message, 'error');
         }
     } catch (error) {
-        console.error('Profil güncellenemedi:', error);
-        showMessage('Profil güncellenemedi', 'error');
+        console.error('Firma bilgileri güncellenemedi:', error);
+        showMessage('Firma bilgileri güncellenemedi', 'error');
     }
 }
 
