@@ -49,7 +49,7 @@
     <article class="print-surface bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
         <div class="p-8 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-start md:justify-between gap-6">
             <div class="flex items-start gap-4">
-                <div class="w-28 h-14 rounded-xl bg-primary-600 text-white flex items-center justify-center overflow-hidden border border-slate-200 dark:border-slate-700">
+                <div class="w-64 h-24 rounded-xl bg-primary-600 text-white flex items-center justify-center overflow-hidden border border-slate-200 dark:border-slate-700">
                     {% if current_user.firma_logo %}
                     <img src="{{ url_for('static', filename=company_logo_static_path(current_user.firma_logo)) }}" alt="{{ current_user.firma_adi }} logosu" class="h-full w-full object-contain bg-white p-2">
                     {% else %}
