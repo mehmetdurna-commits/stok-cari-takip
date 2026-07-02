@@ -1,0 +1,199 @@
+{% extends '_base.html' %}
+
+{% set site_name = site_config().get('name', config.get('SITE_NAME', 'Esstok')) %}
+{% block title %}Fiyatlar - {{ site_name }}{% endblock %}
+{% block og_description %}{{ site_name }} demo, standart ve profesyonel paketleriyle stok, cari, POS ve personel yönetimini küçük işletmeler için sadeleştirir.{% endblock %}
+
+{% block content %}
+<style>
+    .pricing-gradient {
+        background:
+            radial-gradient(circle at 10% 10%, rgba(37, 99, 235, 0.18), transparent 30rem),
+            radial-gradient(circle at 88% 8%, rgba(20, 184, 166, 0.16), transparent 30rem),
+            linear-gradient(135deg, #f8fafc 0%, #eef6ff 45%, #ffffff 100%);
+    }
+
+    .pricing-grid {
+        background-image:
+            linear-gradient(to right, rgba(15, 23, 42, 0.055) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(15, 23, 42, 0.055) 1px, transparent 1px);
+        background-size: 42px 42px;
+    }
+
+    .pricing-card {
+        background: rgba(255, 255, 255, 0.94);
+        border: 1px solid rgba(226, 232, 240, 0.95);
+        box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+    }
+
+    .pricing-card-featured {
+        background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+        border: 1px solid rgba(37, 99, 235, 0.35);
+        box-shadow: 0 26px 75px rgba(37, 99, 235, 0.18);
+    }
+</style>
+
+<div class="min-h-screen bg-white text-slate-950">
+    <div class="pricing-gradient pricing-grid relative overflow-hidden">
+        <header class="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
+            <a href="{{ url_for('index') }}" class="flex items-center gap-3">
+                <div class="flex size-11 items-center justify-center rounded-2xl bg-primary-600 text-white shadow-xl shadow-primary-600/25">
+                    <span class="material-symbols-outlined text-2xl">storefront</span>
+                </div>
+                <div>
+                    <p class="text-lg font-black tracking-tight text-slate-950">{{ site_name }}</p>
+                    <p class="text-xs font-semibold text-slate-500">Bulut POS ve işletme yönetimi</p>
+                </div>
+            </a>
+            <nav class="hidden items-center gap-6 text-sm font-bold text-slate-600 md:flex">
+                <a href="{{ url_for('index') }}" class="hover:text-primary-700">Ana Sayfa</a>
+                <a href="#paketler" class="hover:text-primary-700">Paketler</a>
+                <a href="#sss" class="hover:text-primary-700">SSS</a>
+            </nav>
+            <div class="flex items-center gap-2">
+                <a href="{{ url_for('giris') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-sm transition hover:border-primary-200 hover:text-primary-700">Giriş</a>
+                <a href="{{ url_for('kayit') }}" class="rounded-xl bg-primary-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-primary-600/20 transition hover:bg-primary-700">Ücretsiz Dene</a>
+            </div>
+        </header>
+
+        <main class="mx-auto max-w-7xl px-4 pb-20 pt-8 sm:px-6 lg:px-8 lg:pb-24 lg:pt-14">
+            <section class="mx-auto max-w-4xl text-center">
+                <div class="inline-flex items-center gap-2 rounded-full border border-primary-100 bg-white/85 px-4 py-2 text-xs font-black uppercase tracking-widest text-primary-700 shadow-sm">
+                    <span class="material-symbols-outlined text-[18px]">sell</span>
+                    Net paketler, sade kullanım
+                </div>
+                <h1 class="mt-7 text-4xl font-black tracking-tight text-slate-950 sm:text-6xl sm:leading-[1.02]">
+                    İşletmene uygun paketi seç, satış ve stok akışını büyüt.
+                </h1>
+                <p class="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-600">
+                    Demo ile risksiz dene. Standart paketle küçük işletme akışını yönet. Profesyonel paketle ürün sınırı olmadan büyü.
+                </p>
+            </section>
+
+            <section id="paketler" class="mt-14 grid gap-6 lg:grid-cols-3">
+                {% set packages = [
+                    {
+                        'name': 'Demo',
+                        'badge': 'Başlangıç',
+                        'price': 'Ücretsiz',
+                        'description': 'Uygulamayı tanımak ve temel akışı denemek isteyen işletmeler için.',
+                        'limit': '10 stok ürünü',
+                        'cta': 'Ücretsiz Dene',
+                        'href': url_for('kayit', paket='demo'),
+                        'featured': False,
+                        'features': ['10 ürüne kadar stok denemesi', 'POS, cari ve stok akışını görme', 'Demo ürünlerle hızlı başlangıç', 'Küçük işletme senaryosunu test etme']
+                    },
+                    {
+                        'name': 'Standart',
+                        'badge': 'En uygun başlangıç',
+                        'price': '500 ürüne kadar',
+                        'description': 'Hırdavat, market, servis ve küçük perakende işletmeleri için dengeli paket.',
+                        'limit': '500 stok ürünü',
+                        'cta': 'Satın Alma Adımına Geç',
+                        'href': url_for('kayit', paket='standart', odeme='1'),
+                        'featured': True,
+                        'features': ['500 ürüne kadar stok yönetimi', 'Hızlı satış POS ekranı', 'Cari/veresiye ve tahsilat takibi', 'Günlük satış ve temel raporlar', 'Personel kayıt ve izin takibi']
+                    },
+                    {
+                        'name': 'Profesyonel',
+                        'badge': 'Büyüyen işletme',
+                        'price': 'Sınırsız ürün',
+                        'description': 'Ürün sayısı büyüyen ve daha kapsamlı takip isteyen işletmeler için.',
+                        'limit': 'Sınırsız stok',
+                        'cta': 'Profesyonel Pakete Geç',
+                        'href': url_for('kayit', paket='profesyonel', odeme='1'),
+                        'featured': False,
+                        'features': ['Sınırsız ürün ve stok yönetimi', 'POS, cari, teklif ve iade akışları', 'Ön muhasebe kasa/banka/POS takibi', 'Gelişmiş rapor ekranları', 'Öncelikli kurulum desteği']
+                    }
+                ] %}
+
+                {% for package in packages %}
+                <article class="{{ 'pricing-card-featured scale-[1.01]' if package.featured else 'pricing-card' }} relative flex flex-col rounded-[2rem] p-6">
+                    {% if package.featured %}
+                    <div class="absolute -top-4 left-6 rounded-full bg-primary-600 px-4 py-2 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-primary-600/25">Önerilen</div>
+                    {% endif %}
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-widest text-primary-600">{{ package.badge }}</p>
+                            <h2 class="mt-3 text-3xl font-black tracking-tight text-slate-950">{{ package.name }}</h2>
+                        </div>
+                        <div class="flex size-12 items-center justify-center rounded-2xl bg-primary-50 text-primary-700">
+                            <span class="material-symbols-outlined">{{ 'rocket_launch' if package.featured else 'inventory_2' }}</span>
+                        </div>
+                    </div>
+                    <p class="mt-4 min-h-16 leading-7 text-slate-600">{{ package.description }}</p>
+                    <div class="mt-6 rounded-3xl border border-slate-200 bg-white p-5">
+                        <p class="text-sm font-bold text-slate-500">Paket sınırı</p>
+                        <p class="mt-2 text-3xl font-black text-slate-950">{{ package.price }}</p>
+                        <p class="mt-1 text-sm font-semibold text-primary-700">{{ package.limit }}</p>
+                    </div>
+                    <ul class="mt-6 space-y-3 text-sm font-semibold text-slate-700">
+                        {% for feature in package.features %}
+                        <li class="flex gap-3">
+                            <span class="material-symbols-outlined text-lg text-emerald-500">check_circle</span>
+                            <span>{{ feature }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <a href="{{ package.href }}" class="{{ 'bg-primary-600 text-white shadow-xl shadow-primary-600/20 hover:bg-primary-700' if package.featured else 'border border-slate-200 bg-white text-slate-950 hover:border-primary-200 hover:text-primary-700' }} mt-8 inline-flex min-h-12 items-center justify-center rounded-2xl px-5 py-3 text-sm font-black transition">
+                        {{ package.cta }}
+                    </a>
+                </article>
+                {% endfor %}
+            </section>
+
+            <section id="satin-al" class="mt-10 rounded-[2rem] border border-slate-200 bg-white/90 p-6 shadow-xl shadow-slate-950/5 sm:p-8">
+                <div class="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+                    <div>
+                        <p class="text-xs font-black uppercase tracking-widest text-primary-600">Satın alma akışı</p>
+                        <h2 class="mt-2 text-2xl font-black text-slate-950">Standart veya Profesyonel paket için önce firma hesabı oluşturulur.</h2>
+                        <p class="mt-3 leading-7 text-slate-600">
+                            Satın alma butonları sizi paket bilgisiyle kayıt ekranına taşır. Ödeme altyapısı bağlandığında aynı akış güvenli ödeme ekranına yönlendirilecek şekilde hazırlandı.
+                        </p>
+                    </div>
+                    <div class="flex flex-col gap-3 sm:flex-row">
+                        <a href="{{ url_for('kayit', paket='standart', odeme='1') }}" class="inline-flex min-h-12 items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-primary-700">Standart Seç</a>
+                        <a href="{{ url_for('kayit', paket='profesyonel', odeme='1') }}" class="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-950 hover:border-primary-200 hover:text-primary-700">Profesyonel Seç</a>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <section id="sss" class="bg-slate-50 py-16">
+        <div class="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-3 lg:px-8">
+            {% set faqs = [
+                ('Demo gerçekten ücretsiz mi?', 'Evet. Demo paket ücretsizdir ve 10 stok ürününe kadar uygulamayı denemenizi sağlar.'),
+                ('Standart paket kimler için?', '500 ürüne kadar çalışan küçük işletmeler, hırdavat, market, servis ve perakende işletmeleri için uygundur.'),
+                ('Profesyonel paketin farkı ne?', 'Ürün sınırı yoktur; büyüyen işletmeler için daha rahat ve uzun vadeli kullanım sunar.')
+            ] %}
+            {% for question, answer in faqs %}
+            <div class="pricing-card rounded-3xl p-6">
+                <h3 class="text-lg font-black text-slate-950">{{ question }}</h3>
+                <p class="mt-3 leading-7 text-slate-600">{{ answer }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <footer class="border-t border-slate-200 bg-slate-950 text-white">
+        <div class="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_auto] lg:px-8">
+            <div class="flex items-center gap-3">
+                <div class="flex size-10 items-center justify-center rounded-2xl bg-white text-primary-700">
+                    <span class="material-symbols-outlined text-xl">storefront</span>
+                </div>
+                <div>
+                    <p class="font-black">{{ site_name }}</p>
+                    <p class="text-sm text-slate-400">Küçük işletmeler için bulut tabanlı POS, stok ve cari yönetimi.</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-bold text-slate-300">
+                <a href="{{ url_for('index') }}" class="hover:text-white">Ana Sayfa</a>
+                <a href="{{ url_for('privacy_page') }}" class="hover:text-white">Gizlilik Politikası</a>
+                <a href="{{ url_for('kvkk_page') }}" class="hover:text-white">KVKK</a>
+                <a href="{{ url_for('terms_page') }}" class="hover:text-white">Kullanım Şartları</a>
+            </div>
+        </div>
+    </footer>
+</div>
+{% endblock %}

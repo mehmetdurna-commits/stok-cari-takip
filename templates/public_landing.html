@@ -65,6 +65,7 @@
                 </div>
                 <div class="flex items-center gap-4">
                     <a href="#sss" class="hover:text-primary-700">Yardım</a>
+                    <a href="{{ url_for('pricing_page') }}" class="hover:text-primary-700">Fiyatlar</a>
                     <a href="#guven" class="hover:text-primary-700">Güvenlik</a>
                     <a href="{{ url_for('giris') }}" class="hover:text-primary-700">Panel Girişi</a>
                 </div>
@@ -86,6 +87,7 @@
                 <a href="#panel" class="hover:text-primary-700">Panel</a>
                 <a href="#akis" class="hover:text-primary-700">Akış</a>
                 <a href="#guven" class="hover:text-primary-700">Güvenlik</a>
+                <a href="{{ url_for('pricing_page') }}" class="hover:text-primary-700">Fiyatlar</a>
                 <a href="#sss" class="hover:text-primary-700">SSS</a>
             </nav>
             <div class="flex items-center gap-2">
@@ -396,6 +398,7 @@
             <p class="mx-auto mt-4 max-w-2xl leading-8 text-slate-600">Ücretsiz dene, satış ve stok akışını gör, sonra gerçek kullanıma birlikte karar verelim.</p>
             <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                 <a href="{{ url_for('kayit') }}" class="inline-flex min-h-12 items-center justify-center rounded-2xl bg-primary-600 px-7 py-3 font-black text-white shadow-xl shadow-primary-600/20 hover:bg-primary-700">Ücretsiz Dene</a>
+                <a href="{{ url_for('pricing_page') }}" class="inline-flex min-h-12 items-center justify-center rounded-2xl border border-primary-200 bg-primary-50 px-7 py-3 font-black text-primary-700 hover:bg-primary-100">Fiyatları Gör</a>
                 <a href="{{ url_for('giris') }}" class="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-7 py-3 font-black text-slate-950 hover:bg-slate-100">Giriş Yap</a>
             </div>
         </div>
@@ -414,6 +417,7 @@
             </div>
             <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-bold text-slate-300">
                 <a href="{{ url_for('privacy_page') }}" class="hover:text-white">Gizlilik Politikası</a>
+                <a href="{{ url_for('pricing_page') }}" class="hover:text-white">Fiyatlar</a>
                 <a href="{{ url_for('kvkk_page') }}" class="hover:text-white">KVKK</a>
                 <a href="{{ url_for('terms_page') }}" class="hover:text-white">Kullanım Şartları</a>
             </div>

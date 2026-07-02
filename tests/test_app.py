@@ -165,6 +165,20 @@ def test_daily_sales_filter_uses_turkey_day_bounds(client):
     assert b'POS-LOCAL-DAY' in response.data
 
 
+def test_public_pricing_page_renders_packages(client):
+    response = client.get('/fiyatlar')
+    text = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert 'Demo' in text
+    assert 'Standart' in text
+    assert 'Profesyonel' in text
+    assert '/kayit?paket=standart&amp;odeme=1' in text
+
+    sitemap = client.get('/sitemap.xml').get_data(as_text=True)
+    assert '/fiyatlar' in sitemap
+
+
 def test_settings_preferences_are_persisted(client):
     settings_path = primary_test_user_backup_dir() / 'settings.json'
     original = settings_path.read_text(encoding='utf-8') if settings_path.exists() else None

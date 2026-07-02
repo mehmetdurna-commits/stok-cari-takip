@@ -4323,6 +4323,11 @@ def index():
     return render_template('public_landing.html')
 
 
+@app.route('/fiyatlar')
+def pricing_page():
+    return render_template('public_pricing.html')
+
+
 @app.route('/privacy')
 def privacy_page():
     if current_user.is_authenticated:
@@ -4391,6 +4396,7 @@ def sitemap_xml():
     # Public pages only (do not leak authenticated URLs)
     urls = [
         (f"{site_url}/", now),
+        (f"{site_url}{url_for('pricing_page')}", now),
         (f"{site_url}{url_for('privacy_page')}", now),
         (f"{site_url}{url_for('kvkk_page')}", now),
         (f"{site_url}{url_for('terms_page')}", now),
