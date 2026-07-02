@@ -30,6 +30,10 @@
     border: 1px solid #e2e8f0;
     background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
 }
+.quote-customer-card {
+    border: 1px solid #e2e8f0;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+}
 .quote-total-panel {
     border: 1px solid #dbeafe;
     background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
@@ -99,6 +103,13 @@
     .quote-info-card {
         padding: 3mm !important;
         border-radius: 10px !important;
+    }
+    .quote-customer-card {
+        padding: 4mm !important;
+        border-radius: 12px !important;
+        gap: 5mm !important;
+        background: #ffffff !important;
+        break-inside: avoid;
     }
     .quote-info-card p {
         font-size: 10px !important;
@@ -209,14 +220,10 @@
                     {% endif %}
                 </div>
             </div>
-            <div class="md:text-right">
-                <p class="quote-meta-title text-xs font-bold uppercase tracking-widest text-slate-400">Teklif</p>
-                <h3 class="quote-number text-sm font-black text-primary-600 mt-1 tracking-wide">#{{ teklif.teklif_no }}</h3>
-                <p class="quote-date-line text-sm text-slate-500 mt-2">{{ teklif.tarih|date_tr if teklif.tarih else '-' }}</p>
-            </div>
         </div>
 
-        <div class="quote-customer-section p-8 md:p-10 grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-slate-200 dark:border-slate-800">
+        <div class="quote-customer-section p-8 md:p-10 border-b border-slate-200 dark:border-slate-800">
+            <div class="quote-customer-card rounded-3xl p-5 grid grid-cols-1 md:grid-cols-[1fr_1.3fr] gap-6 dark:bg-slate-900 dark:border-slate-800">
             <div>
                 <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Müşteri</p>
                 <h4 class="quote-customer-name text-lg font-black text-slate-900 dark:text-white">{{ teklif.cari.unvan if teklif.cari else '-' }}</h4>
@@ -226,6 +233,14 @@
             </div>
             <div class="grid grid-cols-2 gap-3">
                 <div class="quote-info-card rounded-2xl dark:bg-slate-800 p-4">
+                    <p class="text-xs text-slate-500">Teklif No</p>
+                    <p class="font-bold text-primary-600 mt-1">#{{ teklif.teklif_no }}</p>
+                </div>
+                <div class="quote-info-card rounded-2xl dark:bg-slate-800 p-4">
+                    <p class="text-xs text-slate-500">Tarih</p>
+                    <p class="font-bold text-slate-900 dark:text-white mt-1">{{ teklif.tarih|date_tr if teklif.tarih else '-' }}</p>
+                </div>
+                <div class="quote-info-card rounded-2xl dark:bg-slate-800 p-4">
                     <p class="text-xs text-slate-500">Geçerlilik</p>
                     <p class="font-bold text-slate-900 dark:text-white mt-1">{{ teklif.gecerlilik_tarihi|date_tr if teklif.gecerlilik_tarihi else '-' }}</p>
                 </div>
@@ -233,6 +248,7 @@
                     <p class="text-xs text-slate-500">KDV</p>
                     <p class="font-bold text-slate-900 dark:text-white mt-1">%{{ (teklif.kdv_orani or 0)|tr_number(0) }}</p>
                 </div>
+            </div>
             </div>
         </div>
 
