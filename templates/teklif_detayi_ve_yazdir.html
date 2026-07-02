@@ -4,11 +4,48 @@
 
 {% block head %}
 <style>
+.quote-preview-shell {
+    max-width: 1120px;
+}
+.quote-paper {
+    position: relative;
+    border-radius: 28px;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.10);
+}
+.quote-paper::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 6px;
+    background: linear-gradient(90deg, #2563eb, #7dd3fc);
+}
+.quote-table thead th {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+.quote-table tbody tr:nth-child(even) {
+    background: #f8fafc;
+}
+.quote-info-card {
+    border: 1px solid #e2e8f0;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+.quote-total-panel {
+    border: 1px solid #dbeafe;
+    background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+}
+.quote-note-panel {
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+}
 @media print {
     aside, header, .no-print, #toast-container { display: none !important; }
-    #mainContent { margin-left: 0 !important; }
-    .print-surface { border: 0 !important; box-shadow: none !important; }
+    #mainContent { margin-left: 0 !important; padding: 0 !important; }
+    .quote-preview-shell { max-width: none !important; margin: 0 !important; }
+    .print-surface { border: 0 !important; box-shadow: none !important; border-radius: 0 !important; }
+    .quote-paper::before { display: none !important; }
     body { background: white !important; }
+    @page { size: A4; margin: 12mm; }
 }
 </style>
 {% endblock %}
@@ -37,7 +74,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto space-y-6">
+<div class="quote-preview-shell mx-auto space-y-6">
     <div class="no-print flex items-center justify-between">
         <a href="{{ url_for('teklif_yonetimi') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-primary-600">
             <span class="material-symbols-outlined text-lg">arrow_back</span>
@@ -46,8 +83,8 @@
         <span class="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{{ teklif.durum }}</span>
     </div>
 
-    <article class="print-surface bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-        <div class="p-8 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+    <article class="quote-paper print-surface bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div class="p-8 md:p-10 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-start md:justify-between gap-8">
             <div class="flex items-start gap-4">
                 <div class="w-64 h-24 rounded-xl bg-primary-600 text-white flex items-center justify-center overflow-hidden border border-slate-200 dark:border-slate-700">
                     {% if current_user.firma_logo %}
@@ -79,7 +116,7 @@
             </div>
         </div>
 
-        <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 border-b border-slate-200 dark:border-slate-800">
+        <div class="p-8 md:p-10 grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-slate-200 dark:border-slate-800">
             <div>
                 <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Müşteri</p>
                 <h4 class="text-lg font-black text-slate-900 dark:text-white">{{ teklif.cari.unvan if teklif.cari else '-' }}</h4>
@@ -88,11 +125,11 @@
                 <p class="text-sm text-slate-500">{{ teklif.cari.adres if teklif.cari and teklif.cari.adres else '' }}</p>
             </div>
             <div class="grid grid-cols-2 gap-3">
-                <div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-4">
+                <div class="quote-info-card rounded-2xl dark:bg-slate-800 p-4">
                     <p class="text-xs text-slate-500">Geçerlilik</p>
                     <p class="font-bold text-slate-900 dark:text-white mt-1">{{ teklif.gecerlilik_tarihi|date_tr if teklif.gecerlilik_tarihi else '-' }}</p>
                 </div>
-                <div class="rounded-lg bg-slate-50 dark:bg-slate-800 p-4">
+                <div class="quote-info-card rounded-2xl dark:bg-slate-800 p-4">
                     <p class="text-xs text-slate-500">KDV</p>
                     <p class="font-bold text-slate-900 dark:text-white mt-1">%{{ (teklif.kdv_orani or 0)|tr_number(0) }}</p>
                 </div>
@@ -100,7 +137,7 @@
         </div>
 
         <div class="overflow-x-auto">
-            <table class="w-full">
+            <table class="quote-table w-full">
                 <thead class="bg-slate-50 dark:bg-slate-800">
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Ürün</th>
@@ -128,14 +165,14 @@
             </table>
         </div>
 
-        <div class="p-8 grid grid-cols-1 md:grid-cols-[1fr_320px] gap-8 bg-slate-50 dark:bg-slate-800/40">
+        <div class="p-8 md:p-10 grid grid-cols-1 md:grid-cols-[1fr_340px] gap-8 bg-slate-50 dark:bg-slate-800/40">
             <div>
                 <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Notlar</p>
-                <div class="rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 text-sm text-slate-600 dark:text-slate-300">
+                <div class="quote-note-panel rounded-2xl dark:bg-slate-900 dark:border-slate-800 p-5 text-sm text-slate-600 dark:text-slate-300 min-h-28">
                     {{ teklif.notlar or 'Teklif notu girilmemiş.' }}
                 </div>
             </div>
-            <div class="space-y-3">
+            <div class="quote-total-panel rounded-3xl p-5 space-y-3 dark:bg-slate-900 dark:border-slate-800">
                 <div class="flex justify-between text-sm">
                     <span class="text-slate-500">Ara Toplam</span>
                     <span class="font-bold text-slate-900 dark:text-white">₺{{ (teklif.toplam_tutar or 0)|tr_number }}</span>
@@ -149,6 +186,10 @@
                     <span class="font-black text-primary-600 text-xl">₺{{ (teklif.genel_toplam or 0)|tr_number }}</span>
                 </div>
             </div>
+        </div>
+        <div class="px-8 md:px-10 py-5 border-t border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-xs text-slate-500">
+            <span>Bu teklif belirtilen ko&#351;ullar ve ge&#231;erlilik tarihi kapsam&#305;nda haz&#305;rlanm&#305;&#351;t&#305;r.</span>
+            <span class="font-semibold text-slate-600 dark:text-slate-300">{{ current_user.firma_adi or 'StokCari' }}</span>
         </div>
     </article>
 </div>
