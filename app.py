@@ -89,6 +89,42 @@ def local_now():
     return datetime.now(timezone.utc).astimezone(APP_LOCAL_TIMEZONE)
 
 
+def local_today():
+    return local_now().date()
+
+
+def parse_local_date(value):
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return value
+    if isinstance(value, datetime):
+        return to_local_datetime(value).date()
+    if isinstance(value, str):
+        return datetime.strptime(value, '%Y-%m-%d').date()
+    return None
+
+
+def local_day_bounds(day_value):
+    day = parse_local_date(day_value)
+    if not day:
+        return None, None
+    start_local = datetime.combine(day, datetime.min.time(), tzinfo=APP_LOCAL_TIMEZONE)
+    end_local = start_local + timedelta(days=1)
+    return start_local.astimezone(timezone.utc), end_local.astimezone(timezone.utc)
+
+
+def local_selected_date_now(value):
+    day = parse_local_date(value)
+    if not day:
+        return None
+    now_local = local_now()
+    selected_local = datetime.combine(
+        day,
+        now_local.time().replace(microsecond=0),
+        tzinfo=APP_LOCAL_TIMEZONE,
+    )
+    return selected_local.astimezone(timezone.utc)
+
+
 def format_tr_datetime(value, fmt='%d.%m.%Y %H:%M'):
     if value is None:
         return '-'
@@ -3881,9 +3917,12 @@ def parse_iso_datetime(value):
     if isinstance(value, str) and value.endswith('Z'):
         value = value[:-1] + '+00:00'
     try:
-        return datetime.fromisoformat(value)
+        parsed = datetime.fromisoformat(value)
     except (TypeError, ValueError):
         return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=APP_LOCAL_TIMEZONE)
+    return parsed.astimezone(timezone.utc)
 
 
 def normalize_payment_method(value):
@@ -4287,7 +4326,7 @@ def robots_txt():
 def sitemap_xml():
     cfg = site_config()
     site_url = (cfg.get('url') or app.config.get('SITE_URL') or request.host_url.rstrip('/')).rstrip('/')
-    now = datetime.now(timezone.utc).date().isoformat()
+    now = local_today().isoformat()
 
     # Public pages only (do not leak authenticated URLs)
     urls = [
@@ -4393,8 +4432,8 @@ def api_notifications():
             'url': url_for('cariler')
         })
 
-    today = datetime.now(timezone.utc).date()
-    today_start = datetime(today.year, today.month, today.day, tzinfo=timezone.utc)
+    today = local_today()
+    today_start, _ = local_day_bounds(today)
     today_sales = Satis.query.filter(
         Satis.user_id.in_(tenant_ids),
         Satis.tarih >= today_start
@@ -6358,9 +6397,9 @@ def build_cari_ekstre_context(cari, tenant_ids, date_from_raw='', date_to_raw=''
     from_dt = None
     to_dt = None
     if date_from_raw:
-        from_dt = datetime.strptime(date_from_raw, '%Y-%m-%d')
+        from_dt, _ = local_day_bounds(date_from_raw)
     if date_to_raw:
-        to_dt = datetime.strptime(date_to_raw, '%Y-%m-%d') + timedelta(days=1)
+        _, to_dt = local_day_bounds(date_to_raw)
 
     hareket_query = CariHareket.query.filter(
         CariHareket.cari_id == cari.id,
@@ -6482,13 +6521,13 @@ def cari_ekstre_csv(id):
     to_dt = None
     if date_from_raw:
         try:
-            from_dt = datetime.strptime(date_from_raw, '%Y-%m-%d')
+            from_dt, _ = local_day_bounds(date_from_raw)
         except ValueError:
             flash('Başlangıç tarihi geçersiz.', 'error')
             return redirect(url_for('cari_ekstre_csv', id=cari.id))
     if date_to_raw:
         try:
-            to_dt = datetime.strptime(date_to_raw, '%Y-%m-%d') + timedelta(days=1)
+            _, to_dt = local_day_bounds(date_to_raw)
         except ValueError:
             flash('Biti? tarihi geçersiz.', 'error')
             return redirect(url_for('cari_ekstre_csv', id=cari.id))
@@ -7222,7 +7261,7 @@ def onmuhasebe_hesap_detay(account_id: int):
 
             if tarih_raw:
                 try:
-                    tarih = datetime.strptime(tarih_raw, '%Y-%m-%d')
+                    tarih = local_selected_date_now(tarih_raw)
                 except ValueError:
                     flash('Tarih geçersiz.', 'error')
                     return redirect(url_for('onmuhasebe_hesap_detay', account_id=account.id))
@@ -7284,7 +7323,7 @@ def onmuhasebe_hesap_detay(account_id: int):
 
             if tarih_raw:
                 try:
-                    tarih = datetime.strptime(tarih_raw, '%Y-%m-%d')
+                    tarih = local_selected_date_now(tarih_raw)
                 except ValueError:
                     flash('Tarih geçersiz.', 'error')
                     return redirect(url_for('onmuhasebe_hesap_detay', account_id=account.id))
@@ -7335,7 +7374,7 @@ def onmuhasebe_hesap_detay(account_id: int):
     )
     if date_from_raw:
         try:
-            date_from = datetime.strptime(date_from_raw, '%Y-%m-%d')
+            date_from, _ = local_day_bounds(date_from_raw)
             tx_query = tx_query.filter(CashTransaction.tarih >= date_from)
         except ValueError:
             flash('Başlangıç tarihi geçersiz.', 'error')
@@ -7343,7 +7382,7 @@ def onmuhasebe_hesap_detay(account_id: int):
     if date_to_raw:
         try:
             # inclusive end date
-            date_to = datetime.strptime(date_to_raw, '%Y-%m-%d') + timedelta(days=1)
+            _, date_to = local_day_bounds(date_to_raw)
             tx_query = tx_query.filter(CashTransaction.tarih < date_to)
         except ValueError:
             flash('Biti? tarihi geçersiz.', 'error')
@@ -7514,7 +7553,7 @@ def onmuhasebe_raporlar():
 
     if date_from_raw:
         try:
-            date_from = datetime.strptime(date_from_raw, '%Y-%m-%d')
+            date_from, _ = local_day_bounds(date_from_raw)
             tx_query = tx_query.filter(CashTransaction.tarih >= date_from)
         except ValueError:
             flash('Başlangıç tarihi geçersiz.', 'error')
@@ -7522,7 +7561,7 @@ def onmuhasebe_raporlar():
 
     if date_to_raw:
         try:
-            date_to = datetime.strptime(date_to_raw, '%Y-%m-%d') + timedelta(days=1)
+            _, date_to = local_day_bounds(date_to_raw)
             tx_query = tx_query.filter(CashTransaction.tarih < date_to)
         except ValueError:
             flash('Biti? tarihi geçersiz.', 'error')
@@ -12365,7 +12404,7 @@ def stok_cikis():
                 cari_id=cari_id,
                 user_id=current_user.id,
                 depo=depo,
-                tarih=datetime.strptime(tarih_str, '%Y-%m-%d') if tarih_str else datetime.now(timezone.utc),
+                tarih=local_selected_date_now(tarih_str) if tarih_str else datetime.now(timezone.utc),
                 notlar=notlar,
                 kdv_orani=kdv_orani,
                 iskonto=iskonto
@@ -12583,22 +12622,19 @@ def gunluk_satislar():
     if tarih_str:
         try:
             secili_tarih = datetime.strptime(tarih_str, '%Y-%m-%d').date()
-            baslangic = datetime(secili_tarih.year, secili_tarih.month, secili_tarih.day, tzinfo=timezone.utc)
-            bitis = baslangic + timedelta(days=1) - timedelta(microseconds=1)
+            baslangic, bitis = local_day_bounds(secili_tarih)
         except Exception:
-            secili_tarih = datetime.now(timezone.utc).date()
-            baslangic = datetime(secili_tarih.year, secili_tarih.month, secili_tarih.day, tzinfo=timezone.utc)
-            bitis = baslangic + timedelta(days=1) - timedelta(microseconds=1)
+            secili_tarih = local_today()
+            baslangic, bitis = local_day_bounds(secili_tarih)
     else:
-        secili_tarih = datetime.now(timezone.utc).date()
-        baslangic = datetime(secili_tarih.year, secili_tarih.month, secili_tarih.day, tzinfo=timezone.utc)
-        bitis = baslangic + timedelta(days=1) - timedelta(microseconds=1)
+        secili_tarih = local_today()
+        baslangic, bitis = local_day_bounds(secili_tarih)
 
     # Se?ili tarihteki satışlar? ?ek
     satislar = Satis.query.filter(
         Satis.user_id.in_(tenant_user_ids()),
         Satis.tarih >= baslangic,
-        Satis.tarih <= bitis
+        Satis.tarih < bitis
     ).order_by(Satis.tarih.desc()).all()
 
     sale_ids = [satis.id for satis in satislar]

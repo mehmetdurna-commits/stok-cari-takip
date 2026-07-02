@@ -53,6 +53,8 @@ from app import (
     normalize_payment_method,
     backup_dir_for_user,
     build_cari_ekstre_context,
+    format_tr_datetime,
+    parse_iso_datetime,
 )
 
 
@@ -136,6 +138,30 @@ def test_security_audit(client):
 def test_turkish_money_filters_use_thousand_separator(client):
     assert app.jinja_env.filters['tr_number'](22580) == '22.580,00'
     assert app.jinja_env.filters['money'](22580) == '₺22.580,00'
+
+
+def test_iso_datetime_is_displayed_in_turkey_time(client):
+    parsed = parse_iso_datetime('2026-07-02T09:06:00.000Z')
+
+    assert format_tr_datetime(parsed) == '02.07.2026 12:06'
+
+
+def test_daily_sales_filter_uses_turkey_day_bounds(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        db.session.add(Satis(
+            fatura_no='POS-LOCAL-DAY',
+            user_id=owner.id,
+            tarih=datetime(2026, 7, 1, 21, 30, tzinfo=timezone.utc),
+            genel_toplam=575,
+            durum='tamamlandi',
+        ))
+        db.session.commit()
+
+    response = client.get('/gunluk-satislar?tarih=2026-07-02')
+
+    assert response.status_code == 200
+    assert b'POS-LOCAL-DAY' in response.data
 
 
 def test_settings_preferences_are_persisted(client):
