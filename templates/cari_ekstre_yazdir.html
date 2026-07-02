@@ -49,6 +49,33 @@
             padding-bottom: 16px;
             border-bottom: 1px solid #cbd5e1;
         }
+        .brand {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+        }
+        .brand-logo {
+            width: 58px;
+            height: 58px;
+            border-radius: 16px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex: 0 0 auto;
+            color: #2563eb;
+            font-size: 26px;
+            font-weight: 900;
+        }
+        .brand-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 8px;
+            background: #fff;
+        }
         .title { font-size: 26px; font-weight: 900; margin: 0; }
         .muted { color: #64748b; }
         .meta { font-size: 13px; line-height: 1.6; }
@@ -131,10 +158,23 @@
             </div>
 
             <div class="header">
-                <div>
+                <div class="brand">
+                    <div class="brand-logo">
+                        {% if current_user.is_authenticated and current_user.firma_logo %}
+                        <img src="{{ url_for('static', filename=company_logo_static_path(current_user.firma_logo)) }}" alt="{{ current_user.firma_adi }} logosu">
+                        {% else %}
+                        {{ (current_user.firma_adi[:1] if current_user.is_authenticated and current_user.firma_adi else 'F')|upper }}
+                        {% endif %}
+                    </div>
+                    <div>
                     <h1 class="title">{{ cari.unvan }} - Cari Ekstresi</h1>
                     <div class="meta muted">
                         <div>{{ current_user.firma_adi if current_user.is_authenticated else 'Firma' }}</div>
+                        {% if current_user.is_authenticated and current_user.adres %}<div>{{ current_user.adres }}</div>{% endif %}
+                        {% if current_user.is_authenticated and (current_user.vergi_dairesi or current_user.vergi_numarasi) %}
+                        <div>{{ current_user.vergi_dairesi or '' }}{% if current_user.vergi_dairesi and current_user.vergi_numarasi %} / {% endif %}{{ current_user.vergi_numarasi or '' }}</div>
+                        {% endif %}
+                        {% if current_user.is_authenticated and current_user.telefon %}<div>Tel: {{ current_user.telefon }}</div>{% endif %}
                         <div>Yazdırma tarihi: {{ generated_at|datetime_tr }}</div>
                         {% if date_from or date_to %}
                         <div>Dönem:
@@ -143,6 +183,7 @@
                             {{ date_to or 'Bugüne kadar' }}
                         </div>
                         {% endif %}
+                    </div>
                     </div>
                 </div>
                 <div class="meta">

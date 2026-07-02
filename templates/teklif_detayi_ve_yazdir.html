@@ -49,13 +49,23 @@
     <article class="print-surface bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
         <div class="p-8 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-start md:justify-between gap-6">
             <div class="flex items-start gap-4">
-                <div class="size-14 rounded-xl bg-primary-600 text-white flex items-center justify-center">
+                <div class="size-14 rounded-xl bg-primary-600 text-white flex items-center justify-center overflow-hidden border border-slate-200 dark:border-slate-700">
+                    {% if current_user.firma_logo %}
+                    <img src="{{ url_for('static', filename=company_logo_static_path(current_user.firma_logo)) }}" alt="{{ current_user.firma_adi }} logosu" class="h-full w-full object-contain bg-white p-2">
+                    {% else %}
                     <span class="material-symbols-outlined text-3xl">inventory_2</span>
+                    {% endif %}
                 </div>
                 <div>
                     <h2 class="text-2xl font-black text-slate-900 dark:text-white">{{ current_user.firma_adi or 'StokCari' }}</h2>
                     <p class="text-sm text-slate-500 mt-1">{{ current_user.yetkili_adi or '' }}</p>
                     <p class="text-sm text-slate-500">{{ current_user.telefon or '' }}</p>
+                    {% if current_user.vergi_dairesi or current_user.vergi_numarasi %}
+                    <p class="text-sm text-slate-500">{{ current_user.vergi_dairesi or '' }}{% if current_user.vergi_dairesi and current_user.vergi_numarasi %} / {% endif %}{{ current_user.vergi_numarasi or '' }}</p>
+                    {% endif %}
+                    {% if current_user.adres %}
+                    <p class="text-sm text-slate-500 max-w-md">{{ current_user.adres }}</p>
+                    {% endif %}
                 </div>
             </div>
             <div class="md:text-right">
