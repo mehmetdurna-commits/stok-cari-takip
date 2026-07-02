@@ -185,6 +185,7 @@ def inject_template_helpers():
         'user_display_name': user_display_name,
         'user_display_subtitle': user_display_subtitle,
         'user_initials': user_initials,
+        'company_logo_static_path': company_logo_static_path,
         'platform_can': platform_can,
         'platform_setting': platform_setting,
         'platform_setting_bool': platform_setting_bool,
@@ -1182,7 +1183,16 @@ def save_company_logo(file_storage, user_id):
     upload_root.mkdir(parents=True, exist_ok=True)
     filename = secure_filename(f'firma_logo_{user_id}_{int(time.time())}.{extension}')
     file_storage.save(upload_root / filename)
-    return f'company_logos/{filename}', None
+    return f'uploads/company_logos/{filename}', None
+
+
+def company_logo_static_path(logo_path):
+    if not logo_path:
+        return ''
+    logo_path = str(logo_path).lstrip('/')
+    if logo_path.startswith('company_logos/'):
+        return f'uploads/{logo_path}'
+    return logo_path
 
 
 def action_sla_hours(created_at, due_at):
@@ -10723,7 +10733,7 @@ def update_profile():
         return jsonify({
             'success': True,
             'message': 'Firma bilgileri güncellendi',
-            'logo_url': url_for('static', filename=current_user.firma_logo) if current_user.firma_logo else ''
+            'logo_url': url_for('static', filename=company_logo_static_path(current_user.firma_logo)) if current_user.firma_logo else ''
         })
     except Exception as e:
         current_app.logger.exception('Profil guncelleme hatasi')

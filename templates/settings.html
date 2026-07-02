@@ -141,7 +141,7 @@
                         <div class="relative">
                             <div id="company-logo-preview" class="w-32 h-32 bg-gradient-to-br from-primary-400 to-primary-600 rounded-3xl flex items-center justify-center overflow-hidden border border-slate-200 dark:border-slate-700">
                                 {% if current_user.firma_logo %}
-                                <img src="{{ url_for('static', filename=current_user.firma_logo) }}" alt="{{ current_user.firma_adi }} logosu" class="h-full w-full object-contain bg-white p-3">
+                                <img src="{{ url_for('static', filename=company_logo_static_path(current_user.firma_logo)) }}" alt="{{ current_user.firma_adi }} logosu" class="h-full w-full object-contain bg-white p-3">
                                 {% else %}
                                 <span class="material-symbols-outlined text-white text-5xl">business</span>
                                 {% endif %}

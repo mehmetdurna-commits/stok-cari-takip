@@ -260,13 +260,13 @@ def test_settings_profile_uploads_company_logo(client):
     assert response.status_code == 200
     data = response.get_json()
     assert data['success'] is True
-    assert 'company_logos/firma_logo_' in data['logo_url']
+    assert 'uploads/company_logos/firma_logo_' in data['logo_url']
 
     with app.app_context():
         user = User.query.filter_by(email='test@example.com').first()
         assert user.firma_adi == 'Logo Test Firma'
-        assert user.firma_logo.startswith('company_logos/firma_logo_')
-        logo_path = Path(app.config['UPLOAD_FOLDER']) / user.firma_logo
+        assert user.firma_logo.startswith('uploads/company_logos/firma_logo_')
+        logo_path = Path(app.static_folder) / user.firma_logo
         assert logo_path.exists()
         logo_path.unlink()
 
