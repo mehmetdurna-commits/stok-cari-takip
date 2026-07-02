@@ -143,6 +143,7 @@ def test_turkish_money_filters_use_thousand_separator(client):
 def test_iso_datetime_is_displayed_in_turkey_time(client):
     parsed = parse_iso_datetime('2026-07-02T09:06:00.000Z')
 
+    assert parsed.tzinfo is None
     assert format_tr_datetime(parsed) == '02.07.2026 12:06'
 
 
@@ -152,7 +153,7 @@ def test_daily_sales_filter_uses_turkey_day_bounds(client):
         db.session.add(Satis(
             fatura_no='POS-LOCAL-DAY',
             user_id=owner.id,
-            tarih=datetime(2026, 7, 1, 21, 30, tzinfo=timezone.utc),
+            tarih=datetime(2026, 7, 1, 21, 30),
             genel_toplam=575,
             durum='tamamlandi',
         ))

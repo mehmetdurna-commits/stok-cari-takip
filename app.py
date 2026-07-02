@@ -85,6 +85,22 @@ def to_local_datetime(value):
     return dt_value.astimezone(APP_LOCAL_TIMEZONE)
 
 
+def utc_now():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def to_utc_naive(value):
+    if value is None:
+        return None
+    if isinstance(value, date) and not isinstance(value, datetime):
+        value = datetime.combine(value, datetime.min.time(), tzinfo=APP_LOCAL_TIMEZONE)
+    if not isinstance(value, datetime):
+        return value
+    if value.tzinfo is None:
+        return value
+    return value.astimezone(timezone.utc).replace(tzinfo=None)
+
+
 def local_now():
     return datetime.now(timezone.utc).astimezone(APP_LOCAL_TIMEZONE)
 
@@ -109,7 +125,7 @@ def local_day_bounds(day_value):
         return None, None
     start_local = datetime.combine(day, datetime.min.time(), tzinfo=APP_LOCAL_TIMEZONE)
     end_local = start_local + timedelta(days=1)
-    return start_local.astimezone(timezone.utc), end_local.astimezone(timezone.utc)
+    return to_utc_naive(start_local), to_utc_naive(end_local)
 
 
 def local_selected_date_now(value):
@@ -122,7 +138,7 @@ def local_selected_date_now(value):
         now_local.time().replace(microsecond=0),
         tzinfo=APP_LOCAL_TIMEZONE,
     )
-    return selected_local.astimezone(timezone.utc)
+    return to_utc_naive(selected_local)
 
 
 def format_tr_datetime(value, fmt='%d.%m.%Y %H:%M'):
@@ -330,7 +346,7 @@ class Organization(db.Model):
     subscription_end = db.Column(db.Date)
     subscription_status = db.Column(db.String(20), default='trial')
     subscription_note = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=utc_now)
 
 
 class User(UserMixin, db.Model):
@@ -343,7 +359,7 @@ class User(UserMixin, db.Model):
     vergi_dairesi = db.Column(db.String(100))
     vergi_numarasi = db.Column(db.String(100))
     adres = db.Column(db.Text)
-    kayit_tarihi = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    kayit_tarihi = db.Column(db.DateTime, default=utc_now)
     paket_tipi = db.Column(db.String(20), default='demo')  # demo, standart, profesyonel
     urun_limiti = db.Column(db.Integer, default=10)
     aktif = db.Column(db.Boolean, default=True)
@@ -374,7 +390,7 @@ class Urun(db.Model):
     kritik_stok = db.Column(db.Float, default=10)
     depo_adi = db.Column(db.String(100), default='Ana Depo')
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    eklenme_tarihi = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    eklenme_tarihi = db.Column(db.DateTime, default=utc_now)
 
 
 class Cari(db.Model):
@@ -390,7 +406,7 @@ class Cari(db.Model):
     borc = db.Column(db.Float, default=0)
     alacak = db.Column(db.Float, default=0)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    kayit_tarihi = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    kayit_tarihi = db.Column(db.DateTime, default=utc_now)
     teklifler = db.relationship('Teklif', backref='cari', lazy=True)
 
     @property
@@ -403,7 +419,7 @@ class Teklif(db.Model):
     teklif_no = db.Column(db.String(50), unique=True, nullable=False)
     cari_id = db.Column(db.Integer, db.ForeignKey('cari.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    tarih = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    tarih = db.Column(db.DateTime, default=utc_now)
     gecerlilik_tarihi = db.Column(db.DateTime)
     toplam_tutar = db.Column(db.Float, default=0)
     kdv_orani = db.Column(db.Float, default=18)
@@ -436,7 +452,7 @@ class Iade(db.Model):
     iade_tutari = db.Column(db.Float, default=0)
     durum = db.Column(db.String(20), default='beklemede')  # bekleyen, tamamlanan, iptal
     urun_adet = db.Column(db.Integer, default=0)
-    tarih = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    tarih = db.Column(db.DateTime, default=utc_now)
     ip_adresi = db.Column(db.String(45))
     user_agent = db.Column(db.String(500))
 
@@ -461,7 +477,7 @@ class CariHareket(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     cari_id = db.Column(db.Integer, db.ForeignKey('cari.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    tarih = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    tarih = db.Column(db.DateTime, default=utc_now)
     islem_tipi = db.Column(db.String(20), nullable=False)  # odeme, tahsilat, satis, iade
     tutar = db.Column(db.Float, nullable=False)
     aciklama = db.Column(db.Text)
@@ -476,7 +492,7 @@ class StokHareket(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     urun_id = db.Column(db.Integer, db.ForeignKey('urun.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    tarih = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    tarih = db.Column(db.DateTime, default=utc_now)
     islem_tipi = db.Column(db.String(20), nullable=False)  # giris, cikis
     miktar = db.Column(db.Float, nullable=False)
     aciklama = db.Column(db.Text)
@@ -502,7 +518,7 @@ class AuditLog(db.Model):
     details = db.Column(db.Text)
     ip_address = db.Column(db.String(45))
     user_agent = db.Column(db.String(500))
-    timestamp = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    timestamp = db.Column(db.DateTime, default=utc_now)
     session_id = db.Column(db.String(100))
 
     user = db.relationship('User', backref='audit_logs')
@@ -514,8 +530,8 @@ class SystemSettings(db.Model):
     value = db.Column(db.Text)
     description = db.Column(db.String(500))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
 
     user = db.relationship('User', backref='system_settings')
 
@@ -528,8 +544,8 @@ class SupportTicket(db.Model):
     category = db.Column(db.String(40), default='general')
     priority = db.Column(db.String(20), default='normal')
     status = db.Column(db.String(20), default='open')
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
     closed_at = db.Column(db.DateTime)
 
     organization = db.relationship('Organization', backref='support_tickets')
@@ -547,7 +563,7 @@ class SupportTicketMessage(db.Model):
     attachment_original_name = db.Column(db.String(255))
     attachment_content_type = db.Column(db.String(120))
     attachment_size = db.Column(db.Integer)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     user = db.relationship('User', foreign_keys=[user_id], backref='support_ticket_messages')
 
@@ -566,8 +582,8 @@ class ActionItem(db.Model):
     due_at = db.Column(db.DateTime)
     ai_summary = db.Column(db.Text)
     ai_recommendation = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
     resolved_at = db.Column(db.DateTime)
     snoozed_until = db.Column(db.DateTime)
 
@@ -581,7 +597,7 @@ class ActionItemEvent(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     event_type = db.Column(db.String(40), nullable=False)
     note = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     action_item = db.relationship('ActionItem', backref=db.backref('events', lazy=True, cascade='all, delete-orphan'))
     user = db.relationship('User', foreign_keys=[user_id])
@@ -597,7 +613,7 @@ class SubscriptionPayment(db.Model):
     period_end = db.Column(db.Date)
     status = db.Column(db.String(20), default='pending')
     note = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=utc_now)
     paid_at = db.Column(db.DateTime)
 
     organization = db.relationship('Organization', backref=db.backref('subscription_payments', lazy=True))
@@ -608,7 +624,7 @@ class CashTransaction(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=True)
     cari_id = db.Column(db.Integer, db.ForeignKey('cari.id'), nullable=True)
-    tarih = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    tarih = db.Column(db.DateTime, default=utc_now)
     islem_tipi = db.Column(db.String(20), nullable=False)  # giris, cikis
     tutar = db.Column(db.Float, nullable=False)
     odeme_turu = db.Column(db.String(50), default='Nakit')
@@ -631,8 +647,8 @@ class Account(db.Model):
     currency = db.Column(db.String(8), default='TRY')
     opening_balance = db.Column(db.Float, default=0)
     active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
 
     iban = db.Column(db.String(40))
     bank_name = db.Column(db.String(80))
@@ -655,7 +671,7 @@ class AccountReconciliation(db.Model):
     difference = db.Column(db.Float, default=0)
 
     note = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     user = db.relationship('User', backref='account_reconciliations')
     account = db.relationship('Account', backref='reconciliations')
@@ -667,7 +683,7 @@ class BackupLog(db.Model):
     file_size = db.Column(db.BigInteger)
     backup_type = db.Column(db.String(20), default='manual')  # manual, auto
     status = db.Column(db.String(20), default='completed')  # completed, failed, in_progress
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=utc_now)
     completed_at = db.Column(db.DateTime)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     error_message = db.Column(db.Text)
@@ -679,8 +695,8 @@ class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
 
     __table_args__ = (
         db.UniqueConstraint('user_id', 'name', name='uq_user_category_name'),
@@ -692,8 +708,8 @@ class Warehouse(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
 
     __table_args__ = (
         db.UniqueConstraint('user_id', 'name', name='uq_user_warehouse_name'),
@@ -707,7 +723,7 @@ class Departman(db.Model):
     ad = db.Column(db.String(100), nullable=False)
     aciklama = db.Column(db.Text)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=utc_now)
     
     # ?li?kiler
     personeller = db.relationship('Personel', backref='departman', lazy=True)
@@ -746,7 +762,7 @@ class Personel(db.Model):
     iban = db.Column(db.String(50))
     banka_adi = db.Column(db.String(100))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=utc_now)
     
     __table_args__ = (
         db.UniqueConstraint('user_id', 'sicil_no', name='uq_user_personel_sicil'),
@@ -765,7 +781,7 @@ class Izin(db.Model):
     onaylayan = db.Column(db.Integer)
     onay_tarihi = db.Column(db.DateTime)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    talep_tarihi = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    talep_tarihi = db.Column(db.DateTime, default=utc_now)
     
     # ?li?kiler
     personel = db.relationship('Personel', backref='izinler')
@@ -780,7 +796,7 @@ class Avans(db.Model):
     taksit_sayisi = db.Column(db.Integer, default=1)
     durum = db.Column(db.String(20), default='Kaydedildi')
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    talep_tarihi = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    talep_tarihi = db.Column(db.DateTime, default=utc_now)
     
     # ?li?kiler
     personel = db.relationship('Personel', backref='avanslar')
@@ -794,7 +810,7 @@ class Prim(db.Model):
     aciklama = db.Column(db.Text)
     donem = db.Column(db.String(20))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    kayit_tarihi = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    kayit_tarihi = db.Column(db.DateTime, default=utc_now)
     
     # ?li?kiler
     personel = db.relationship('Personel', backref='primler')
@@ -814,7 +830,7 @@ class MaasKaydi(db.Model):
     odeme_durumu = db.Column(db.String(20), default='Ödenmedi')
     odeme_tarihi = db.Column(db.DateTime)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=utc_now)
     
     # ?li?kiler
     personel = db.relationship('Personel', backref='maas_kayitlari')
@@ -832,7 +848,7 @@ class EgitimKaydi(db.Model):
     sertifa_no = db.Column(db.String(100))
     ucret = db.Column(db.Float)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=utc_now)
     
     # ?li?kiler
     personel = db.relationship('Personel', backref='egitim_kayitlari')
@@ -851,7 +867,7 @@ class PersonelPerformans(db.Model):
     aciklamalar = db.Column(db.Text)
     gelisim_alanlari = db.Column(db.Text)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=utc_now)
     
     # ?li?kiler
     personel = db.relationship('Personel', backref='performans_degerlendirmeleri')
@@ -3498,7 +3514,7 @@ class Satis(db.Model):
     fatura_no = db.Column(db.String(50), unique=True, nullable=False)
     cari_id = db.Column(db.Integer, db.ForeignKey('cari.id'), nullable=True)  # Perakende satış için nullable
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    tarih = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    tarih = db.Column(db.DateTime, default=utc_now)
     depo = db.Column(db.String(100), default='Ana Merkez Depo')
     ara_toplam = db.Column(db.Float, default=0)
     kdv_orani = db.Column(db.Float, default=20)
@@ -3922,7 +3938,7 @@ def parse_iso_datetime(value):
         return None
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=APP_LOCAL_TIMEZONE)
-    return parsed.astimezone(timezone.utc)
+    return to_utc_naive(parsed)
 
 
 def normalize_payment_method(value):
@@ -4104,7 +4120,7 @@ def create_cash_transaction(cari, tutar, islem_tipi='giris', odeme_turu='Nakit',
         user_id=current_user.id,
         account_id=account_id,
         cari_id=cari.id if cari else None,
-        tarih=datetime.now(timezone.utc),
+        tarih=utc_now(),
         islem_tipi=islem_tipi,
         tutar=tutar,
         odeme_turu=odeme_turu,
@@ -6798,7 +6814,7 @@ def pos_satis():
             fatura_no=fatura_no,
             cari_id=cari.id if cari else None,
             user_id=current_user.id,
-            tarih=datetime.now(timezone.utc),
+            tarih=utc_now(),
             depo=depo,
             kdv_orani=kdv_orani,
             iskonto=iskonto,
@@ -7118,7 +7134,7 @@ def onmuhasebe_hesaplar():
                     user_id=account.user_id,
                     account_id=account.id,
                     cari_id=None,
-                    tarih=datetime.now(timezone.utc),
+                    tarih=utc_now(),
                     islem_tipi='cikis',
                     tutar=tutar,
                     odeme_turu='Transfer',
@@ -7131,7 +7147,7 @@ def onmuhasebe_hesaplar():
                     user_id=target.user_id,
                     account_id=target.id,
                     cari_id=None,
-                    tarih=datetime.now(timezone.utc),
+                    tarih=utc_now(),
                     islem_tipi='giris',
                     tutar=tutar,
                     odeme_turu='Transfer',
@@ -7154,7 +7170,7 @@ def onmuhasebe_hesaplar():
                 user_id=account.user_id,
                 account_id=account.id,
                 cari_id=None,
-                tarih=datetime.now(timezone.utc),
+                tarih=utc_now(),
                 islem_tipi=islem_tipi,
                 tutar=tutar,
                 odeme_turu=odeme_turu,
@@ -7266,7 +7282,7 @@ def onmuhasebe_hesap_detay(account_id: int):
                     flash('Tarih geçersiz.', 'error')
                     return redirect(url_for('onmuhasebe_hesap_detay', account_id=account.id))
             else:
-                tarih = datetime.now(timezone.utc)
+                tarih = utc_now()
 
             odeme_turu = {
                 'cash': 'Nakit',
@@ -7328,7 +7344,7 @@ def onmuhasebe_hesap_detay(account_id: int):
                     flash('Tarih geçersiz.', 'error')
                     return redirect(url_for('onmuhasebe_hesap_detay', account_id=account.id))
             else:
-                tarih = datetime.now(timezone.utc)
+                tarih = utc_now()
 
             note = aciklama or 'Hesaplar aras? transfer'
 
@@ -7650,7 +7666,7 @@ def teklif_ekle():
         teklif_no = request.form.get('teklif_no') or generate_teklif_no()
         try:
             tarih = datetime.strptime(request.form.get(
-                'tarih'), '%Y-%m-%d') if request.form.get('tarih') else datetime.now(timezone.utc)
+                'tarih'), '%Y-%m-%d') if request.form.get('tarih') else utc_now()
         except ValueError:
             return flash('Geçersiz teklif tarihi!', 'error') or redirect(url_for('teklif_ekle'))
         gecerlilik_tarihi = None
@@ -8206,7 +8222,7 @@ def iade():
                 iade_tutari=toplam_iade_tutari,
                 durum='tamamlandi',
                 urun_adet=len(iade_kalemleri),
-                tarih=datetime.now(timezone.utc),
+                tarih=utc_now(),
                 ip_adresi=request.remote_addr,
                 user_agent=request.headers.get('User-Agent', '')
             )
@@ -11305,7 +11321,7 @@ def restore_backup():
                 fatura_no=satis_data.get('fatura_no'),
                 cari_id=new_cari_id,
                 user_id=current_user.id,
-                tarih=parse_iso_datetime(satis_data.get('tarih')) or datetime.now(timezone.utc),
+                tarih=parse_iso_datetime(satis_data.get('tarih')) or utc_now(),
                 ara_toplam=satis_data.get('ara_toplam') or 0,
                 kdv_orani=satis_data.get('kdv_orani') or 0,
                 kdv_tutar=satis_data.get('kdv_tutar') or 0,
@@ -11322,7 +11338,7 @@ def restore_backup():
                 teklif_no=teklif_data.get('teklif_no'),
                 cari_id=new_cari_id,
                 user_id=current_user.id,
-                tarih=parse_iso_datetime(teklif_data.get('tarih')) or datetime.now(timezone.utc),
+                tarih=parse_iso_datetime(teklif_data.get('tarih')) or utc_now(),
                 toplam_tutar=teklif_data.get('toplam_tutar') or teklif_data.get('ara_toplam') or 0,
                 kdv_orani=teklif_data.get('kdv_orani') or 0,
                 genel_toplam=teklif_data.get('genel_toplam') or 0,
@@ -11339,7 +11355,7 @@ def restore_backup():
                 iade_turu=iade_data.get('iade_turu'),
                 iade_sebebi=iade_data.get('iade_sebebi'),
                 iade_tutari=iade_data.get('iade_tutari') or 0,
-                tarih=parse_iso_datetime(iade_data.get('tarih')) or datetime.now(timezone.utc),
+                tarih=parse_iso_datetime(iade_data.get('tarih')) or utc_now(),
                 durum=iade_data.get('durum') or 'tamamlandi'
             )
             db.session.add(iade)
@@ -12404,7 +12420,7 @@ def stok_cikis():
                 cari_id=cari_id,
                 user_id=current_user.id,
                 depo=depo,
-                tarih=local_selected_date_now(tarih_str) if tarih_str else datetime.now(timezone.utc),
+                tarih=local_selected_date_now(tarih_str) if tarih_str else utc_now(),
                 notlar=notlar,
                 kdv_orani=kdv_orani,
                 iskonto=iskonto
@@ -12680,7 +12696,7 @@ def build_receipt_view_model(receipt, *, sale_data=None):
 
     return {
         'fatura_no': receipt.get('fatura_no') or sale_data.get('fatura_no') or '',
-        'tarih': parse_iso_datetime(receipt.get('date_iso')) or datetime.now(timezone.utc),
+        'tarih': parse_iso_datetime(receipt.get('date_iso')) or utc_now(),
         'payment_method': payment_method,
         'customer_label': customer,
         'items': [{
