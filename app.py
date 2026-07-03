@@ -6114,45 +6114,7 @@ def dashboard():
 
         aylik_trend[ay_basi.strftime('%Y-%m')] = sum(s.genel_toplam or 0 for s in ay_satislar)
 
-    # 2. En çok satan ürünler (top 5)
-    en_cok_satan_urunler = []
-    urun_satislar = {}
-    for satis in aktif_satislar:
-        for kalem in satis.kalemler:
-            urun_id = kalem.urun_id
-            if urun_id not in urun_satislar:
-                urun_satislar[urun_id] = {'adet': 0, 'tutar': 0, 'urun_adi': kalem.urun_adi}
-            urun_satislar[urun_id]['adet'] += kalem.miktar or 0
-            urun_satislar[urun_id]['tutar'] += kalem.toplam or 0
-
-    en_cok_satan_urunler = sorted(urun_satislar.values(),
-                                  key=lambda x: x['tutar'], reverse=True)[:5]
-
-    # 3. Kategori performans analizi
-    kategori_performans = {}
-    for urun in urunler:
-        kat = urun.kategori or 'Kategorisiz'
-        if kat not in kategori_performans:
-            kategori_performans[kat] = {
-                'urun_sayisi': 0,
-                'stok_degeri': 0,
-                'satis_adedi': 0,
-                'satis_tutari': 0
-            }
-        kategori_performans[kat]['urun_sayisi'] += 1
-        kategori_performans[kat]['stok_degeri'] += (urun.stok_miktari or 0) * (urun.satis_fiyati or 0)
-
-    # Satış verilerini kategorilere ekle
-    for satis in aktif_satislar:
-        for kalem in satis.kalemler:
-            urun = Urun.query.filter(Urun.id == kalem.urun_id, Urun.user_id.in_(tenant_ids)).first()
-            if urun:
-                kat = urun.kategori or 'Kategorisiz'
-                if kat in kategori_performans:
-                    kategori_performans[kat]['satis_adedi'] += kalem.miktar or 0
-                    kategori_performans[kat]['satis_tutari'] += kalem.toplam or 0
-
-    # 4. Cari risk analizi
+    # 2. Cari risk analizi
     cari_risk_analizi = {
         'dusuk_risk': [],    # 0-5 gün borcu olanlar
         'orta_risk': [],     # 6-30 gün borcu olanlar
@@ -6183,7 +6145,7 @@ def dashboard():
                 })
             cari_risk_analizi['toplam_riskli_borc'] += cari.borc
 
-    # 5. Stok verimlilik metriği
+    # 3. Stok verimlilik metriği
     stok_verimlilik = {
         'hareketli_urunler': 0,  # Son 30 gün içinde satışı olanlar
         'yavas_urunler': 0,      # Son 30 gün içinde satışı olmayanlar
@@ -6205,49 +6167,6 @@ def dashboard():
     stok_verimlilik['hareketli_urunler'] = len(son_30_gun_satis_urunleri)
     stok_verimlilik['yavas_urunler'] = toplam_urun - stok_verimlilik['hareketli_urunler']
 
-    # Son hareketleri oluştur
-    son_hareketler = []
-
-    # Son satışlar (en son 5)
-    son_satislar = sorted(aktif_satislar,
-                          key=lambda x: x.tarih or datetime.min, reverse=True)[:5]
-    for satis in son_satislar:
-        cari = Cari.query.filter_by(id=satis.cari_id, user_id=current_user.id).first() if satis.cari_id else None
-        son_hareketler.append({
-            'baslik': f'Satış: {satis.fatura_no}',
-            'aciklama': f'{cari.unvan if cari else "Perakende"} - ₺{satis.genel_toplam:.2f}',
-            'tarih': satis.tarih,
-            'renk': 'green',
-            'icon': 'shopping_cart'
-        })
-
-    # Son eklenen ürünler (en son 3)
-    son_urunler = sorted(urunler, key=lambda x: x.eklenme_tarihi or datetime.min, reverse=True)[:3]
-    for urun in son_urunler:
-        son_hareketler.append({
-            'baslik': f'Yeni Ürün: {urun.urun_adi}',
-            'aciklama': f'Stok: {urun.stok_miktari} {urun.birim} - ₺{urun.satis_fiyati}',
-            'tarih': urun.eklenme_tarihi,
-            'renk': 'blue',
-            'icon': 'inventory_2'
-        })
-
-    # Son teklifler (en son 2)
-    son_teklifler = sorted(teklifler, key=lambda x: x.tarih or datetime.min, reverse=True)[:2]
-    for teklif in son_teklifler:
-        cari_unvan = teklif.cari.unvan if teklif.cari else 'Cari Yok'
-        son_hareketler.append({
-            'baslik': f'Teklif: {teklif.teklif_no}',
-            'aciklama': f'{cari_unvan} - ₺{teklif.genel_toplam:.2f}',
-            'tarih': teklif.tarih,
-            'renk': 'purple',
-            'icon': 'description'
-        })
-
-    # Tarih sırasına göre sırala
-    son_hareketler.sort(key=lambda x: x['tarih'] or datetime.min, reverse=True)
-    son_hareketler = son_hareketler[:10]  # Son 10 hareket
-
     return render_template('dashboard_stok_ve_cari_takip.html',
                            toplam_urun=toplam_urun,
                            toplam_cari=toplam_cari,
@@ -6263,11 +6182,8 @@ def dashboard():
                            onboarding_steps=onboarding_steps,
                            onboarding_completed=onboarding_completed,
                            onboarding_progress=onboarding_progress,
-                           son_hareketler=son_hareketler,
                            # Analitik özet verileri
                            aylik_trend=aylik_trend,
-                           en_cok_satan_urunler=en_cok_satan_urunler,
-                           kategori_performans=kategori_performans,
                            cari_risk_analizi=cari_risk_analizi,
                            stok_verimlilik=stok_verimlilik)
 
