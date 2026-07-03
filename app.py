@@ -102,6 +102,16 @@ def to_utc_naive(value):
     return value.astimezone(timezone.utc).replace(tzinfo=None)
 
 
+def to_utc_iso(value):
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc).isoformat()
+        return value.astimezone(timezone.utc).isoformat()
+    return value
+
+
 def local_now():
     return datetime.now(timezone.utc).astimezone(APP_LOCAL_TIMEZONE)
 
@@ -3443,12 +3453,12 @@ def enforce_platform_maintenance():
         return
     if platform_setting('maintenance_mode', 'off') == 'on':
         if wants_json_response():
-            return jsonify({'success': False, 'message': 'Sistem bak?m modunda.'}), 503
+            return jsonify({'success': False, 'message': 'Sistem bakım modunda.'}), 503
         return render_template(
             'error.html',
             status_code=503,
             title='Bakım Modu',
-            message='Sistem kısa süreli bak?m modunda. Lütfen daha sonra tekrar deneyin.'
+            message='Sistem kısa süreli bakım modunda. Lütfen daha sonra tekrar deneyin.'
         ), 503
 
 
@@ -6956,7 +6966,7 @@ def pos_satis():
                 db.session.rollback()
                 return jsonify({
                     'success': False,
-                    'message': payment_integration_result.get('message') or 'POS Ödeme onay? al?namad?.',
+                    'message': payment_integration_result.get('message') or 'POS ödeme onayı alınamadı.',
                     'payment_integration': payment_integration_result
                 }), 409
 
@@ -6994,7 +7004,7 @@ def pos_satis():
             'total': satis.genel_toplam,
             'receipt': {
                 'fatura_no': fatura_no,
-                'date_iso': satis.tarih.isoformat(),
+                'date_iso': to_utc_iso(satis.tarih),
                 'date_local': format_tr_datetime(satis.tarih),
                 'warehouse': depo,
                 'payment_method': odeme_yontemi,
@@ -7078,7 +7088,7 @@ def onmuhasebe_hesaplar():
             bank_name = (request.form.get('bank_name') or '').strip() or None
 
             if not name:
-                flash('Hesap ad? zorunludur.', 'error')
+                flash('Hesap adı zorunludur.', 'error')
                 return redirect(url_for('onmuhasebe_hesaplar'))
 
             if account_type not in ('cash', 'bank', 'pos'):
@@ -7107,7 +7117,7 @@ def onmuhasebe_hesaplar():
                 flash('Hesap oluşturuldu.', 'success')
             except Exception:
                 db.session.rollback()
-                flash('Hesap oluşturulamad?. Ayn? isimde hesap olabilir.', 'error')
+                flash('Hesap oluşturulamadı. Aynı isimde hesap olabilir.', 'error')
 
             return redirect(url_for('onmuhasebe_hesaplar'))
 
@@ -9318,7 +9328,7 @@ def super_admin_upload_release():
             os.remove(zip_path)
         except Exception:
             pass
-        flash('Zip dosyası bozuk ya da okunamad?.', 'error')
+        flash('Zip dosyası bozuk ya da okunamadı.', 'error')
         return redirect(url_for('super_admin_dashboard') + '#platform-system')
 
     payload = {
@@ -10775,7 +10785,7 @@ def update_password():
             return jsonify({'success': False, 'message': 'Yeni sifre en az 8 karakter olmali'}), 400
 
         if not check_password_hash(current_user.password, current_password):
-            return jsonify({'success': False, 'message': 'Mevcut Şifre hatal?'}), 400
+            return jsonify({'success': False, 'message': 'Mevcut şifre hatalı'}), 400
 
         current_user.password = generate_password_hash(new_password)
         db.session.commit()
@@ -10944,7 +10954,7 @@ def manage_categories():
         data = request.get_json() or {}
         category_name = (data.get('name') or '').strip()
         if not category_name:
-            return jsonify({'success': False, 'message': 'Kategori ad? gerekli'})
+            return jsonify({'success': False, 'message': 'Kategori adı gerekli'})
 
         existing = Category.query.filter_by(user_id=current_user.id, name=category_name).first()
         if existing:
@@ -10961,17 +10971,17 @@ def manage_categories():
         new_name = (data.get('new_name') or '').strip()
 
         if not old_name or not new_name:
-            return jsonify({'success': False, 'message': 'Eski ve yeni kategori ad? gerekli'})
+            return jsonify({'success': False, 'message': 'Eski ve yeni kategori adı gerekli'})
 
         if old_name == new_name:
-            return jsonify({'success': True, 'message': 'Kategori ad? zaten ayn?'})
+            return jsonify({'success': True, 'message': 'Kategori adı zaten aynı'})
 
         kategori = Category.query.filter_by(user_id=current_user.id, name=old_name).first()
         if not kategori:
             return jsonify({'success': False, 'message': 'Kategori bulunamadı'})
 
         if Category.query.filter_by(user_id=current_user.id, name=new_name).first():
-            return jsonify({'success': False, 'message': 'Yeni kategori ad? zaten mevcut'})
+            return jsonify({'success': False, 'message': 'Yeni kategori adı zaten mevcut'})
 
         kategori.name = new_name
         urunler = tenant_query(Urun).filter_by(kategori=old_name).all()
@@ -10985,7 +10995,7 @@ def manage_categories():
         data = request.get_json() or {}
         category_name = (data.get('name') or '').strip()
         if not category_name:
-            return jsonify({'success': False, 'message': 'Kategori ad? gerekli'})
+            return jsonify({'success': False, 'message': 'Kategori adı gerekli'})
 
         urun_sayisi = tenant_query(Urun).filter_by(kategori=category_name).count()
         if urun_sayisi > 0:
@@ -11035,7 +11045,7 @@ def manage_warehouses():
         new_name = normalize_warehouse_name(data.get('new_name'))
 
         if old_name == new_name:
-            return jsonify({'success': True, 'message': 'Depo ad? zaten ayn?'})
+            return jsonify({'success': True, 'message': 'Depo adı zaten aynı'})
 
         depo = Warehouse.query.filter_by(user_id=current_user.id, name=old_name).first()
         if not depo:
@@ -11567,13 +11577,13 @@ def kategori_kaydet():
     try:
         data = request.get_json()
         if not data:
-            return jsonify({'success': False, 'message': 'Veri al?namad?'})
+            return jsonify({'success': False, 'message': 'Veri alınamadı'})
 
         yeni_ad = data.get('kategori_adi', '').strip()
         eski_ad = data.get('eski_ad', '').strip()
 
         if not yeni_ad:
-            return jsonify({'success': False, 'message': 'Kategori ad? boş olamaz'})
+            return jsonify({'success': False, 'message': 'Kategori adı boş olamaz'})
 
         # Eğer düzenleme ise (eski_ad varsa), eski kategorideki Ürünleri yeni kategoriye taşı
         if eski_ad and eski_ad != yeni_ad:
@@ -11596,7 +11606,7 @@ def kategori_kaydet():
 
         return jsonify({'success': True, 'message': 'Kategori kaydedildi', 'kategori': yeni_ad})
     except Exception as e:
-        current_app.logger.exception('Kategori kaydet hatas?')
+        current_app.logger.exception('Kategori kaydet hatası')
         if current_app.config.get('IS_PRODUCTION'):
             return jsonify({'success': False, 'message': 'Beklenmeyen bir hata oluştu.'}), 500
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -11610,7 +11620,7 @@ def kategori_sil():
     try:
         kategori_adi = request.form.get('kategori_adi')
         if not kategori_adi:
-            return jsonify({'success': False, 'message': 'Kategori ad? boş'})
+            return jsonify({'success': False, 'message': 'Kategori adı boş'})
         # Kategorideki Ürünleri 'Kategorisiz' yap
         urunler = tenant_query(Urun).filter_by(kategori=kategori_adi).all()
         for urun in urunler:
@@ -12808,7 +12818,7 @@ def satis_fis_yazdir(satis_id):
 
     receipt_data = build_receipt_view_model({
         'fatura_no': satis.fatura_no,
-        'date_iso': satis.tarih.isoformat() if satis.tarih else None,
+        'date_iso': to_utc_iso(satis.tarih),
         'payment_method': payment_method,
         'subtotal': satis.ara_toplam,
         'vat_total': satis.kdv_tutar,
