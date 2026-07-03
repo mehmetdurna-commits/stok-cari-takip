@@ -186,13 +186,13 @@
 
     <footer class="border-t border-slate-200 bg-slate-950 text-white">
         {% set solution_links = [
-            ('Stok Takibi', url_for('index') ~ '#cozumler'),
-            ('Cari Hesap Takibi', url_for('index') ~ '#cozumler'),
-            ('POS Satış Programı', url_for('index') ~ '#panel'),
+            ('Stok Takibi', url_for('stok_takip_programi_page')),
+            ('Cari Hesap Takibi', url_for('cari_hesap_takip_programi_page')),
+            ('POS Satış Programı', url_for('pos_satis_programi_page')),
             ('Ön Muhasebe', url_for('index') ~ '#cozumler'),
             ('Personel Yönetimi', url_for('index') ~ '#cozumler'),
             ('Teklif Yönetimi', url_for('index') ~ '#akis'),
-            ('Hırdavat Market Programı', url_for('index') ~ '#panel'),
+            ('Hırdavat Market Programı', url_for('hirdavat_market_programi_page')),
             ('Küçük İşletme Yönetimi', url_for('index') ~ '#guven')
         ] %}
         <div class="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1.1fr_1fr_auto] lg:px-8">

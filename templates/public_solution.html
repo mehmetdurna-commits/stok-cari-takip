@@ -1,0 +1,151 @@
+{% extends '_base.html' %}
+
+{% set site_name = site_config().get('name', config.get('SITE_NAME', 'Esstok')) %}
+{% block title %}{{ solution.title }} - {{ site_name }}{% endblock %}
+{% block og_description %}{{ solution.description }}{% endblock %}
+
+{% block content %}
+<style>
+    .solution-gradient {
+        background:
+            radial-gradient(circle at 10% 10%, rgba(37, 99, 235, 0.18), transparent 30rem),
+            radial-gradient(circle at 90% 8%, rgba(20, 184, 166, 0.15), transparent 32rem),
+            linear-gradient(135deg, #f8fafc 0%, #eef6ff 44%, #ffffff 100%);
+    }
+
+    .solution-grid {
+        background-image:
+            linear-gradient(to right, rgba(15, 23, 42, 0.055) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(15, 23, 42, 0.055) 1px, transparent 1px);
+        background-size: 42px 42px;
+    }
+
+    .solution-card {
+        background: rgba(255, 255, 255, 0.88);
+        border: 1px solid rgba(203, 213, 225, 0.82);
+        box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+        backdrop-filter: blur(18px);
+    }
+</style>
+
+<div class="min-h-screen bg-white text-slate-950">
+    <header class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
+        <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+            <a href="{{ url_for('index') }}" class="flex items-center gap-3">
+                <span class="flex size-11 items-center justify-center rounded-2xl bg-primary-600 text-white shadow-lg shadow-primary-600/20">
+                    <span class="material-symbols-outlined">storefront</span>
+                </span>
+                <span class="text-lg font-black tracking-tight">{{ site_name }}</span>
+            </a>
+            <nav class="hidden items-center gap-6 text-sm font-bold text-slate-600 md:flex">
+                <a href="{{ url_for('index') }}#cozumler" class="hover:text-primary-700">Çözümler</a>
+                <a href="{{ url_for('pricing_page') }}" class="hover:text-primary-700">Fiyatlar</a>
+                <a href="{{ url_for('giris') }}" class="hover:text-primary-700">Giriş</a>
+            </nav>
+            <a href="{{ url_for('kayit') }}" class="inline-flex min-h-10 items-center justify-center rounded-2xl bg-primary-600 px-5 py-2 text-sm font-black text-white shadow-lg shadow-primary-600/20 hover:bg-primary-700">Ücretsiz Dene</a>
+        </div>
+    </header>
+
+    <main>
+        <section class="solution-gradient solution-grid border-b border-slate-200">
+            <div class="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1fr_420px] lg:px-8 lg:py-20">
+                <div>
+                    <div class="inline-flex items-center gap-2 rounded-full border border-primary-100 bg-white/75 px-4 py-2 text-xs font-black uppercase tracking-widest text-primary-700 shadow-sm">
+                        <span class="material-symbols-outlined text-base">{{ solution.icon }}</span>
+                        {{ solution.eyebrow }}
+                    </div>
+                    <h1 class="mt-6 max-w-4xl text-4xl font-black tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">{{ solution.headline }}</h1>
+                    <p class="mt-6 max-w-2xl text-lg leading-8 text-slate-600">{{ solution.description }}</p>
+                    <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+                        <a href="{{ url_for('kayit') }}" class="inline-flex min-h-12 items-center justify-center rounded-2xl bg-primary-600 px-7 py-3 font-black text-white shadow-xl shadow-primary-600/20 hover:bg-primary-700">Ücretsiz Dene</a>
+                        <a href="{{ url_for('pricing_page') }}" class="inline-flex min-h-12 items-center justify-center rounded-2xl border border-primary-200 bg-white px-7 py-3 font-black text-primary-700 hover:bg-primary-50">Paketleri İncele</a>
+                    </div>
+                </div>
+
+                <div class="solution-card rounded-[2rem] p-6">
+                    <div class="flex items-center gap-4">
+                        <span class="flex size-14 items-center justify-center rounded-3xl bg-primary-600 text-white shadow-lg shadow-primary-600/20">
+                            <span class="material-symbols-outlined text-3xl">{{ solution.icon }}</span>
+                        </span>
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-widest text-slate-400">Bu sayfada</p>
+                            <h2 class="text-2xl font-black text-slate-950">{{ solution.title }}</h2>
+                        </div>
+                    </div>
+                    <div class="mt-6 space-y-3">
+                        {% for point in solution.hero_points %}
+                        <div class="flex items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+                            <span class="material-symbols-outlined text-lg text-emerald-600">check_circle</span>
+                            <span class="text-sm font-bold text-slate-700">{{ point }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white py-16">
+            <div class="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-3 lg:px-8">
+                {% for title, text in solution.sections %}
+                <article class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h2 class="text-xl font-black text-slate-950">{{ title }}</h2>
+                    <p class="mt-4 leading-7 text-slate-600">{{ text }}</p>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="bg-slate-50 py-16">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+                    <div>
+                        <p class="text-xs font-black uppercase tracking-widest text-primary-600">Öne çıkanlar</p>
+                        <h2 class="mt-3 text-3xl font-black tracking-tight text-slate-950">Kullanıcıyı yormayan sade işletme akışı.</h2>
+                        <p class="mt-4 leading-8 text-slate-600">Esstok, küçük ve orta ölçekli işletmeler için karmaşık ekranlar yerine günlük iş akışına uygun, anlaşılır ve hızlı kullanım sunmayı hedefler.</p>
+                    </div>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        {% for feature in solution.features %}
+                        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <div class="flex items-center gap-3">
+                                <span class="flex size-9 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
+                                    <span class="material-symbols-outlined text-lg">done</span>
+                                </span>
+                                <span class="font-bold text-slate-800">{{ feature }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white py-16">
+            <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+                <div class="text-center">
+                    <p class="text-xs font-black uppercase tracking-widest text-primary-600">Sık sorulanlar</p>
+                    <h2 class="mt-3 text-3xl font-black tracking-tight text-slate-950">{{ solution.title }} hakkında merak edilenler</h2>
+                </div>
+                <div class="mt-8 grid gap-4">
+                    {% for question, answer in solution.faq %}
+                    <div class="rounded-3xl border border-slate-200 bg-slate-50 p-6">
+                        <h3 class="text-lg font-black text-slate-950">{{ question }}</h3>
+                        <p class="mt-3 leading-7 text-slate-600">{{ answer }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-slate-950 py-16 text-white">
+            <div class="mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
+                <h2 class="text-3xl font-black tracking-tight sm:text-4xl">İşletmeni daha düzenli yönetmeye başla.</h2>
+                <p class="mx-auto mt-4 max-w-2xl leading-8 text-slate-300">Ücretsiz demo ile ürün ekleme, satış yapma ve cari takip akışını risksiz deneyebilirsin.</p>
+                <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+                    <a href="{{ url_for('kayit') }}" class="inline-flex min-h-12 items-center justify-center rounded-2xl bg-white px-7 py-3 font-black text-slate-950 hover:bg-slate-100">Ücretsiz Dene</a>
+                    <a href="{{ url_for('index') }}" class="inline-flex min-h-12 items-center justify-center rounded-2xl border border-white/20 px-7 py-3 font-black text-white hover:bg-white/10">Ana Sayfaya Dön</a>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+{% endblock %}

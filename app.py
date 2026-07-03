@@ -4428,6 +4428,110 @@ def pricing_page():
     return render_template('public_pricing.html')
 
 
+SOLUTION_PAGE_CONTENT = {
+    'stok_takip_programi': {
+        'slug': 'stok-takip-programi',
+        'title': 'Stok Takip Programı',
+        'headline': 'Stoklarını net gör, kritik ürünleri kaçırma.',
+        'description': 'Esstok stok takip programı; küçük işletmelerin ürün, barkod, depo, stok giriş-çıkış ve kritik stok takibini sade bir ekranda yönetmesine yardımcı olur.',
+        'eyebrow': 'Stok yönetimi',
+        'icon': 'inventory_2',
+        'hero_points': ['Ürün ve barkod kayıtları', 'Kritik stok uyarıları', 'Toplu stok girişi', 'POS satışla otomatik stok düşümü'],
+        'sections': [
+            ('Stok takibi kimler için önemli?', 'Hırdavat, market, servis ve küçük perakende işletmelerinde ürün sayısı arttıkça stok takibi zorlaşır. Esstok, hangi üründen kaç adet kaldığını ve hangi ürünlerin riskli seviyeye indiğini anlaşılır hale getirir.'),
+            ('Günlük kullanımda ne sağlar?', 'Ürün ekleme, stok girişi, stok çıkışı ve POS satışı aynı yapı içinde çalışır. Satış yapıldığında stok otomatik azalır; yeni ürünler ve stok hareketleri işletme akışına bağlanır.'),
+            ('Neden küçük işletmeler için uygun?', 'Karmaşık ERP ekranları yerine sade kartlar, anlaşılır tablolar ve hızlı arama mantığı kullanılır. Kullanıcı sadece ürününü bulur, miktarı görür ve işlemine devam eder.'),
+        ],
+        'features': ['Barkod ve ürün adıyla arama', 'Kritik stok takibi', 'Toplu stok yükleme', 'Stok giriş/çıkış geçmişi', 'Satış sonrası otomatik düşüm', 'Mobil ve masaüstü erişim'],
+        'faq': [
+            ('Stoklar POS satışıyla azalır mı?', 'Evet. POS ekranından yapılan satışlarda ürün stokları otomatik güncellenir.'),
+            ('Toplu ürün veya stok girişi yapılabilir mi?', 'Evet. Şablonla toplu stok girişi hazırlanıp ön izleme sonrası sisteme alınabilir.'),
+        ],
+    },
+    'cari_hesap_takip_programi': {
+        'slug': 'cari-hesap-takip-programi',
+        'title': 'Cari Hesap Takip Programı',
+        'headline': 'Müşteri borcunu, tahsilatı ve bakiye durumunu sade gör.',
+        'description': 'Esstok cari hesap takip programı; müşteri ve tedarikçi bakiyelerini, veresiye satışları, tahsilatları ve cari ekstreleri küçük işletmeler için anlaşılır hale getirir.',
+        'eyebrow': 'Cari hesap',
+        'icon': 'groups',
+        'hero_points': ['Müşteri ve tedarikçi kayıtları', 'Veresiye satış takibi', 'Tahsilat işlemleri', 'Cari hesap ekstresi'],
+        'sections': [
+            ('Cari takip neden kritik?', 'Küçük işletmelerde satış kadar tahsilatın takibi de önemlidir. Esstok, kimin ne kadar borcu olduğunu ve hangi tahsilatların yapıldığını tek akışta gösterir.'),
+            ('Ekstre mantığı nasıl çalışır?', 'Veresiye satışlar cari bakiyeyi artırır, müşteriden alınan tahsilatlar bakiyeyi azaltır. Cari hesap dökümü yazdırılabilir ve işlem geçmişi takip edilebilir.'),
+            ('Kullanıcı için nasıl sadeleştirildi?', 'Müşteriden tahsilat, tedarikçiye ödeme ve bakiye durumları teknik muhasebe dili yerine işletme sahibinin anlayacağı ifadelerle sunulur.'),
+        ],
+        'features': ['Müşteri ve tedarikçi ayrımı', 'Veresiye satış akışı', 'Tahsilat kaydı', 'Cari ekstre yazdırma', 'Bakiye özeti', 'Riskli cari takibi'],
+        'faq': [
+            ('Veresiye satış cariye işler mi?', 'Evet. Veresiye satışlarda ilgili müşterinin açık bakiyesi otomatik güncellenir.'),
+            ('Cari hesap dökümü yazdırılabilir mi?', 'Evet. Cari ekstre çıktısı firma bilgileriyle yazdırılabilir.'),
+        ],
+    },
+    'pos_satis_programi': {
+        'slug': 'pos-satis-programi',
+        'title': 'POS Satış Programı',
+        'headline': 'Kasada hızlı satış yap, ödemeyi tek ekranda tamamla.',
+        'description': 'Esstok POS satış programı; barkod okutma, sepet yönetimi, nakit, kart ve veresiye ödeme akışlarını küçük işletmeler için pratik hale getirir.',
+        'eyebrow': 'Hızlı satış',
+        'icon': 'point_of_sale',
+        'hero_points': ['Barkodla hızlı satış', 'Nakit / kart / veresiye ödeme', 'KDV ve iskonto hesaplama', 'Fiş yazdırma'],
+        'sections': [
+            ('POS ekranı ne için tasarlandı?', 'Kasiyerin ürün okutma, sepeti görme ve ödemeyi tamamlama işini mümkün olduğunca az adımda yapması için tasarlandı.'),
+            ('Ödeme akışı nasıl ilerler?', 'Sepete ürün eklendikten sonra nakit, kart veya veresiye seçilir. Nakit ödemede alınan para ve para üstü görülebilir; kart ve veresiye satışlar ilgili kayıtlara yansır.'),
+            ('Market ve hırdavat senaryosuna uygun mu?', 'Evet. Barkod okutma, hızlı arama, sepet düzenleme ve fiş yazdırma akışı hırdavat, market ve küçük perakende işletmeleri için uygundur.'),
+        ],
+        'features': ['Barkod okutma', 'Klavye ile ürün arama', 'Sepet düzenleme', 'Nakit/kart/veresiye', 'KDV ve iskonto', 'Fiş yazdırma'],
+        'faq': [
+            ('Barkod bilinmeyen ürün satışı yapılabilir mi?', 'POS içinden hızlı ürün ekleme akışıyla satış bozulmadan ürün eklenebilir.'),
+            ('Satıştan sonra fiş yazdırılır mı?', 'Evet. POS satış sonrası fiş yazdırma akışı desteklenir.'),
+        ],
+    },
+    'hirdavat_market_programi': {
+        'slug': 'hirdavat-market-programi',
+        'title': 'Hırdavat Market Programı',
+        'headline': 'Hırdavat, market ve küçük perakende için pratik işletme paneli.',
+        'description': 'Esstok hırdavat market programı; stok, barkodlu satış, cari/veresiye takip, günlük satışlar ve kasa akışını tek sistemde birleştirir.',
+        'eyebrow': 'Sektörel kullanım',
+        'icon': 'hardware',
+        'hero_points': ['Barkodlu satış', 'Binlerce ürün için stok takibi', 'Veresiye/cari yönetimi', 'Kasa ve günlük satış kontrolü'],
+        'sections': [
+            ('Hırdavat işletmeleri için neden uygun?', 'Hırdavat işletmelerinde ürün çeşidi fazladır, satış hızlıdır ve veresiye sık kullanılır. Esstok bu üç akışı aynı sistemde sadeleştirir.'),
+            ('Kasiyer ve işletme sahibi ne görür?', 'Kasiyer POS ekranında ürün okutur ve satışı tamamlar. İşletme sahibi stok, cari, günlük satış ve kasa durumunu panelden izler.'),
+            ('Küçük işletme mantığına uygun mu?', 'Evet. Amaç karmaşık kurumsal ERP değil; günlük işi hızlandıran, anlaşılır ve kullanıcıyı yormayan bir yönetim ekranı sunmaktır.'),
+        ],
+        'features': ['Hızlı POS satış', 'Stok ve barkod takibi', 'Cari/veresiye işlemleri', 'Günlük satış listesi', 'Kasa/banka/POS hesapları', 'Raporlar'],
+        'faq': [
+            ('Hırdavat markette veresiye takip yapılır mı?', 'Evet. Müşteri bazlı veresiye satış ve tahsilat takibi yapılabilir.'),
+            ('Kasa ve kart satışları ayrılır mı?', 'Evet. Nakit, kart ve veresiye satışlar ayrı akışlarla takip edilebilir.'),
+        ],
+    },
+}
+
+
+def solution_page_data(key):
+    return SOLUTION_PAGE_CONTENT[key]
+
+
+@app.route('/stok-takip-programi')
+def stok_takip_programi_page():
+    return render_template('public_solution.html', solution=solution_page_data('stok_takip_programi'))
+
+
+@app.route('/cari-hesap-takip-programi')
+def cari_hesap_takip_programi_page():
+    return render_template('public_solution.html', solution=solution_page_data('cari_hesap_takip_programi'))
+
+
+@app.route('/pos-satis-programi')
+def pos_satis_programi_page():
+    return render_template('public_solution.html', solution=solution_page_data('pos_satis_programi'))
+
+
+@app.route('/hirdavat-market-programi')
+def hirdavat_market_programi_page():
+    return render_template('public_solution.html', solution=solution_page_data('hirdavat_market_programi'))
+
+
 @app.route('/privacy')
 def privacy_page():
     if current_user.is_authenticated:
@@ -4497,6 +4601,10 @@ def sitemap_xml():
     urls = [
         (f"{site_url}/", now),
         (f"{site_url}{url_for('pricing_page')}", now),
+        (f"{site_url}{url_for('stok_takip_programi_page')}", now),
+        (f"{site_url}{url_for('cari_hesap_takip_programi_page')}", now),
+        (f"{site_url}{url_for('pos_satis_programi_page')}", now),
+        (f"{site_url}{url_for('hirdavat_market_programi_page')}", now),
         (f"{site_url}{url_for('privacy_page')}", now),
         (f"{site_url}{url_for('kvkk_page')}", now),
         (f"{site_url}{url_for('terms_page')}", now),
