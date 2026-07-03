@@ -4535,7 +4535,7 @@ def api_notifications():
                     f'{len(pending_support_tickets)} talep destek yaniti bekliyor. '
                     f'Son talep: {latest_ticket.organization.name if latest_ticket.organization else "-"}'
                 ),
-                'time': 'Åimdi',
+                'time': 'Şimdi',
                 'url': url_for('super_admin_dashboard') + '#platform-support'
             })
 
@@ -9135,18 +9135,11 @@ def super_admin_update_system_controls():
     data_export_locked = request.form.get('data_export_locked') == 'on'
     owner_approval_required = request.form.get('owner_approval_required') == 'on'
     notice_enabled = request.form.get('global_notice_enabled') == 'on'
-    seo_closed_mode = request.form.get('seo_closed_mode') == 'on'
-    seo_indexing_enabled = request.form.get('seo_indexing_enabled') == 'on'
     terminate_sessions = request.form.get('terminate_sessions') == 'on'
-    default_plan = request.form.get('default_plan') or platform_setting('default_plan', 'demo')
-    if default_plan not in {'demo', 'standart', 'profesyonel'}:
-        default_plan = 'demo'
     auto_backup_frequency = request.form.get('auto_backup_frequency') or platform_setting('auto_backup_frequency', 'daily')
     if auto_backup_frequency not in {'off', 'daily', 'weekly', 'monthly'}:
         auto_backup_frequency = 'daily'
     numeric_fields = {
-        'default_user_limit': (1, 500, platform_setting_int('default_user_limit', 1)),
-        'default_product_limit': (1, 1000000, platform_setting_int('default_product_limit', 10)),
         'min_password_length': (8, 32, platform_setting_int('min_password_length', 8)),
         'session_lifetime_minutes': (15, 43200, platform_setting_int('session_lifetime_minutes', 480)),
         'failed_login_limit': (3, 25, platform_setting_int('failed_login_limit', 5)),
@@ -9173,26 +9166,6 @@ def super_admin_update_system_controls():
         'on' if request.form.get('pos_integration_enabled_for_users') == 'on' else 'off',
         'Normal kullanicilar icin POS entegrasyon ayarlari'
     )
-    set_platform_setting('site_url', (request.form.get('site_url') or '').strip()[:200], 'SEO canonical base URL')
-    set_platform_setting('site_name', (request.form.get('site_name') or '').strip()[:120], 'SEO site adi')
-    set_platform_setting('site_description', (request.form.get('site_description') or '').strip()[:240], 'SEO site aciklamasi')
-    set_platform_setting('site_og_image', (request.form.get('site_og_image') or '').strip()[:240], 'SEO OpenGraph gorsel URL')
-    set_platform_setting('ga4_code', (request.form.get('ga4_code') or '').strip()[:8000], 'GA4 izleme kodu')
-    set_platform_setting('search_console_code', (request.form.get('search_console_code') or '').strip()[:4000], 'Search Console dogrulama kodu')
-    set_platform_setting('seo_closed_mode', 'on' if seo_closed_mode else 'off', 'Arama motorlarina karsi kapali mod')
-    set_platform_setting('seo_indexing_enabled', 'on' if seo_indexing_enabled else 'off', 'Arama motorlarina acik SEO modu')
-
-    set_platform_setting('smtp_host', (request.form.get('smtp_host') or '').strip()[:200], 'SMTP host')
-    set_platform_setting('smtp_port', (request.form.get('smtp_port') or '').strip()[:6], 'SMTP port')
-    set_platform_setting('smtp_use_tls', 'on' if request.form.get('smtp_use_tls') == 'on' else 'off', 'SMTP TLS')
-    set_platform_setting('smtp_use_ssl', 'on' if request.form.get('smtp_use_ssl') == 'on' else 'off', 'SMTP SSL')
-    set_platform_setting('smtp_username', (request.form.get('smtp_username') or '').strip()[:200], 'SMTP username')
-    set_platform_setting('smtp_from_email', (request.form.get('smtp_from_email') or '').strip()[:200], 'SMTP From email')
-    set_platform_setting('smtp_from_name', (request.form.get('smtp_from_name') or '').strip()[:120], 'SMTP From name')
-    smtp_password = request.form.get('smtp_password') or ''
-    if smtp_password.strip():
-        set_platform_setting('smtp_password', smtp_password, 'SMTP password (stored)')
-
     set_platform_setting('readonly_mode', 'on' if readonly_enabled else 'off', 'Platform salt-okunur modu')
     set_platform_setting('file_uploads_locked', 'on' if uploads_locked else 'off', 'Dosya yukleme kilidi')
     set_platform_setting('dangerous_operations_locked', 'on' if dangerous_locked else 'off', 'Riskli islem kilidi')
@@ -9203,12 +9176,9 @@ def super_admin_update_system_controls():
     set_platform_setting('data_export_locked', 'on' if data_export_locked else 'off', 'Veri cikisi ve yedek goruntuleme kilidi')
     set_platform_setting('owner_approval_required', 'on' if owner_approval_required else 'off', 'Kritik islemler icin platform sahibi onayi')
     set_platform_setting('global_notice_enabled', 'on' if notice_enabled else 'off', 'Global duyuru durumu')
-    set_platform_setting('platform_name', (request.form.get('platform_name') or platform_setting('platform_name', 'StokCari')).strip()[:120], 'Platform gorunen adi')
-    set_platform_setting('default_plan', default_plan, 'Yeni firmalar icin varsayilan paket')
-    set_platform_setting('support_email', (request.form.get('support_email') or platform_setting('support_email', '')).strip().lower()[:120], 'Destek iletisim e-postasi')
     set_platform_setting('auto_backup_frequency', auto_backup_frequency, 'Otomatik yedekleme sikligi')
-    for key, value in numeric_values.items():
-        set_platform_setting(key, value)
+    for key in ('min_password_length', 'session_lifetime_minutes', 'failed_login_limit', 'backup_retention_days'):
+        set_platform_setting(key, numeric_values[key])
     set_platform_setting(
         'global_notice_message',
         (request.form.get('global_notice_message') or '').strip()[:240],

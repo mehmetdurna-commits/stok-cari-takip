@@ -1475,14 +1475,9 @@ def test_super_admin_updates_system_management_controls(client):
         db.session.commit()
 
     response = client.post('/super-admin/system/update', data={
-        'platform_name': 'StokCari Sistem',
-        'default_plan': 'standart',
-        'default_user_limit': '6',
-        'default_product_limit': '600',
         'min_password_length': '11',
         'session_lifetime_minutes': '900',
         'failed_login_limit': '7',
-        'support_email': 'sistem@example.com',
         'auto_backup_frequency': 'monthly',
         'backup_retention_days': '120',
         'maintenance_mode': 'on',
@@ -1522,14 +1517,9 @@ def test_super_admin_updates_system_management_controls(client):
                 'platform.maintenance_message',
                 'platform.maintenance_eta',
                 'platform.global_notice_message',
-                'platform.platform_name',
-                'platform.default_plan',
-                'platform.default_user_limit',
-                'platform.default_product_limit',
                 'platform.min_password_length',
                 'platform.session_lifetime_minutes',
                 'platform.failed_login_limit',
-                'platform.support_email',
                 'platform.auto_backup_frequency',
                 'platform.backup_retention_days',
             ])).all()
@@ -1548,16 +1538,70 @@ def test_super_admin_updates_system_management_controls(client):
         assert settings['platform.maintenance_message'] == 'Planli bakim.'
         assert settings['platform.maintenance_eta'] == '18:30'
         assert settings['platform.global_notice_message'] == 'Sistem duyurusu.'
-        assert settings['platform.platform_name'] == 'StokCari Sistem'
-        assert settings['platform.default_plan'] == 'standart'
-        assert settings['platform.default_user_limit'] == '6'
-        assert settings['platform.default_product_limit'] == '600'
         assert settings['platform.min_password_length'] == '11'
         assert settings['platform.session_lifetime_minutes'] == '900'
         assert settings['platform.failed_login_limit'] == '7'
-        assert settings['platform.support_email'] == 'sistem@example.com'
         assert settings['platform.auto_backup_frequency'] == 'monthly'
         assert settings['platform.backup_retention_days'] == '120'
+
+
+def test_system_controls_do_not_clear_defaults_or_smtp_settings(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        ensure_user_organization(owner)
+        owner.is_platform_admin = True
+        db.session.add(SystemSettings(key='platform.site_url', value='https://esstok.com'))
+        db.session.add(SystemSettings(key='platform.site_name', value='Esstok'))
+        db.session.add(SystemSettings(key='platform.site_description', value='Bulut tabanli isletme yonetimi'))
+        db.session.add(SystemSettings(key='platform.ga4_code', value='GA-TEST'))
+        db.session.add(SystemSettings(key='platform.search_console_code', value='SC-TEST'))
+        db.session.add(SystemSettings(key='platform.smtp_host', value='mail.esstok.com'))
+        db.session.add(SystemSettings(key='platform.smtp_port', value='587'))
+        db.session.add(SystemSettings(key='platform.smtp_username', value='destek@esstok.com'))
+        db.session.add(SystemSettings(key='platform.smtp_password', value='secret'))
+        db.session.add(SystemSettings(key='platform.smtp_from_email', value='destek@esstok.com'))
+        db.session.add(SystemSettings(key='platform.smtp_from_name', value='Esstok'))
+        db.session.commit()
+
+    response = client.post('/super-admin/system/update', data={
+        'maintenance_mode': 'on',
+        'security_shield_enabled': 'on',
+        'auto_backup_frequency': 'weekly',
+        'min_password_length': '10',
+        'session_lifetime_minutes': '600',
+        'failed_login_limit': '6',
+        'backup_retention_days': '90',
+    }, follow_redirects=False)
+
+    assert response.status_code == 302
+    with app.app_context():
+        preserved = {
+            setting.key: setting.value
+            for setting in SystemSettings.query.filter(SystemSettings.key.in_([
+                'platform.site_url',
+                'platform.site_name',
+                'platform.site_description',
+                'platform.ga4_code',
+                'platform.search_console_code',
+                'platform.smtp_host',
+                'platform.smtp_port',
+                'platform.smtp_username',
+                'platform.smtp_password',
+                'platform.smtp_from_email',
+                'platform.smtp_from_name',
+            ])).all()
+        }
+        assert preserved['platform.site_url'] == 'https://esstok.com'
+        assert preserved['platform.site_name'] == 'Esstok'
+        assert preserved['platform.site_description'] == 'Bulut tabanli isletme yonetimi'
+        assert preserved['platform.ga4_code'] == 'GA-TEST'
+        assert preserved['platform.search_console_code'] == 'SC-TEST'
+        assert preserved['platform.smtp_host'] == 'mail.esstok.com'
+        assert preserved['platform.smtp_port'] == '587'
+        assert preserved['platform.smtp_username'] == 'destek@esstok.com'
+        assert preserved['platform.smtp_password'] == 'secret'
+        assert preserved['platform.smtp_from_email'] == 'destek@esstok.com'
+        assert preserved['platform.smtp_from_name'] == 'Esstok'
 
 
 def test_financial_lock_blocks_non_owner_organization_update(client):
