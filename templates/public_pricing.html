@@ -66,7 +66,7 @@
                     İşletmene uygun paketi seç, satış ve stok akışını büyüt.
                 </h1>
                 <p class="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-                    Demo ile risksiz dene. Standart paketle küçük işletme akışını yönet. Profesyonel paketle ürün sınırı olmadan büyü.
+                    Demo ile risksiz dene. Standart ve Profesyonel paketler y?ll?k lansman fiyat?yla sunulur; g?nl?k maliyeti g?r?nce karar vermek kolayla??r.
                 </p>
             </section>
 
@@ -76,6 +76,8 @@
                         'name': 'Demo',
                         'badge': 'Başlangıç',
                         'price': 'Ücretsiz',
+                        'period': 'Süresiz deneme',
+                        'daily': 'Günlük 0 TL',
                         'description': 'Uygulamayı tanımak ve temel akışı denemek isteyen işletmeler için.',
                         'limit': '10 stok ürünü',
                         'cta': 'Ücretsiz Dene',
@@ -85,8 +87,10 @@
                     },
                     {
                         'name': 'Standart',
-                        'badge': 'En uygun başlangıç',
-                        'price': '500 ürüne kadar',
+                        'badge': 'Lansman fiyatı',
+                        'price': '₺3.900 + KDV',
+                        'period': 'Yıllık kullanım',
+                        'daily': 'Günlük sadece ₺10,68 + KDV',
                         'description': 'Hırdavat, market, servis ve küçük perakende işletmeleri için dengeli paket.',
                         'limit': '500 stok ürünü',
                         'cta': 'Satın Alma Adımına Geç',
@@ -96,8 +100,10 @@
                     },
                     {
                         'name': 'Profesyonel',
-                        'badge': 'Büyüyen işletme',
-                        'price': 'Sınırsız ürün',
+                        'badge': 'Lansman fiyatı',
+                        'price': '₺5.900 + KDV',
+                        'period': 'Yıllık kullanım',
+                        'daily': 'Günlük sadece ₺16,16 + KDV',
                         'description': 'Ürün sayısı büyüyen ve daha kapsamlı takip isteyen işletmeler için.',
                         'limit': 'Sınırsız stok',
                         'cta': 'Profesyonel Pakete Geç',
@@ -123,9 +129,10 @@
                     </div>
                     <p class="mt-4 min-h-16 leading-7 text-slate-600">{{ package.description }}</p>
                     <div class="mt-6 rounded-3xl border border-slate-200 bg-white p-5">
-                        <p class="text-sm font-bold text-slate-500">Paket sınırı</p>
+                        <p class="text-sm font-bold text-slate-500">{{ package.period }}</p>
                         <p class="mt-2 text-3xl font-black text-slate-950">{{ package.price }}</p>
-                        <p class="mt-1 text-sm font-semibold text-primary-700">{{ package.limit }}</p>
+                        <p class="mt-2 inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">{{ package.daily }}</p>
+                        <p class="mt-3 text-sm font-semibold text-primary-700">{{ package.limit }}</p>
                     </div>
                     <ul class="mt-6 space-y-3 text-sm font-semibold text-slate-700">
                         {% for feature in package.features %}

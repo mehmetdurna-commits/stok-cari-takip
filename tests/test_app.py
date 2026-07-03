@@ -173,6 +173,10 @@ def test_public_pricing_page_renders_packages(client):
     assert 'Demo' in text
     assert 'Standart' in text
     assert 'Profesyonel' in text
+    assert '₺3.900 + KDV' in text
+    assert 'Günlük sadece ₺10,68 + KDV' in text
+    assert '₺5.900 + KDV' in text
+    assert 'Günlük sadece ₺16,16 + KDV' in text
     assert '/kayit?paket=standart&amp;odeme=1' in text
 
     sitemap = client.get('/sitemap.xml').get_data(as_text=True)
