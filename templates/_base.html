@@ -1548,6 +1548,25 @@
                     <div class="app-header-actions">
                         {% block header_actions %}{% endblock %}
                     </div>
+
+                    {% if current_user.is_authenticated %}
+                        {% set header_package = current_package_usage() %}
+                        {% if header_package %}
+                        <a href="{{ url_for('paket_yukselt') }}"
+                           class="hidden sm:inline-flex items-center gap-2 rounded-full border border-primary-100 bg-gradient-to-r from-primary-50 via-white to-cyan-50 px-3 py-1.5 text-xs font-black text-primary-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-md dark:border-primary-900/50 dark:from-primary-950/40 dark:via-slate-900 dark:to-cyan-950/30 dark:text-primary-200"
+                           title="Paket kullanımı: {{ header_package.label }}">
+                            <span class="flex size-6 items-center justify-center rounded-full bg-primary-600 text-white shadow-sm shadow-primary-600/20">
+                                <span class="material-symbols-outlined text-[15px]">workspace_premium</span>
+                            </span>
+                            <span class="tracking-wide">{{ header_package.label }}</span>
+                            {% if header_package.is_unlimited %}
+                            <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">Sınırsız</span>
+                            {% else %}
+                            <span class="rounded-full bg-white px-2 py-0.5 text-[10px] font-black text-slate-600 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">{{ header_package.product_count }}/{{ header_package.product_limit }}</span>
+                            {% endif %}
+                        </a>
+                        {% endif %}
+                    {% endif %}
                     
                     <div class="relative">
                         <button type="button" onclick="toggleNotifications()" aria-label="Bildirimleri aç" aria-controls="notification-dropdown" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors relative">

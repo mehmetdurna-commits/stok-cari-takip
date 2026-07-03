@@ -6269,8 +6269,7 @@ def dashboard():
                            en_cok_satan_urunler=en_cok_satan_urunler,
                            kategori_performans=kategori_performans,
                            cari_risk_analizi=cari_risk_analizi,
-                           stok_verimlilik=stok_verimlilik,
-                           package_usage=package_usage_for_user())
+                           stok_verimlilik=stok_verimlilik)
 
 # Ürün Y?netimi
 
