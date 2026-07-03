@@ -202,6 +202,15 @@
                 </form>
 
                 <form id="register-form" method="POST" action="{{ url_for('kayit') }}" class="auth-form hidden space-y-4">
+                    {% set selected_plan = selected_plan|default('demo') %}
+                    {% set selected_package = package_catalog[selected_plan] if package_catalog is defined and selected_plan in package_catalog else none %}
+                    <input type="hidden" name="requested_plan" value="{{ selected_plan }}">
+                    {% if selected_package and selected_plan != 'demo' %}
+                    <div class="rounded-2xl border border-primary-200 bg-primary-50 p-4 text-sm text-primary-900 dark:border-primary-900/50 dark:bg-primary-950/30 dark:text-primary-100">
+                        <p class="font-black">{{ selected_package.label }} paket talebiyle kayıt açılıyor.</p>
+                        <p class="mt-1 text-xs leading-5">Hesabınız demo olarak oluşturulur; satın alma talebi destek merkezine düşer ve paket ödeme sonrası aktif edilir.</p>
+                    </div>
+                    {% endif %}
                     <div>
                         <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Firma adı</label>
                         <input name="firma_adi" type="text" required autocomplete="organization" class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="ABC Ticaret">

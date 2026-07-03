@@ -183,6 +183,109 @@ def test_public_pricing_page_renders_packages(client):
     assert '/fiyatlar' in sitemap
 
 
+def test_package_upgrade_page_renders_usage_and_request_options(client):
+    response = client.get('/paket-yukselt?reason=product_limit')
+    text = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert 'Paket yükseltme' in text
+    assert 'Ürün kullanımı' in text
+    assert 'Standart' in text
+    assert 'Profesyonel' in text
+    assert 'Satın Alma Talebi Oluştur' in text
+
+
+def test_demo_product_limit_redirects_to_package_upgrade(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        owner.paket_tipi = 'demo'
+        owner.urun_limiti = 10
+        organization = ensure_user_organization(owner)
+        organization.plan = 'demo'
+        organization.product_limit = 10
+        current_count = Urun.query.filter_by(user_id=owner.id).count()
+        for index in range(current_count, 10):
+            db.session.add(Urun(
+                urun_adi=f'Limit Urun {index}',
+                kategori='Test',
+                birim='Adet',
+                satis_fiyati=1,
+                stok_miktari=1,
+                user_id=owner.id,
+            ))
+        db.session.commit()
+
+    response = client.post('/urun-ekle', data={
+        'urun_adi': 'Limit Sonrasi Urun',
+        'kategori': 'Test',
+        'birim': 'Adet',
+        'alis_fiyati': '0',
+        'satis_fiyati': '10',
+        'stok_miktari': '1',
+        'kritik_stok': '1',
+        'depo_adi': 'Ana Depo',
+    }, follow_redirects=False)
+
+    assert response.status_code == 302
+    assert '/paket-yukselt' in response.headers['Location']
+
+
+def test_pos_quick_product_respects_package_limit(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        owner.paket_tipi = 'demo'
+        owner.urun_limiti = 10
+        organization = ensure_user_organization(owner)
+        organization.plan = 'demo'
+        organization.product_limit = 10
+        current_count = Urun.query.filter_by(user_id=owner.id).count()
+        for index in range(current_count, 10):
+            db.session.add(Urun(
+                urun_adi=f'POS Limit Urun {index}',
+                kategori='Test',
+                birim='Adet',
+                satis_fiyati=1,
+                stok_miktari=1,
+                user_id=owner.id,
+            ))
+        db.session.commit()
+
+    response = client.post('/api/pos/products', json={
+        'urun_adi': 'POS Limit Sonrasi',
+        'satis_fiyati': 10,
+        'stok_miktari': 1,
+    })
+    data = response.get_json()
+
+    assert response.status_code == 200
+    assert data['success'] is False
+    assert 'limitiniz doldu' in data['message']
+    assert data['upgrade_url'].startswith('/paket-yukselt')
+
+
+def test_register_with_paid_plan_creates_billing_ticket(client):
+    with client.session_transaction() as sess:
+        sess.clear()
+
+    response = client.post('/kayit', data={
+        'requested_plan': 'standart',
+        'firma_adi': 'Talep Firma',
+        'yetkili_adi': 'Talep Sahibi',
+        'email': 'talep@example.com',
+        'telefon': '05550000000',
+        'password': 'password123',
+    }, follow_redirects=False)
+
+    assert response.status_code == 302
+    with app.app_context():
+        user = User.query.filter_by(email='talep@example.com').first()
+        assert user is not None
+        assert user.paket_tipi == 'demo'
+        ticket = SupportTicket.query.filter_by(organization_id=user.organization_id, category='billing').first()
+        assert ticket is not None
+        assert 'Standart paket' in ticket.subject
+
+
 def test_settings_preferences_are_persisted(client):
     settings_path = primary_test_user_backup_dir() / 'settings.json'
     original = settings_path.read_text(encoding='utf-8') if settings_path.exists() else None

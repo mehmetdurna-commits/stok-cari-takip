@@ -190,6 +190,7 @@ def inject_template_helpers():
         'datetime': datetime,
         'date': date,
         'to_local_datetime': to_local_datetime,
+        'current_package_usage': package_usage_for_user,
         'site_config': site_config,
         'smtp_config': smtp_config,
         'user_display_name': user_display_name,
@@ -904,6 +905,95 @@ def unique_organization_slug(name, owner_id=None):
 def default_subscription_end(start_date=None, months=12):
     start_date = start_date or date.today()
     return start_date + timedelta(days=365 if months == 12 else max(1, int(months * 30)))
+
+
+PLAN_CATALOG = {
+    'demo': {
+        'label': 'Demo',
+        'product_limit': 10,
+        'price': 'Ücretsiz',
+        'daily': 'Günlük 0 TL',
+        'description': 'Uygulamayı risksiz denemek isteyen işletmeler için.',
+    },
+    'standart': {
+        'label': 'Standart',
+        'product_limit': 500,
+        'price': '₺3.900 + KDV',
+        'daily': 'Günlük ₺10,68 + KDV',
+        'description': '500 ürüne kadar çalışan küçük işletmeler için.',
+    },
+    'profesyonel': {
+        'label': 'Profesyonel',
+        'product_limit': None,
+        'price': '₺5.900 + KDV',
+        'daily': 'Günlük ₺16,16 + KDV',
+        'description': 'Ürün sınırı olmadan büyümek isteyen işletmeler için.',
+    },
+}
+
+
+def normalize_plan(value, default='demo'):
+    plan = (value or default or 'demo').strip().lower()
+    return plan if plan in PLAN_CATALOG else default
+
+
+def plan_catalog_entry(plan):
+    return PLAN_CATALOG.get(normalize_plan(plan), PLAN_CATALOG['demo'])
+
+
+def effective_product_limit(plan, organization=None, user=None):
+    plan = normalize_plan(plan)
+    if plan == 'profesyonel':
+        return None
+    configured_limit = None
+    if organization and organization.product_limit:
+        configured_limit = organization.product_limit
+    elif user and user.urun_limiti:
+        configured_limit = user.urun_limiti
+    return int(configured_limit or PLAN_CATALOG[plan]['product_limit'])
+
+
+def package_usage_for_user(user=None):
+    user = user or (current_user if current_user.is_authenticated else None)
+    if not user:
+        return None
+    organization = current_organization() if user.is_authenticated else None
+    plan = normalize_plan((organization.plan if organization else None) or user.paket_tipi or 'demo')
+    limit = effective_product_limit(plan, organization, user)
+    tenant_ids = organization_user_ids(organization) if organization else [user.id]
+    product_count = Urun.query.filter(Urun.user_id.in_(tenant_ids)).count() if tenant_ids else 0
+    remaining = None if limit is None else max(0, limit - product_count)
+    percent = 0 if limit is None else min(100, int((product_count / max(limit, 1)) * 100))
+    return {
+        'plan': plan,
+        'label': plan_catalog_entry(plan)['label'],
+        'price': plan_catalog_entry(plan)['price'],
+        'daily': plan_catalog_entry(plan)['daily'],
+        'description': plan_catalog_entry(plan)['description'],
+        'product_count': product_count,
+        'product_limit': limit,
+        'remaining': remaining,
+        'percent': percent,
+        'is_unlimited': limit is None,
+        'is_limit_reached': limit is not None and product_count >= limit,
+        'subscription': subscription_summary(organization) if organization else None,
+    }
+
+
+def can_create_products(quantity=1, user=None):
+    usage = package_usage_for_user(user)
+    if not usage or usage['is_unlimited']:
+        return True, usage
+    return usage['product_count'] + max(1, int(quantity or 1)) <= usage['product_limit'], usage
+
+
+def product_limit_message(usage):
+    if not usage:
+        return 'Ürün limiti kontrol edilemedi.'
+    return (
+        f"{usage['label']} paketinde ürün limitiniz doldu "
+        f"({usage['product_count']} / {usage['product_limit']}). Devam etmek için paketinizi yükseltebilirsiniz."
+    )
 
 
 def subscription_summary(organization):
@@ -5703,8 +5793,10 @@ def kayit():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
 
+    requested_plan = normalize_plan(request.values.get('paket') or request.values.get('requested_plan') or 'demo')
+
     if request.method == 'GET':
-        return render_template('firma_giris_ve_kayit_ekrani.html')
+        return render_template('firma_giris_ve_kayit_ekrani.html', selected_plan=requested_plan, package_catalog=PLAN_CATALOG)
 
     if not platform_setting_bool('registrations_enabled', True):
         flash('Yeni firma kayitlari su anda kapali.', 'error')
@@ -5754,9 +5846,34 @@ def kayit():
             organization.plan = 'profesyonel'
             organization.user_limit = max(organization.user_limit or 1, 10)
             organization.product_limit = max(organization.product_limit or 10, 999999)
+        elif requested_plan in {'standart', 'profesyonel'}:
+            package = plan_catalog_entry(requested_plan)
+            ticket = SupportTicket(
+                organization_id=organization.id,
+                requester_id=yeni_user.id,
+                subject=f"{package['label']} paket satın alma talebi",
+                category='billing',
+                priority='high',
+                status='waiting_admin',
+            )
+            db.session.add(ticket)
+            db.session.flush()
+            db.session.add(SupportTicketMessage(
+                ticket_id=ticket.id,
+                user_id=yeni_user.id,
+                message=(
+                    f"Yeni kayıt sırasında {package['label']} paket talebi oluşturuldu.\n"
+                    f"Fiyat: {package['price']}\n"
+                    "Firma ödeme/aktivasyon için dönüş bekliyor."
+                ),
+                is_staff_reply=False,
+            ))
     db.session.commit()
 
-    flash('Kayıt başarılı! Giriş yapabilirsiniz.', 'success')
+    if requested_plan in {'standart', 'profesyonel'} and not yeni_user.is_platform_admin:
+        flash('Kayıt başarılı! Paket talebiniz alındı, giriş yapabilirsiniz.', 'success')
+    else:
+        flash('Kayıt başarılı! Giriş yapabilirsiniz.', 'success')
     return redirect(url_for('giris'))
 
 
@@ -6152,7 +6269,8 @@ def dashboard():
                            en_cok_satan_urunler=en_cok_satan_urunler,
                            kategori_performans=kategori_performans,
                            cari_risk_analizi=cari_risk_analizi,
-                           stok_verimlilik=stok_verimlilik)
+                           stok_verimlilik=stok_verimlilik,
+                           package_usage=package_usage_for_user())
 
 # Ürün Y?netimi
 
@@ -6214,10 +6332,10 @@ def urunler():
 @login_required
 def urun_ekle():
     if request.method == 'POST':
-        # Demo limit kontrolü
-        if current_user.paket_tipi == 'demo' and len(current_user.urunler) >= current_user.urun_limiti:
-            flash('Demo hesabın?z?n Ürün limiti dolmu?tur!', 'error')
-            return redirect(url_for('urunler'))
+        can_create, usage = can_create_products()
+        if not can_create:
+            flash(product_limit_message(usage), 'warning')
+            return redirect(url_for('paket_yukselt', reason='product_limit'))
 
         depo_adi = normalize_warehouse_name(request.form.get('yeni_depo_adi') or request.form.get('depo_adi'))
         ensure_warehouse(depo_adi)
@@ -8405,13 +8523,82 @@ def iade():
                            son_iadeler=son_iadeler,
                            accounts=accounts)
 
-# Ödeme Sayfas? (Demo limiti dolduğunda paket y?kseltme)
+# Paket / ödeme hazırlık akışı
+
+
+@app.route('/paket-yukselt')
+@login_required
+def paket_yukselt():
+    selected_plan = normalize_plan(request.args.get('paket') or request.args.get('plan') or 'standart', 'standart')
+    if selected_plan == 'demo':
+        selected_plan = 'standart'
+    return render_template(
+        'paket_yukselt.html',
+        packages=PLAN_CATALOG,
+        selected_plan=selected_plan,
+        usage=package_usage_for_user(),
+        reason=request.args.get('reason') or ''
+    )
 
 
 @app.route('/odeme')
+@login_required
 def odeme():
-    # Demo kullan?c?lar Ürün limitini dolduğunda buraya y?nlendirilir
-    return render_template('hizli_satis_pos_ekrani.html')
+    return redirect(url_for(
+        'paket_yukselt',
+        paket=request.args.get('paket') or request.args.get('plan') or 'standart',
+        reason=request.args.get('reason') or 'payment'
+    ))
+
+
+@app.route('/paket-talep', methods=['POST'])
+@login_required
+def paket_talep():
+    organization = current_organization()
+    if not organization:
+        flash('Paket talebi için firma bilgisi bulunamadı.', 'error')
+        return redirect(url_for('dashboard'))
+
+    requested_plan = normalize_plan(request.form.get('plan'), 'standart')
+    if requested_plan == 'demo':
+        requested_plan = 'standart'
+    package = plan_catalog_entry(requested_plan)
+    usage = package_usage_for_user()
+    usage_limit = 'Sınırsız' if usage and usage['is_unlimited'] else (usage['product_limit'] if usage else '-')
+    message = (
+        "Paket yükseltme talebi\n\n"
+        f"Talep edilen paket: {package['label']}\n"
+        f"Fiyat: {package['price']}\n"
+        f"Mevcut paket: {usage['label'] if usage else '-'}\n"
+        f"Ürün kullanımı: {usage['product_count'] if usage else 0} / {usage_limit}\n\n"
+        "Firma bu paket için dönüş bekliyor."
+    )
+
+    ticket = SupportTicket(
+        organization_id=organization.id,
+        requester_id=current_user.id,
+        subject=f"{package['label']} paket satın alma talebi",
+        category='billing',
+        priority='high',
+        status='waiting_admin',
+    )
+    db.session.add(ticket)
+    db.session.flush()
+    db.session.add(SupportTicketMessage(
+        ticket_id=ticket.id,
+        user_id=current_user.id,
+        message=message[:4000],
+        is_staff_reply=False,
+    ))
+    db.session.commit()
+    try:
+        platform_audit('SUPPORT_TICKET_CREATE', f'Paket talebi acildi: #{ticket.id}', 'SupportTicket', ticket.id)
+        sync_support_ticket_action(ticket)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+    flash('Paket talebiniz alındı. Ekibimiz sizinle iletişime geçecek.', 'success')
+    return redirect(url_for('support_ticket_detail', ticket_id=ticket.id))
 
 # Çıkış
 
@@ -11727,6 +11914,14 @@ def api_pos_create_product():
                     'product': serialize_pos_product(existing_product)
                 })
 
+        can_create, usage = can_create_products()
+        if not can_create:
+            return jsonify({
+                'success': False,
+                'message': product_limit_message(usage),
+                'upgrade_url': url_for('paket_yukselt', reason='product_limit')
+            })
+
         ensure_warehouse(warehouse)
         product = Urun(
             barkod=barcode,
@@ -11808,6 +12003,10 @@ def _find_import_product(row, tenant_ids):
 
 
 def _create_product_from_import_row(row):
+    can_create, usage = can_create_products()
+    if not can_create:
+        raise ValueError(product_limit_message(usage))
+
     barkod = _match_stock_import_value(row, 'Barkod', 'barkod', 'barcode') or None
     urun_adi = _match_stock_import_value(row, *STOCK_IMPORT_PRODUCT_NAME_KEYS)
     kategori = _match_stock_import_value(row, 'Kategori', 'kategori') or None
