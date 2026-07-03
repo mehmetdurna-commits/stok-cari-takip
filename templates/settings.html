@@ -548,33 +548,13 @@
                     Bildirim Geçmişi
                 </h2>
                 
-                <div class="space-y-3">
-                    <div class="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                        <div class="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                        <div class="flex-1">
-                            <p class="text-sm font-medium text-slate-900 dark:text-white">Stok uyarısı: XYZ ürünü kritik seviyede</p>
-                            <p class="text-xs text-slate-500 dark:text-slate-400">2 saat önce</p>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                        <div class="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                        <div class="flex-1">
-                            <p class="text-sm font-medium text-slate-900 dark:text-white">Yeni müşteri eklendi: ABC Ltd.</p>
-                            <p class="text-xs text-slate-500 dark:text-slate-400">5 saat önce</p>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                        <div class="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
-                        <div class="flex-1">
-                            <p class="text-sm font-medium text-slate-900 dark:text-white">Teklif #1234 onaylandı</p>
-                            <p class="text-xs text-slate-500 dark:text-slate-400">1 gün önce</p>
-                        </div>
+                <div id="notification-history-list" class="space-y-3">
+                    <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg text-sm text-slate-500 dark:text-slate-400">
+                        Bildirim geçmişi yükleniyor...
                     </div>
                 </div>
                 
-                <button class="w-full mt-4 px-4 py-2 text-center text-sm text-primary-600 hover:text-primary-700 font-medium">
+                <button type="button" onclick="loadNotificationHistory()" class="w-full mt-4 px-4 py-2 text-center text-sm text-primary-600 hover:text-primary-700 font-medium">
                     Tüm Bildirimleri Görüntüle
                 </button>
             </div>
@@ -1739,6 +1719,55 @@ function applyNotificationSettings() {
     }
 }
 
+function notificationDotClass(type) {
+    const colors = {
+        danger: 'bg-red-500',
+        warning: 'bg-amber-500',
+        success: 'bg-green-500',
+        info: 'bg-blue-500'
+    };
+    return colors[type] || colors.info;
+}
+
+function renderNotificationHistory(items, message = '') {
+    const list = document.getElementById('notification-history-list');
+    if (!list) return;
+    if (!items || items.length === 0) {
+        list.innerHTML = `
+            <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg text-sm text-slate-500 dark:text-slate-400">
+                ${message || 'Henüz kayıtlı bildirim geçmişi yok.'}
+            </div>
+        `;
+        return;
+    }
+
+    list.innerHTML = items.map(item => `
+        <a href="${item.url || '#'}" class="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+            <div class="w-2 h-2 ${notificationDotClass(item.type)} rounded-full mt-2"></div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-slate-900 dark:text-white">${item.title || 'Bildirim'}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">${item.message || ''}</p>
+                <p class="text-[11px] text-slate-400 mt-1">${item.time || 'Güncel'}</p>
+            </div>
+        </a>
+    `).join('');
+}
+
+async function loadNotificationHistory() {
+    try {
+        const response = await fetch('/api/settings/notification-history');
+        const data = await response.json();
+        if (data.success) {
+            renderNotificationHistory(data.notifications || [], data.message);
+        } else {
+            renderNotificationHistory([], data.message || 'Bildirim geçmişi yüklenemedi.');
+        }
+    } catch (error) {
+        console.error('Bildirim geçmişi yüklenemedi:', error);
+        renderNotificationHistory([], 'Bildirim geçmişi yüklenemedi.');
+    }
+}
+
 // Kategori Yönetimi Modal
 function openCategoryModal() {
     const modal = document.getElementById('categoryModal');
@@ -2032,6 +2061,11 @@ async function updateNotifications() {
         
         const result = await response.json();
         if (result.success) {
+            Object.assign(SETTINGS_STATE, data);
+            if (data.notify_desktop && 'Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+            loadNotificationHistory();
             showMessage('Bildirim ayarları güncellendi', 'success');
         } else {
             showMessage(result.message, 'error');
@@ -2664,6 +2698,7 @@ document.addEventListener('DOMContentLoaded', function() {
         button.addEventListener('click', () => setThemeOption(button.dataset.theme));
     });
     applyNotificationSettings();
+    loadNotificationHistory();
     togglePosIntegrationFields();
     switchTab('profile');
     const tabButtons = Array.from(document.querySelectorAll('.settings-tab-btn'));

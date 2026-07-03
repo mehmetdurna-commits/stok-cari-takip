@@ -4624,131 +4624,289 @@ def sitemap_xml():
     return current_app.response_class("\n".join(xml_lines) + "\n", mimetype="application/xml")
 
 
+DEFAULT_NOTIFICATION_SETTINGS = {
+    'notify_stock_alerts': True,
+    'notify_customer_activity': True,
+    'notify_quote_status': True,
+    'notify_daily_reports': True,
+    'notify_system_updates': True,
+    'notify_realtime': True,
+    'notify_sound': False,
+    'notify_desktop': False,
+    'notify_history': True,
+    'notification_summary_frequency': 'realtime',
+    'notification_report_frequency': 'weekly',
+    'quiet_hours_start': '22:00',
+    'quiet_hours_end': '08:00',
+}
+
+
+def notification_preferences_for_user(user_id):
+    settings = get_user_settings(user_id)
+    preferences = dict(DEFAULT_NOTIFICATION_SETTINGS)
+    for key, default_value in DEFAULT_NOTIFICATION_SETTINGS.items():
+        if key not in settings:
+            continue
+        value = settings.get(key)
+        if isinstance(default_value, bool):
+            preferences[key] = bool(value)
+        else:
+            preferences[key] = str(value or default_value)
+    return preferences
+
+
+def _parse_notification_time(value):
+    try:
+        hour, minute = str(value or '').split(':', 1)
+        return int(hour), int(minute)
+    except (TypeError, ValueError):
+        return None
+
+
+def notification_quiet_hours_active(preferences):
+    start = _parse_notification_time(preferences.get('quiet_hours_start'))
+    end = _parse_notification_time(preferences.get('quiet_hours_end'))
+    if not start or not end or start == end:
+        return False
+
+    now = to_local_datetime(datetime.now(timezone.utc)).time()
+    current_minutes = now.hour * 60 + now.minute
+    start_minutes = start[0] * 60 + start[1]
+    end_minutes = end[0] * 60 + end[1]
+    if start_minutes < end_minutes:
+        return start_minutes <= current_minutes < end_minutes
+    return current_minutes >= start_minutes or current_minutes < end_minutes
+
+
+def notification_actionable_count(notifications):
+    passive_titles = {'Herşey yolunda', 'Anlık bildirimler kapalı', 'Sessiz saatler aktif'}
+    return len([item for item in notifications if item.get('title') not in passive_titles])
+
+
+def remember_notification_history(user_id, notifications, preferences=None):
+    preferences = preferences or notification_preferences_for_user(user_id)
+    if not preferences.get('notify_history', True):
+        return
+
+    actionable_items = [
+        item for item in notifications
+        if item.get('title') not in {'Herşey yolunda', 'Anlık bildirimler kapalı', 'Sessiz saatler aktif'}
+    ]
+    if not actionable_items:
+        return
+
+    settings = get_user_settings(user_id)
+    history = settings.get('notification_history') if isinstance(settings.get('notification_history'), list) else []
+    today_label = to_local_datetime(datetime.now(timezone.utc)).strftime('%d.%m.%Y %H:%M')
+    existing_keys = {
+        f"{item.get('title')}|{item.get('message')}|{item.get('url')}"
+        for item in history
+        if isinstance(item, dict)
+    }
+
+    new_entries = []
+    for item in actionable_items:
+        item_key = f"{item.get('title')}|{item.get('message')}|{item.get('url')}"
+        if item_key in existing_keys:
+            continue
+        new_entries.append({
+            'type': item.get('type', 'info'),
+            'icon': item.get('icon', 'notifications'),
+            'title': item.get('title', 'Bildirim'),
+            'message': item.get('message', ''),
+            'time': today_label,
+            'url': item.get('url', '#')
+        })
+        existing_keys.add(item_key)
+
+    if new_entries:
+        save_user_settings(user_id, {'notification_history': (new_entries + history)[:30]})
+
+
+@app.route('/api/settings/notification-history')
+@login_required
+def settings_notification_history():
+    preferences = notification_preferences_for_user(current_user.id)
+    if not preferences.get('notify_history', True):
+        return jsonify({
+            'success': True,
+            'history_enabled': False,
+            'notifications': [],
+            'message': 'Bildirim geçmişi kapalı'
+        })
+    settings = get_user_settings(current_user.id)
+    history = settings.get('notification_history') if isinstance(settings.get('notification_history'), list) else []
+    return jsonify({
+        'success': True,
+        'history_enabled': True,
+        'notifications': history[:20]
+    })
+
+
 @app.route('/api/notifications')
 @login_required
 def api_notifications():
+    preferences = notification_preferences_for_user(current_user.id)
+    if not preferences.get('notify_realtime', True):
+        return jsonify({
+            'success': True,
+            'count': 0,
+            'preferences': preferences,
+            'notifications': [{
+                'type': 'info',
+                'icon': 'notifications_off',
+                'title': 'Anlık bildirimler kapalı',
+                'message': 'Ayarlar > Bildirimler sekmesinden tekrar açabilirsiniz.',
+                'time': 'Güncel',
+                'url': url_for('settings')
+            }]
+        })
+
+    if notification_quiet_hours_active(preferences):
+        return jsonify({
+            'success': True,
+            'count': 0,
+            'preferences': preferences,
+            'notifications': [{
+                'type': 'info',
+                'icon': 'bedtime',
+                'title': 'Sessiz saatler aktif',
+                'message': f"{preferences.get('quiet_hours_start')} - {preferences.get('quiet_hours_end')} arasında uyarılar sessize alınır.",
+                'time': 'Şimdi',
+                'url': url_for('settings')
+            }]
+        })
+
     notifications = []
 
     if is_platform_admin_user(current_user):
-        pending_support_tickets = SupportTicket.query.filter(
-            SupportTicket.status.in_(['open', 'waiting_admin'])
-        ).order_by(SupportTicket.updated_at.desc()).limit(5).all()
-        if pending_support_tickets:
-            latest_ticket = pending_support_tickets[0]
-            notifications.append({
-                'type': 'danger',
-                'icon': 'support_agent',
-                'title': 'Yeni destek talebi',
-                'message': (
-                    f'{len(pending_support_tickets)} talep destek yaniti bekliyor. '
-                    f'Son talep: {latest_ticket.organization.name if latest_ticket.organization else "-"}'
-                ),
-                'time': 'Şimdi',
-                'url': url_for('super_admin_dashboard') + '#platform-support'
-            })
+        if preferences.get('notify_customer_activity', True):
+            pending_support_tickets = SupportTicket.query.filter(
+                SupportTicket.status.in_(['open', 'waiting_admin'])
+            ).order_by(SupportTicket.updated_at.desc()).limit(5).all()
+            if pending_support_tickets:
+                latest_ticket = pending_support_tickets[0]
+                notifications.append({
+                    'type': 'danger',
+                    'icon': 'support_agent',
+                    'title': 'Yeni destek talebi',
+                    'message': (
+                        f'{len(pending_support_tickets)} talep destek yanıtı bekliyor. '
+                        f'Son talep: {latest_ticket.organization.name if latest_ticket.organization else "-"}'
+                    ),
+                    'time': 'Şimdi',
+                    'url': url_for('super_admin_dashboard') + '#platform-support'
+                })
 
-        expired_subscriptions = Organization.query.filter(
-            Organization.subscription_end.isnot(None),
-            Organization.subscription_end < date.today(),
-            Organization.subscription_status != 'cancelled'
-        ).count()
-        if expired_subscriptions:
-            notifications.append({
-                'type': 'warning',
-                'icon': 'event_busy',
-                'title': 'Destek süresi doldu',
-                'message': f'{expired_subscriptions} firman?n destek süresi doldu.',
-                'time': 'Güncel',
-                'url': url_for('super_admin_dashboard') + '#companies'
-            })
+        if preferences.get('notify_system_updates', True):
+            expired_subscriptions = Organization.query.filter(
+                Organization.subscription_end.isnot(None),
+                Organization.subscription_end < date.today(),
+                Organization.subscription_status != 'cancelled'
+            ).count()
+            if expired_subscriptions:
+                notifications.append({
+                    'type': 'warning',
+                    'icon': 'event_busy',
+                    'title': 'Destek süresi doldu',
+                    'message': f'{expired_subscriptions} firmanın destek süresi doldu.',
+                    'time': 'Güncel',
+                    'url': url_for('super_admin_dashboard') + '#companies'
+                })
 
         if not notifications:
             notifications.append({
                 'type': 'success',
                 'icon': 'verified',
                 'title': 'Herşey yolunda',
-                'message': 'Bekleyen destek talebi veya kritik platform uyarisi yok.',
+                'message': 'Bekleyen destek talebi veya kritik platform uyarısı yok.',
                 'time': 'Güncel',
                 'url': url_for('super_admin_dashboard')
             })
 
-        actionable_count = len([item for item in notifications if item['title'] != 'Herşey yolunda'])
-        return jsonify({'success': True, 'count': actionable_count, 'notifications': notifications[:6]})
+        remember_notification_history(current_user.id, notifications, preferences)
+        actionable_count = notification_actionable_count(notifications)
+        return jsonify({'success': True, 'count': actionable_count, 'preferences': preferences, 'notifications': notifications[:6]})
 
     tenant_ids = tenant_user_ids()
 
-    critical_products = Urun.query.filter(
-        Urun.user_id.in_(tenant_ids),
-        Urun.stok_miktari <= Urun.kritik_stok
-    ).order_by(Urun.stok_miktari.asc()).limit(5).all()
-    if critical_products:
-        notifications.append({
-            'type': 'warning',
-            'icon': 'warning',
-            'title': 'Kritik stok uyarisi',
-            'message': f'{len(critical_products)} urun kritik seviyede veya altinda.',
-            'time': 'Simdi',
-            'url': url_for('urunler')
-        })
+    if preferences.get('notify_stock_alerts', True):
+        critical_products = Urun.query.filter(
+            Urun.user_id.in_(tenant_ids),
+            Urun.stok_miktari <= Urun.kritik_stok
+        ).order_by(Urun.stok_miktari.asc()).limit(5).all()
+        if critical_products:
+            notifications.append({
+                'type': 'warning',
+                'icon': 'warning',
+                'title': 'Kritik stok uyarısı',
+                'message': f'{len(critical_products)} ürün kritik seviyede veya altında.',
+                'time': 'Şimdi',
+                'url': url_for('urunler')
+            })
 
-    risky_customers = [
-        cari for cari in Cari.query.filter(Cari.user_id.in_(tenant_ids)).all()
-        if (cari.bakiye or 0) > 1000
-    ]
-    if risky_customers:
-        total_risk = sum(cari.bakiye or 0 for cari in risky_customers)
-        notifications.append({
-            'type': 'danger',
-            'icon': 'account_balance_wallet',
-            'title': 'Cari risk takibi',
-            'message': f'{len(risky_customers)} caride toplam {total_risk:.2f} TL acik bakiye var.',
-            'time': 'Bugun',
-            'url': url_for('cariler')
-        })
+    if preferences.get('notify_customer_activity', True):
+        risky_customers = [
+            cari for cari in Cari.query.filter(Cari.user_id.in_(tenant_ids)).all()
+            if (cari.bakiye or 0) > 1000
+        ]
+        if risky_customers:
+            total_risk = sum(cari.bakiye or 0 for cari in risky_customers)
+            notifications.append({
+                'type': 'danger',
+                'icon': 'account_balance_wallet',
+                'title': 'Cari risk takibi',
+                'message': f'{len(risky_customers)} caride toplam {format_money(total_risk)} açık bakiye var.',
+                'time': 'Bugün',
+                'url': url_for('cariler')
+            })
 
-    today = local_today()
-    today_start, _ = local_day_bounds(today)
-    today_sales = Satis.query.filter(
-        Satis.user_id.in_(tenant_ids),
-        Satis.tarih >= today_start
-    ).order_by(Satis.tarih.desc()).limit(3).all()
-    if today_sales:
-        total_sales = sum(sale.genel_toplam or 0 for sale in today_sales)
-        notifications.append({
-            'type': 'success',
-            'icon': 'payments',
-            'title': 'Bugunku satislar',
-            'message': f'{len(today_sales)} son satis toplam {total_sales:.2f} TL.',
-            'time': 'Bugun',
-            'url': url_for('gunluk_satislar')
-        })
+    if preferences.get('notify_daily_reports', True):
+        today = local_today()
+        today_start, _ = local_day_bounds(today)
+        today_sales = Satis.query.filter(
+            Satis.user_id.in_(tenant_ids),
+            Satis.tarih >= today_start
+        ).order_by(Satis.tarih.desc()).limit(3).all()
+        if today_sales:
+            total_sales = sum(sale.genel_toplam or 0 for sale in today_sales)
+            notifications.append({
+                'type': 'success',
+                'icon': 'payments',
+                'title': 'Bugünkü satışlar',
+                'message': f'{len(today_sales)} son satış toplam {format_money(total_sales)}.',
+                'time': 'Bugün',
+                'url': url_for('gunluk_satislar')
+            })
 
-    open_quotes = Teklif.query.filter(
-        Teklif.user_id.in_(tenant_ids),
-        Teklif.durum.in_(['taslak', 'gonderildi'])
-    ).count()
-    if open_quotes:
-        notifications.append({
-            'type': 'info',
-            'icon': 'description',
-            'title': 'Acik teklifler',
-            'message': f'Takip bekleyen {open_quotes} teklif bulunuyor.',
-            'time': 'Guncel',
-            'url': url_for('teklif_yonetimi')
-        })
+    if preferences.get('notify_quote_status', True):
+        open_quotes = Teklif.query.filter(
+            Teklif.user_id.in_(tenant_ids),
+            Teklif.durum.in_(['taslak', 'gonderildi'])
+        ).count()
+        if open_quotes:
+            notifications.append({
+                'type': 'info',
+                'icon': 'description',
+                'title': 'Açık teklifler',
+                'message': f'Takip bekleyen {open_quotes} teklif bulunuyor.',
+                'time': 'Güncel',
+                'url': url_for('teklif_yonetimi')
+            })
 
     if not notifications:
         notifications.append({
             'type': 'success',
             'icon': 'verified',
-            'title': 'Her ?ey yolunda',
-            'message': 'Kritik stok, cari risk veya bekleyen islem bulunmuyor.',
-            'time': 'Guncel',
+            'title': 'Herşey yolunda',
+            'message': 'Kritik stok, cari risk veya bekleyen işlem bulunmuyor.',
+            'time': 'Güncel',
             'url': url_for('dashboard')
         })
 
-    actionable_count = len([item for item in notifications if item['title'] != 'Herşey yolunda'])
-    return jsonify({'success': True, 'count': actionable_count, 'notifications': notifications[:6]})
+    remember_notification_history(current_user.id, notifications, preferences)
+    actionable_count = notification_actionable_count(notifications)
+    return jsonify({'success': True, 'count': actionable_count, 'preferences': preferences, 'notifications': notifications[:6]})
 
 # Uygulama Ba?lat?c? (Mod?l Se?imi)
 

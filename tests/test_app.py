@@ -2536,7 +2536,39 @@ def test_notifications_surface_actionable_business_signals(client):
     assert response.status_code == 200
     assert data['success'] is True
     assert data['count'] >= 1
-    assert any(item['title'] == 'Kritik stok uyarisi' for item in data['notifications'])
+    assert any(item['title'] == 'Kritik stok uyarısı' for item in data['notifications'])
+
+
+def test_notification_preferences_filter_stock_alerts(client):
+    with app.app_context():
+        product = Urun.query.first()
+        product.stok_miktari = 2
+        product.kritik_stok = 5
+        db.session.commit()
+
+    response = client.post('/api/settings/notifications', json={
+        'notify_stock_alerts': False,
+        'notify_customer_activity': True,
+        'notify_quote_status': True,
+        'notify_daily_reports': True,
+        'notify_system_updates': True,
+        'notify_realtime': True,
+        'notify_sound': False,
+        'notify_desktop': False,
+        'notify_history': True,
+        'notification_summary_frequency': 'realtime',
+        'notification_report_frequency': 'weekly',
+        'quiet_hours_start': '22:00',
+        'quiet_hours_end': '08:00',
+    })
+    assert response.status_code == 200
+
+    response = client.get('/api/notifications')
+    data = response.get_json()
+
+    assert response.status_code == 200
+    assert data['success'] is True
+    assert all(item['title'] != 'Kritik stok uyarısı' for item in data['notifications'])
 
 
 def test_api_404_returns_json(client):

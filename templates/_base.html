@@ -1726,6 +1726,59 @@
             return colors[type] || colors.info;
         }
 
+        let lastNotificationSignature = '';
+        let notificationEffectsPrimed = false;
+
+        function notificationIsActionable(item) {
+            return item && !['Herşey yolunda', 'Anlık bildirimler kapalı', 'Sessiz saatler aktif'].includes(item.title);
+        }
+
+        function playNotificationSound() {
+            try {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextClass) return;
+                const audioContext = new AudioContextClass();
+                const oscillator = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(740, audioContext.currentTime);
+                gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.08, audioContext.currentTime + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.22);
+                oscillator.connect(gain);
+                gain.connect(audioContext.destination);
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.24);
+            } catch (error) {
+                console.debug('Bildirim sesi çalınamadı:', error);
+            }
+        }
+
+        function handleNotificationEffects(items, preferences = {}) {
+            const actionableItems = (items || []).filter(notificationIsActionable);
+            const signature = actionableItems.map(item => `${item.title}|${item.message}`).join('||');
+            if (!notificationEffectsPrimed) {
+                notificationEffectsPrimed = true;
+                lastNotificationSignature = signature;
+                return;
+            }
+            if (!signature || signature === lastNotificationSignature) return;
+            lastNotificationSignature = signature;
+
+            if (preferences.notify_sound) {
+                playNotificationSound();
+            }
+            if (preferences.notify_desktop && 'Notification' in window && Notification.permission === 'granted') {
+                const firstItem = actionableItems[0];
+                if (firstItem) {
+                    new Notification(firstItem.title || 'Esstok bildirimi', {
+                        body: firstItem.message || '',
+                        icon: '/static/favicon.svg'
+                    });
+                }
+            }
+        }
+
         function renderNotifications(items) {
             const list = document.getElementById('notification-list');
             const badge = document.getElementById('notification-badge');
@@ -1747,7 +1800,7 @@
                 </a>
             `).join('');
 
-            const actionableCount = items.filter((item) => item.title !== 'Her sey yolunda').length;
+            const actionableCount = items.filter(notificationIsActionable).length;
             if (badge) {
                 badge.textContent = actionableCount;
                 badge.classList.toggle('hidden', actionableCount === 0);
@@ -1766,7 +1819,9 @@
                 const response = await fetch('{{ url_for("api_notifications") }}');
                 const data = await response.json();
                 if (data.success) {
-                    renderNotifications(data.notifications || []);
+                    const notifications = data.notifications || [];
+                    renderNotifications(notifications);
+                    handleNotificationEffects(notifications, data.preferences || {});
                 }
             } catch (error) {
                 list.innerHTML = '<div class="p-4 text-sm text-red-500">Bildirimler yuklenemedi.</div>';
