@@ -101,7 +101,7 @@
 
             <form method="POST" action="{{ url_for('paket_talep') }}" class="mt-6">
                 <input type="hidden" name="plan" value="{{ plan_key }}">
-                <button type="submit" class="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl {{ 'bg-primary-600 text-white hover:bg-primary-700' if selected_plan == plan_key else 'border border-slate-200 bg-white text-slate-900 hover:border-primary-300 hover:text-primary-700 dark:border-slate-700 dark:bg-slate-950 dark:text-white' }} px-5 py-3 text-sm font-black transition">
+                <button type="submit" class="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 px-5 py-3 text-sm font-black text-white shadow-sm shadow-primary-600/20 transition hover:bg-primary-700">
                     <span class="material-symbols-outlined text-lg">support_agent</span>
                     Satın Alma Talebi Oluştur
                 </button>
