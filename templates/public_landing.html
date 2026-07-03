@@ -1,8 +1,9 @@
 {% extends '_base.html' %}
 
 {% set site_name = site_config().get('name', config.get('SITE_NAME', 'Esstok')) %}
-{% block title %}{{ site_name }} - Bulut Tabanlı Stok, Cari ve POS Yönetimi{% endblock %}
-{% block og_description %}Küçük işletmeler için bulut tabanlı POS, stok, cari, personel ve ön muhasebe yönetimi. Satış yapın, stok takip edin, tahsilatları izleyin.{% endblock %}
+{% set site_description = site_config().get('description', '') %}
+{% block title %}{{ site_name }}{% endblock %}
+{% block og_description %}{{ site_description }}{% endblock %}
 
 {% block content %}
 <style>

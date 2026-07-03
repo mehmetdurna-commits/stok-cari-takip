@@ -1,8 +1,9 @@
 {% extends '_base.html' %}
 
 {% set site_name = site_config().get('name', config.get('SITE_NAME', 'Esstok')) %}
+{% set site_description = site_config().get('description', '') %}
 {% block title %}Fiyatlar - {{ site_name }}{% endblock %}
-{% block og_description %}{{ site_name }} demo, standart ve profesyonel paketleriyle stok, cari, POS ve personel yönetimini küçük işletmeler için sadeleştirir.{% endblock %}
+{% block og_description %}{{ site_description }}{% endblock %}
 
 {% block content %}
 <style>
