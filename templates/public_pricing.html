@@ -185,17 +185,35 @@
     </section>
 
     <footer class="border-t border-slate-200 bg-slate-950 text-white">
-        <div class="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_auto] lg:px-8">
-            <div class="flex items-center gap-3">
-                <div class="flex size-10 items-center justify-center rounded-2xl bg-white text-primary-700">
+        {% set solution_links = [
+            ('Stok Takibi', url_for('index') ~ '#cozumler'),
+            ('Cari Hesap Takibi', url_for('index') ~ '#cozumler'),
+            ('POS Satış Programı', url_for('index') ~ '#panel'),
+            ('Ön Muhasebe', url_for('index') ~ '#cozumler'),
+            ('Personel Yönetimi', url_for('index') ~ '#cozumler'),
+            ('Teklif Yönetimi', url_for('index') ~ '#akis'),
+            ('Hırdavat Market Programı', url_for('index') ~ '#panel'),
+            ('Küçük İşletme Yönetimi', url_for('index') ~ '#guven')
+        ] %}
+        <div class="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1.1fr_1fr_auto] lg:px-8">
+            <div class="flex items-start gap-3">
+                <div class="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-white text-primary-700">
                     <span class="material-symbols-outlined text-xl">storefront</span>
                 </div>
                 <div>
                     <p class="font-black">{{ site_name }}</p>
-                    <p class="text-sm text-slate-400">Küçük işletmeler için bulut tabanlı POS, stok ve cari yönetimi.</p>
+                    <p class="mt-2 max-w-sm text-sm leading-6 text-slate-400">Küçük işletmeler için bulut tabanlı POS, stok, cari, personel ve ön muhasebe yönetimi.</p>
                 </div>
             </div>
-            <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-bold text-slate-300">
+            <div>
+                <p class="text-xs font-black uppercase tracking-[0.24em] text-slate-500">Çözümler</p>
+                <div class="mt-4 grid gap-x-6 gap-y-2 text-sm font-semibold text-slate-300 sm:grid-cols-2">
+                    {% for label, href in solution_links %}
+                    <a href="{{ href }}" class="hover:text-white">{{ label }}</a>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="flex flex-col gap-2 text-sm font-bold text-slate-300 sm:flex-row sm:flex-wrap lg:flex-col lg:items-start">
                 <a href="{{ url_for('index') }}" class="hover:text-white">Ana Sayfa</a>
                 <a href="{{ url_for('privacy_page') }}" class="hover:text-white">Gizlilik Politikası</a>
                 <a href="{{ url_for('kvkk_page') }}" class="hover:text-white">KVKK</a>
