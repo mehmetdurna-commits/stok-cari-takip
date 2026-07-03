@@ -1,6 +1,6 @@
 {% extends '_base.html' %}
 
-{% block title %}İşletme Paneli - Esstok{% endblock %}
+{% block title %}İşletme Paneli - {{ site_config().get('platform_name', site_config().get('name', 'Esstok')) }}{% endblock %}
 
 {% block top_bar %}
 <div class="min-w-0 flex items-center gap-3">

@@ -1,5 +1,5 @@
 {% extends '_base.html' %}
-{% block title %}Günlük Satışlar - Stok ve Cari Takip{% endblock %}
+{% block title %}Günlük Satışlar - {{ site_config().get('platform_name', site_config().get('name', 'Esstok')) }}{% endblock %}
 {% block top_bar %}
 <div class="min-w-0 flex items-center gap-3">
     <span class="material-symbols-outlined text-primary-600 font-bold">receipt_long</span>

@@ -1,5 +1,5 @@
 {% extends '_base.html' %}
-{% block title %}Nakit Yönetimi - Stok ve Cari Takip{% endblock %}
+{% block title %}Nakit Yönetimi - {{ site_config().get('platform_name', site_config().get('name', 'Esstok')) }}{% endblock %}
 {% set active_page = 'nakit_yonetimi' %}
 {% block top_bar %}
 <div class="flex items-center gap-4">

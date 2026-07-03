@@ -1,7 +1,7 @@
 {% extends '_base.html' %}
 
 {% set is_edit = duzenle_modu|default(false) %}
-{% block title %}{{ 'Teklif Düzenle' if is_edit else 'Yeni Teklif' }} - StokCari{% endblock %}
+{% block title %}{{ 'Teklif Düzenle' if is_edit else 'Yeni Teklif' }} - {{ site_config().get('platform_name', site_config().get('name', 'Esstok')) }}{% endblock %}
 
 {% block top_bar %}
 <div class="flex items-center gap-3">

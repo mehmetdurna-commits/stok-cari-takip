@@ -1,5 +1,5 @@
 {% extends '_base.html' %}
-{% block title %}Teklif Yönetimi - Stok ve Cari Takip{% endblock %}
+{% block title %}Teklif Yönetimi - {{ site_config().get('platform_name', site_config().get('name', 'Esstok')) }}{% endblock %}
 {% block top_bar %}
 <div class="flex items-center gap-4">
     <span class="material-symbols-outlined text-primary-600 font-bold">description</span>

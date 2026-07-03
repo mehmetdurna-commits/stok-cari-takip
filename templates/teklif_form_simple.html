@@ -1,5 +1,5 @@
 {% extends '_base.html' %}
-{% block title %}Yeni Teklif - Stok ve Cari Takip{% endblock %}
+{% block title %}Yeni Teklif - {{ site_config().get('platform_name', site_config().get('name', 'Esstok')) }}{% endblock %}
 {% set active_page = 'teklif_yonetimi' %}
 {% block top_bar %}
 <div class="flex items-center gap-4">

@@ -1,6 +1,6 @@
 {% extends '_base.html' %}
 
-{% block title %}Toplu Fiyat Güncelleme - StokCari{% endblock %}
+{% block title %}Toplu Fiyat Güncelleme - {{ site_config().get('platform_name', site_config().get('name', 'Esstok')) }}{% endblock %}
 
 {% block top_bar %}
 <div class="flex items-center gap-3">

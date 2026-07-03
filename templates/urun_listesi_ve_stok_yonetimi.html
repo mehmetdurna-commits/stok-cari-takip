@@ -1,6 +1,6 @@
 {% extends '_base.html' %}
 
-{% block title %}Ürün Listesi ve Stok Yönetimi - Stok ve Cari Takip{% endblock %}
+{% block title %}Ürün Listesi ve Stok Yönetimi - {{ site_config().get('platform_name', site_config().get('name', 'Esstok')) }}{% endblock %}
 
 {% block top_bar %}
 <div class="flex items-center gap-4">
