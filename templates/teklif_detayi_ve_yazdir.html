@@ -58,27 +58,33 @@
         break-inside: avoid;
     }
     .quote-brand-block {
-        gap: 4mm !important;
+        gap: 5mm !important;
         align-items: flex-start !important;
+        flex: 1 1 auto !important;
+        max-width: 130mm !important;
     }
     .quote-logo-box {
-        width: 32mm !important;
-        height: 14mm !important;
+        width: 46mm !important;
+        height: 24mm !important;
         border-radius: 8px !important;
     }
     .quote-logo-box img {
-        padding: 1.5mm !important;
+        padding: 2mm !important;
+    }
+    .quote-company-block {
+        padding-top: 0.5mm !important;
+        max-width: 78mm !important;
     }
     .quote-company-name {
-        font-size: 12px !important;
+        font-size: 15px !important;
         line-height: 1.15 !important;
-        margin-bottom: 2mm !important;
+        margin-bottom: 2.2mm !important;
     }
     .quote-company-line,
     .quote-customer-line,
     .quote-date-line {
-        font-size: 8px !important;
-        line-height: 1.18 !important;
+        font-size: 9.5px !important;
+        line-height: 1.28 !important;
         margin-top: 0 !important;
     }
     .quote-meta-title {
@@ -209,7 +215,7 @@
                     <span class="material-symbols-outlined text-3xl">inventory_2</span>
                     {% endif %}
                 </div>
-                <div>
+                <div class="quote-company-block">
                     <h2 class="quote-company-name text-xl font-black text-slate-900 dark:text-white">{{ current_user.firma_adi or 'StokCari' }}</h2>
                     {% if current_user.yetkili_adi %}
                     <p class="quote-company-line text-sm text-slate-500 mt-1">Yetkili: {{ current_user.yetkili_adi }}</p>
