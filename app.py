@@ -1716,8 +1716,8 @@ def site_config():
     site_og_image = (site_og_image or '').strip()
     ga4_code = platform_setting('ga4_code', '') or ''
     search_console_code = platform_setting('search_console_code', '') or ''
-    seo_closed_mode = platform_setting_bool('seo_closed_mode', True)
-    seo_indexing_enabled = platform_setting_bool('seo_indexing_enabled', False)
+    seo_closed_mode = platform_setting_bool('seo_closed_mode', False)
+    seo_indexing_enabled = platform_setting_bool('seo_indexing_enabled', True)
     seo_public_mode = seo_indexing_enabled and not seo_closed_mode
     return {
         'url': site_url,
@@ -8695,8 +8695,8 @@ def super_admin_dashboard():
         'default_plan': platform_setting('default_plan', 'demo'),
         'default_user_limit': platform_setting_int('default_user_limit', 1),
         'default_product_limit': platform_setting_int('default_product_limit', 10),
-        'seo_closed_mode': platform_setting_bool('seo_closed_mode', True),
-        'seo_indexing_enabled': platform_setting_bool('seo_indexing_enabled', False),
+        'seo_closed_mode': platform_setting_bool('seo_closed_mode', False),
+        'seo_indexing_enabled': platform_setting_bool('seo_indexing_enabled', True),
         'site_url': platform_setting('site_url', app.config.get('SITE_URL', '')),
         'site_name': platform_setting('site_name', app.config.get('SITE_NAME', 'StokCari')),
         'site_description': platform_setting('site_description', app.config.get('SITE_DESCRIPTION', '')),
