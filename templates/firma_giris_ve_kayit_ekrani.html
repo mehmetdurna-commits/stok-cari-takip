@@ -195,6 +195,12 @@
                         <input name="remember" type="checkbox" class="rounded text-primary-600 focus:ring-primary-600 border-slate-300 dark:border-slate-700">
                         Beni hatırla
                     </label>
+                    {% set turnstile = turnstile_config() %}
+                    {% if turnstile.enabled %}
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
+                        <div class="cf-turnstile" data-sitekey="{{ turnstile.site_key }}" data-theme="auto"></div>
+                    </div>
+                    {% endif %}
                     <button type="submit" class="w-full min-h-12 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2">
                         Giriş Yap
                         <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
@@ -251,6 +257,9 @@
 {% endblock %}
 
 {% block scripts %}
+{% if turnstile_config().enabled %}
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+{% endif %}
 <script>
 document.querySelectorAll('[data-auth-tab]').forEach((button) => {
     button.addEventListener('click', () => {

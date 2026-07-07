@@ -35,6 +35,14 @@ class AppConfig:
     )
     SITE_OG_IMAGE = os.environ.get("SITE_OG_IMAGE", "").strip()
 
+    TURNSTILE_ENABLED = bool_from_env("TURNSTILE_ENABLED", False)
+    TURNSTILE_SITE_KEY = os.environ.get("TURNSTILE_SITE_KEY", "").strip()
+    TURNSTILE_SECRET_KEY = os.environ.get("TURNSTILE_SECRET_KEY", "").strip()
+    TURNSTILE_VERIFY_URL = os.environ.get(
+        "TURNSTILE_VERIFY_URL",
+        "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+    ).strip()
+
     # SMTP (password reset, notifications)
     SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
     SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))

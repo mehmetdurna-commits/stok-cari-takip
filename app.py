@@ -37,6 +37,7 @@ import csv
 import io
 import threading
 import urllib.error
+import urllib.parse
 import urllib.request
 import tempfile
 from functools import wraps
@@ -192,6 +193,7 @@ def inject_template_helpers():
         'to_local_datetime': to_local_datetime,
         'current_package_usage': package_usage_for_user,
         'site_config': site_config,
+        'turnstile_config': turnstile_config,
         'smtp_config': smtp_config,
         'user_display_name': user_display_name,
         'user_display_subtitle': user_display_subtitle,
@@ -1731,6 +1733,59 @@ def site_config():
         'seo_indexing_enabled': seo_indexing_enabled,
         'seo_public_mode': seo_public_mode,
     }
+
+
+def turnstile_config(include_secret=False):
+    site_key = (
+        platform_setting('turnstile_site_key', '')
+        or app.config.get('TURNSTILE_SITE_KEY', '')
+        or ''
+    ).strip()
+    secret_key = (
+        platform_setting('turnstile_secret_key', '')
+        or app.config.get('TURNSTILE_SECRET_KEY', '')
+        or ''
+    ).strip()
+    enabled = platform_setting_bool('turnstile_enabled', app.config.get('TURNSTILE_ENABLED', False))
+    config = {
+        'enabled': bool(enabled and site_key and secret_key),
+        'configured': bool(site_key and secret_key),
+        'site_key': site_key,
+    }
+    if include_secret:
+        config['secret_key'] = secret_key
+    return config
+
+
+def verify_turnstile_response(token):
+    cfg = turnstile_config(include_secret=True)
+    if not cfg.get('enabled'):
+        return True, 'Turnstile kapalı.'
+    if not token:
+        return False, 'Güvenlik doğrulaması gerekli.'
+
+    payload = urllib.parse.urlencode({
+        'secret': cfg.get('secret_key', ''),
+        'response': token,
+        'remoteip': client_ip(),
+    }).encode('utf-8')
+    request_obj = urllib.request.Request(
+        app.config.get('TURNSTILE_VERIFY_URL', 'https://challenges.cloudflare.com/turnstile/v0/siteverify'),
+        data=payload,
+        headers={'Content-Type': 'application/x-www-form-urlencoded'},
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(request_obj, timeout=6) as response:
+            result = json.loads(response.read().decode('utf-8') or '{}')
+    except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+        current_app.logger.warning('Turnstile dogrulama hatasi: %s', exc)
+        return False, 'Güvenlik doğrulaması tamamlanamadı. Lütfen tekrar deneyin.'
+
+    if result.get('success') is True:
+        return True, 'Doğrulama başarılı.'
+    current_app.logger.info('Turnstile reddetti: %s', result.get('error-codes'))
+    return False, 'Güvenlik doğrulaması başarısız. Lütfen tekrar deneyin.'
 
 
 def smtp_config():
@@ -6175,6 +6230,11 @@ def giris():
             if retry:
                 resp.headers['Retry-After'] = str(int(retry))
             return resp
+
+    turnstile_ok, turnstile_message = verify_turnstile_response(request.form.get('cf-turnstile-response'))
+    if not turnstile_ok:
+        flash(turnstile_message, 'error')
+        return redirect(url_for('giris'))
 
     if email in platform_admin_emails():
         bootstrap_platform_admins()
