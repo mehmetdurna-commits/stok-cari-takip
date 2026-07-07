@@ -1,6 +1,7 @@
 {% extends '_base.html' %}
 
 {% set site_name = site_config().get('name', config.get('SITE_NAME', 'Esstok')) %}
+{% set platform_name = site_config().get('platform_name', 'Esstok') %}
 {% set site_description = site_config().get('description', '') %}
 {% block title %}{{ site_name }}{% endblock %}
 {% block og_description %}{{ site_description }}{% endblock %}
@@ -55,44 +56,25 @@
 
 <div class="min-h-screen bg-white text-slate-950">
     <div class="landing-gradient landing-grid relative overflow-hidden">
-        <div class="border-b border-slate-200/80 bg-white/80 backdrop-blur">
-            <div class="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-2 text-xs font-bold text-slate-600 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-                <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
-                    <span class="inline-flex items-center gap-1 text-primary-700">
-                        <span class="material-symbols-outlined text-base">verified</span>
-                        Küçük işletmeler için aktif geliştirilen bulut yönetimi
-                    </span>
-                    <span class="hidden sm:inline">POS · Stok · Cari · Ön Muhasebe</span>
-                </div>
-                <div class="flex items-center gap-4">
-                    <a href="#sss" class="hover:text-primary-700">Yardım</a>
-                    <a href="{{ url_for('pricing_page') }}" class="hover:text-primary-700">Fiyatlar</a>
-                    <a href="#guven" class="hover:text-primary-700">Güvenlik</a>
-                    <a href="{{ url_for('giris') }}" class="hover:text-primary-700">Panel Girişi</a>
-                </div>
-            </div>
-        </div>
-
-        <header class="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
-            <a href="{{ url_for('index') }}" class="flex items-center gap-3">
-                <div class="flex size-11 items-center justify-center rounded-2xl bg-primary-600 text-white shadow-xl shadow-primary-600/25">
+        <header class="mx-auto mt-5 flex max-w-7xl items-center justify-between gap-5 rounded-[1.75rem] border border-white/80 bg-white/88 px-4 py-4 shadow-xl shadow-slate-950/5 backdrop-blur sm:px-6 lg:px-7">
+            <a href="{{ url_for('index') }}" class="flex min-w-0 items-center gap-3">
+                <div class="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary-600 text-white shadow-xl shadow-primary-600/25">
                     <span class="material-symbols-outlined text-2xl">storefront</span>
                 </div>
-                <div>
-                    <p class="text-lg font-black tracking-tight text-slate-950">{{ site_name }}</p>
-                    <p class="text-xs font-semibold text-slate-500">Bulut POS ve işletme yönetimi</p>
+                <div class="min-w-0">
+                    <p class="truncate text-xl font-black tracking-tight text-slate-950">{{ platform_name }}</p>
+                    <p class="mt-0.5 hidden text-xs font-bold text-slate-500 sm:block">Küçük işletmeler için POS, stok ve cari yönetimi</p>
                 </div>
             </a>
-            <nav class="hidden items-center gap-6 text-sm font-bold text-slate-600 md:flex">
+            <nav class="hidden items-center gap-6 text-sm font-black text-slate-600 lg:flex">
                 <a href="#cozumler" class="hover:text-primary-700">Çözümler</a>
                 <a href="#akis" class="hover:text-primary-700">Akış</a>
-                <a href="#guven" class="hover:text-primary-700">Güvenlik</a>
                 <a href="{{ url_for('pricing_page') }}" class="hover:text-primary-700">Fiyatlar</a>
-                <a href="#sss" class="hover:text-primary-700">SSS</a>
+                <a href="#guven" class="hover:text-primary-700">Güvenlik</a>
             </nav>
-            <div class="flex items-center gap-2">
-                <a href="{{ url_for('giris') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-sm transition hover:border-primary-200 hover:text-primary-700">Giriş</a>
-                <a href="{{ url_for('kayit') }}" class="rounded-xl bg-primary-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-primary-600/20 transition hover:bg-primary-700">Ücretsiz Dene</a>
+            <div class="flex shrink-0 items-center gap-2">
+                <a href="{{ url_for('giris') }}" class="hidden rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700 shadow-sm transition hover:border-primary-200 hover:text-primary-700 sm:inline-flex">Giriş</a>
+                <a href="{{ url_for('kayit') }}" class="inline-flex rounded-2xl bg-primary-600 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-primary-600/20 transition hover:bg-primary-700 sm:px-5">Ücretsiz Dene</a>
             </div>
         </header>
 
