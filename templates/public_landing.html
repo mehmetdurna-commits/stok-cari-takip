@@ -298,6 +298,14 @@
                 <a href="{{ url_for('kayit') }}" class="inline-flex min-h-12 items-center justify-center rounded-2xl bg-primary-600 px-7 py-3 font-black text-white shadow-xl shadow-primary-600/20 hover:bg-primary-700">Demo Oluştur</a>
                 <a href="{{ url_for('pricing_page') }}" class="inline-flex min-h-12 items-center justify-center rounded-2xl border border-primary-200 bg-primary-50 px-7 py-3 font-black text-primary-700 hover:bg-primary-100">Paketleri İncele</a>
             </div>
+            <div class="mx-auto mt-10 grid max-w-4xl gap-3 text-left sm:grid-cols-2 lg:grid-cols-4">
+                {% for icon, title in [('schedule', '%99,9 çalışma süresi'), ('verified_user', 'Verileriniz güvende'), ('cloud_sync', 'Düzenli yedekleme'), ('support_agent', 'Türkiye odaklı destek')] %}
+                <div class="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-600 shadow-sm">
+                    <span class="material-symbols-outlined text-lg text-primary-700">{{ icon }}</span>
+                    <span>{{ title }}</span>
+                </div>
+                {% endfor %}
+            </div>
         </div>
     </section>
 
