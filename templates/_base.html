@@ -1311,6 +1311,64 @@
             visibility: visible;
         }
 
+        .voice-assistant-fab {
+            position: fixed;
+            right: 1.25rem;
+            bottom: 1.25rem;
+            z-index: 115;
+            width: 3.75rem;
+            height: 3.75rem;
+            border-radius: 999px;
+            border: 1px solid rgba(59, 130, 246, 0.28);
+            background: radial-gradient(circle at 30% 20%, #67e8f9 0, #2563eb 34%, #111827 100%);
+            color: #fff;
+            box-shadow: 0 24px 55px rgba(37, 99, 235, 0.38), 0 0 0 8px rgba(37, 99, 235, 0.08);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.22s ease, box-shadow 0.22s ease;
+        }
+
+        .voice-assistant-fab:hover {
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 28px 65px rgba(37, 99, 235, 0.45), 0 0 0 10px rgba(37, 99, 235, 0.10);
+        }
+
+        .voice-assistant-panel {
+            position: fixed;
+            right: 1.25rem;
+            bottom: 5.75rem;
+            z-index: 116;
+            width: min(29rem, calc(100vw - 2rem));
+            max-height: min(42rem, calc(100vh - 7rem));
+            overflow: hidden;
+            border-radius: 1.75rem;
+            border: 1px solid rgba(148, 163, 184, 0.24);
+            background: rgba(255, 255, 255, 0.94);
+            box-shadow: 0 30px 80px rgba(15, 23, 42, 0.22);
+            backdrop-filter: blur(22px);
+        }
+
+        .dark .voice-assistant-panel {
+            background: rgba(15, 23, 42, 0.94);
+            border-color: rgba(51, 65, 85, 0.85);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.42);
+        }
+
+        .voice-assistant-glow {
+            background:
+                radial-gradient(circle at 15% 15%, rgba(34, 211, 238, 0.24), transparent 30%),
+                radial-gradient(circle at 85% 0%, rgba(99, 102, 241, 0.24), transparent 28%),
+                linear-gradient(135deg, rgba(248, 250, 252, 0.95), rgba(239, 246, 255, 0.88));
+        }
+
+        .dark .voice-assistant-glow {
+            background:
+                radial-gradient(circle at 15% 15%, rgba(34, 211, 238, 0.16), transparent 30%),
+                radial-gradient(circle at 85% 0%, rgba(99, 102, 241, 0.18), transparent 28%),
+                linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.96));
+        }
+
         @media (max-width: 1023px) {
             #sidebar {
                 width: min(20rem, 88vw) !important;
@@ -1338,6 +1396,21 @@
                 min-width: 0;
                 max-width: none;
                 width: 100%;
+            }
+
+            .voice-assistant-fab {
+                right: 1rem;
+                bottom: 1rem;
+                width: 3.35rem;
+                height: 3.35rem;
+            }
+
+            .voice-assistant-panel {
+                left: 0.75rem;
+                right: 0.75rem;
+                bottom: 5rem;
+                width: auto;
+                max-height: calc(100vh - 6rem);
             }
         }
     </style>
@@ -1647,6 +1720,65 @@
                         </div>
                     </div>
                 </div>
+
+                <div id="voice-assistant-panel" class="voice-assistant-panel hidden" role="dialog" aria-modal="false" aria-labelledby="voice-assistant-title">
+                    <div class="voice-assistant-glow">
+                        <div class="border-b border-slate-200/70 p-4 dark:border-slate-800/80">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <div class="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white/75 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-cyan-700 shadow-sm dark:border-cyan-900/40 dark:bg-slate-900/70 dark:text-cyan-300">
+                                        <span class="material-symbols-outlined text-sm">auto_awesome</span>
+                                        Analiz Modu
+                                    </div>
+                                    <h2 id="voice-assistant-title" class="mt-3 text-xl font-black tracking-tight text-slate-950 dark:text-white">Esstok Konuş</h2>
+                                    <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Söyle ya da yaz. Şimdilik işlem yapmadan sadece taslak çıkarıyorum.</p>
+                                </div>
+                                <button type="button" data-assistant-action="close" class="rounded-2xl p-2 text-slate-500 transition hover:bg-white/80 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white" aria-label="Esstok Konuş panelini kapat">
+                                    <span class="material-symbols-outlined">close</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="max-h-[calc(100vh-14rem)] space-y-4 overflow-y-auto p-4">
+                            <div class="rounded-3xl border border-slate-200 bg-white/86 p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/72">
+                                <label for="voice-assistant-input" class="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-400">Komut</label>
+                                <textarea id="voice-assistant-input" rows="3" class="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-primary-400 focus:bg-white focus:ring-4 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-950/60 dark:text-white dark:focus:border-primary-500" placeholder="Örn: Stoğa 100 adet Selpak ekle"></textarea>
+                                <div class="mt-3 grid grid-cols-2 gap-2">
+                                    <button id="voice-assistant-mic" type="button" data-assistant-action="mic" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-3 py-2.5 text-sm font-black text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100">
+                                        <span class="material-symbols-outlined text-lg">mic</span>
+                                        Konuş
+                                    </button>
+                                    <button type="button" data-assistant-action="analyze" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-primary-600 px-3 py-2.5 text-sm font-black text-white shadow-lg shadow-primary-600/20 transition hover:bg-primary-700">
+                                        <span class="material-symbols-outlined text-lg">psychology</span>
+                                        Analiz Et
+                                    </button>
+                                </div>
+                                <p id="voice-assistant-listening" class="mt-3 hidden rounded-2xl bg-cyan-50 px-3 py-2 text-xs font-bold text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-300">Dinliyorum kral... Cümleyi bitirince taslağa çevireceğim.</p>
+                            </div>
+
+                            <div id="voice-assistant-result" class="rounded-3xl border border-dashed border-slate-300 bg-white/70 p-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
+                                <div class="flex items-start gap-3">
+                                    <span class="material-symbols-outlined rounded-2xl bg-primary-50 p-2 text-primary-600 dark:bg-primary-950/40 dark:text-primary-300">tips_and_updates</span>
+                                    <div>
+                                        <p class="font-black text-slate-800 dark:text-white">Henüz işlem yok.</p>
+                                        <p class="mt-1 leading-6">Örnek: “Ahmet Market’ten 1500 TL tahsilat al” veya “Kritik stokları göster”.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="grid gap-2 sm:grid-cols-2">
+                                <button type="button" data-assistant-action="example" data-assistant-example="Stoğa 100 adet Selpak ekle" class="rounded-2xl border border-slate-200 bg-white/78 px-3 py-2.5 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:text-primary-300">Stoğa 100 adet Selpak ekle</button>
+                                <button type="button" data-assistant-action="example" data-assistant-example="Ahmet Marketten 1500 TL tahsilat al" class="rounded-2xl border border-slate-200 bg-white/78 px-3 py-2.5 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:text-primary-300">Ahmet Market’ten 1500 TL tahsilat al</button>
+                                <button type="button" data-assistant-action="example" data-assistant-example="Bugünkü satışları göster" class="rounded-2xl border border-slate-200 bg-white/78 px-3 py-2.5 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:text-primary-300">Bugünkü satışları göster</button>
+                                <button type="button" data-assistant-action="example" data-assistant-example="Kritik stokları listele" class="rounded-2xl border border-slate-200 bg-white/78 px-3 py-2.5 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:text-primary-300">Kritik stokları listele</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="voice-assistant-fab" type="button" data-assistant-action="toggle" class="voice-assistant-fab" aria-label="Esstok Konuş panelini aç" aria-expanded="false" title="Esstok Konuş">
+                    <span class="material-symbols-outlined text-3xl">graphic_eq</span>
+                </button>
                 {% endif %}
 
                 <div class="{{ 'app-shell-frame' if is_auth else 'w-full' }}">
@@ -2638,6 +2770,9 @@
             }
         };
     </script>
+    {% if is_auth %}
+    <script src="{{ url_for('static', filename='assistant_panel.js') }}"></script>
+    {% endif %}
     {% block scripts %}{% endblock %}
 </body>
 </html>
