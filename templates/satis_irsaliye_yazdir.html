@@ -326,14 +326,14 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for item in waybill_data.items %}
+                    {% for item in waybill_data['items'] %}
                     <tr>
                         <td>{{ loop.index }}</td>
                         <td>
                             <div class="product">{{ item.name }}</div>
                         </td>
                         <td>{{ item.barcode or '-' }}</td>
-                        <td class="num">{{ item.quantity|int if item.quantity == (item.quantity|int) else item.quantity }}</td>
+                        <td class="num">{{ item.quantity|int if item.quantity == (item.quantity|int) else item.quantity|tr_number }}</td>
                         <td>{{ item.unit }}</td>
                         <td class="num">₺{{ item.unit_price|tr_number }}</td>
                         <td class="num"><strong>₺{{ item.line_total|tr_number }}</strong></td>

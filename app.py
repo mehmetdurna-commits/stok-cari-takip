@@ -13219,11 +13219,28 @@ def build_receipt_view_model(receipt, *, sale_data=None):
     }
 
 
+def safe_attr(record, name, default=''):
+    if not record:
+        return default
+    value = getattr(record, name, default)
+    return value if value is not None else default
+
+
+def safe_float(value, default=0.0):
+    try:
+        if value is None:
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def build_waybill_view_model(satis, payment_method='Peşin'):
     cari = satis.cari
     company_logo = ''
-    if current_user.firma_logo:
-        company_logo = url_for('static', filename=company_logo_static_path(current_user.firma_logo))
+    logo_path = safe_attr(current_user, 'firma_logo')
+    if logo_path:
+        company_logo = url_for('static', filename=company_logo_static_path(logo_path))
 
     return {
         'irsaliye_no': f'IRS-{satis.fatura_no}',
@@ -13233,37 +13250,37 @@ def build_waybill_view_model(satis, payment_method='Peşin'):
         'depo': satis.depo or 'Ana Depo',
         'payment_method': payment_method,
         'company': {
-            'name': current_user.firma_adi or 'İşletme',
-            'authorized': current_user.yetkili_adi or '',
-            'address': current_user.adres or '',
-            'tax_office': current_user.vergi_dairesi or '',
-            'tax_number': current_user.vergi_numarasi or '',
-            'phone': current_user.telefon or '',
+            'name': safe_attr(current_user, 'firma_adi', 'İşletme') or 'İşletme',
+            'authorized': safe_attr(current_user, 'yetkili_adi'),
+            'address': safe_attr(current_user, 'adres'),
+            'tax_office': safe_attr(current_user, 'vergi_dairesi'),
+            'tax_number': safe_attr(current_user, 'vergi_numarasi'),
+            'phone': safe_attr(current_user, 'telefon'),
             'logo': company_logo,
         },
         'customer': {
-            'name': cari.unvan if cari else 'Peşin satış müşterisi',
-            'authorized': cari.yetkili if cari else '',
-            'address': cari.adres if cari else '',
-            'tax_office': cari.vergidairesi if cari else '',
-            'tax_number': cari.vergi_numarasi if cari else '',
-            'phone': cari.telefon if cari else '',
-            'email': cari.email if cari else '',
+            'name': safe_attr(cari, 'unvan', 'Peşin satış müşterisi') or 'Peşin satış müşterisi',
+            'authorized': safe_attr(cari, 'yetkili'),
+            'address': safe_attr(cari, 'adres'),
+            'tax_office': safe_attr(cari, 'vergidairesi'),
+            'tax_number': safe_attr(cari, 'vergi_numarasi'),
+            'phone': safe_attr(cari, 'telefon'),
+            'email': safe_attr(cari, 'email'),
         },
         'items': [{
-            'name': kalem.urun_adi,
-            'barcode': kalem.barkod or '',
-            'quantity': kalem.miktar or 0,
-            'unit': kalem.birim or 'Adet',
-            'unit_price': kalem.birim_fiyat or 0,
-            'line_total': kalem.toplam or 0,
+            'name': safe_attr(kalem, 'urun_adi'),
+            'barcode': safe_attr(kalem, 'barkod'),
+            'quantity': safe_float(safe_attr(kalem, 'miktar', 0)),
+            'unit': safe_attr(kalem, 'birim', 'Adet') or 'Adet',
+            'unit_price': safe_float(safe_attr(kalem, 'birim_fiyat', 0)),
+            'line_total': safe_float(safe_attr(kalem, 'toplam', 0)),
         } for kalem in satis.kalemler],
-        'subtotal': satis.ara_toplam or 0,
-        'vat_rate': satis.kdv_orani or 0,
-        'vat_total': satis.kdv_tutar or 0,
-        'discount': satis.iskonto or 0,
-        'total': satis.genel_toplam or 0,
-        'note': satis.notlar or '',
+        'subtotal': safe_float(safe_attr(satis, 'ara_toplam', 0)),
+        'vat_rate': safe_float(safe_attr(satis, 'kdv_orani', 0)),
+        'vat_total': safe_float(safe_attr(satis, 'kdv_tutar', 0)),
+        'discount': safe_float(safe_attr(satis, 'iskonto', 0)),
+        'total': safe_float(safe_attr(satis, 'genel_toplam', 0)),
+        'note': safe_attr(satis, 'notlar'),
     }
 
 
