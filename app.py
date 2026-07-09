@@ -13219,6 +13219,54 @@ def build_receipt_view_model(receipt, *, sale_data=None):
     }
 
 
+def build_waybill_view_model(satis, payment_method='Peşin'):
+    cari = satis.cari
+    company_logo = ''
+    if current_user.firma_logo:
+        company_logo = url_for('static', filename=company_logo_static_path(current_user.firma_logo))
+
+    return {
+        'irsaliye_no': f'IRS-{satis.fatura_no}',
+        'satis_no': satis.fatura_no,
+        'duzenleme_tarihi': satis.tarih or utc_now(),
+        'sevk_tarihi': satis.tarih or utc_now(),
+        'depo': satis.depo or 'Ana Depo',
+        'payment_method': payment_method,
+        'company': {
+            'name': current_user.firma_adi or 'İşletme',
+            'authorized': current_user.yetkili_adi or '',
+            'address': current_user.adres or '',
+            'tax_office': current_user.vergi_dairesi or '',
+            'tax_number': current_user.vergi_numarasi or '',
+            'phone': current_user.telefon or '',
+            'logo': company_logo,
+        },
+        'customer': {
+            'name': cari.unvan if cari else 'Peşin satış müşterisi',
+            'authorized': cari.yetkili if cari else '',
+            'address': cari.adres if cari else '',
+            'tax_office': cari.vergidairesi if cari else '',
+            'tax_number': cari.vergi_numarasi if cari else '',
+            'phone': cari.telefon if cari else '',
+            'email': cari.email if cari else '',
+        },
+        'items': [{
+            'name': kalem.urun_adi,
+            'barcode': kalem.barkod or '',
+            'quantity': kalem.miktar or 0,
+            'unit': kalem.birim or 'Adet',
+            'unit_price': kalem.birim_fiyat or 0,
+            'line_total': kalem.toplam or 0,
+        } for kalem in satis.kalemler],
+        'subtotal': satis.ara_toplam or 0,
+        'vat_rate': satis.kdv_orani or 0,
+        'vat_total': satis.kdv_tutar or 0,
+        'discount': satis.iskonto or 0,
+        'total': satis.genel_toplam or 0,
+        'note': satis.notlar or '',
+    }
+
+
 @app.route('/satis/<int:satis_id>/fis')
 @login_required
 def satis_fis_yazdir(satis_id):
@@ -13270,6 +13318,37 @@ def satis_fis_yazdir(satis_id):
         receipt_data=receipt_data,
         autoprint=autoprint
     )
+
+
+@app.route('/satis/<int:satis_id>/irsaliye')
+@login_required
+def satis_irsaliye_yazdir(satis_id):
+    satis = Satis.query.get_or_404(satis_id)
+    if not belongs_to_current_tenant(satis):
+        flash('Bu satış irsaliyesine erişim izniniz yok!', 'error')
+        return redirect(url_for('gunluk_satislar'))
+
+    payment_method = 'Peşin'
+    cash_entry = CashTransaction.query.filter(
+        CashTransaction.user_id.in_(tenant_user_ids()),
+        CashTransaction.referans_id == satis.id,
+        CashTransaction.referans_tip == 'satis',
+        CashTransaction.islem_tipi == 'giris'
+    ).order_by(CashTransaction.id.asc()).first()
+    if cash_entry and cash_entry.odeme_turu:
+        payment_method = cash_entry.odeme_turu
+    else:
+        credit_entry = CariHareket.query.filter(
+            CariHareket.user_id.in_(tenant_user_ids()),
+            CariHareket.referans_id == satis.id,
+            CariHareket.referans_tip == 'satis',
+            CariHareket.islem_tipi == 'satis'
+        ).first()
+        if credit_entry:
+            payment_method = 'Veresiye'
+
+    waybill_data = build_waybill_view_model(satis, payment_method=payment_method)
+    return render_template('satis_irsaliye_yazdir.html', waybill_data=waybill_data)
 
 
 @app.route('/pos/fis', methods=['POST'])
