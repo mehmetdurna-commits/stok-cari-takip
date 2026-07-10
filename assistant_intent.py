@@ -57,6 +57,13 @@ class AssistantCommandAnalyzer:
                     ('Durum', 'Onay Bekliyor'),
                 ],
                 route_hint='/stok/giris',
+                note='Ürün eşleşmesini seçip onay verirseniz stok miktarı artırılır.',
+                action={
+                    'type': 'stock_in',
+                    'amount': amount.get('value') if amount else None,
+                    'warehouse': 'Ana Depo',
+                    'description': 'Esstok Konuş stok girişi',
+                },
             )
 
         if self._is_stock_out(text):
@@ -523,7 +530,7 @@ class AssistantCommandAnalyzer:
     def _clean_entity(text):
         text = re.sub(r'\b([a-zçğıöşü0-9]+)(dan|den|tan|ten)\b', r'\1', text or '', flags=re.IGNORECASE)
         cleaned = re.sub(
-            r'\b(stoğa|stoga|stoktan|stok|ürün|urun|ekle|giriş|giris|çıkış|cikis|düş|dus|adet|tane|tl|lira|tahsilat|ödeme|odeme|al|yap|sat|satış|satis|pos|listele|göster|goster|bugünkü|bugunku|kritik|borcu|bakiye|kasaya|kasadan|müşteriden|musteriden|tedarikçiye|tedarikciye|teklif|oluştur|olustur|hazırla|hazirla|cari|müşteri|musteri|dan|den|tan|ten)\b',
+            r'\b(stoğa|stoga|stoktan|stok|ürün|urun|ekle|giriş|girişi|giris|girisi|çıkış|çıkışı|cikis|cikisi|düş|dus|adet|tane|tl|lira|tahsilat|ödeme|odeme|al|yap|sat|satış|satis|pos|listele|göster|goster|bugünkü|bugunku|kritik|borcu|bakiye|kasaya|kasadan|müşteriden|musteriden|tedarikçiye|tedarikciye|teklif|oluştur|olustur|hazırla|hazirla|cari|müşteri|musteri|dan|den|tan|ten)\b',
             ' ',
             text,
             flags=re.IGNORECASE,

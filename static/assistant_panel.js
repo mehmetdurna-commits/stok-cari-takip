@@ -34,7 +34,7 @@
     function cleanEntity(text) {
         return String(text || '')
             .replace(/\b([a-zçğıöşü0-9]+)(dan|den|tan|ten)\b/gi, '$1')
-            .replace(/\b(stoğa|stoga|stoktan|stok|ürün|urun|ekle|giriş|giris|çıkış|cikis|düş|dus|adet|tane|tl|lira|tahsilat|ödeme|odeme|al|yap|sat|satış|satis|pos|listele|göster|goster|bugünkü|bugunku|kritik|borcu|bakiye|kasaya|kasadan|müşteriden|musteriden|tedarikçiye|tedarikciye|teklif|oluştur|olustur|hazırla|hazirla|cari|müşteri|musteri|dan|den|tan|ten)\b/gi, ' ')
+            .replace(/\b(stoğa|stoga|stoktan|stok|ürün|urun|ekle|giriş|girişi|giris|girisi|çıkış|çıkışı|cikis|cikisi|düş|dus|adet|tane|tl|lira|tahsilat|ödeme|odeme|al|yap|sat|satış|satis|pos|listele|göster|goster|bugünkü|bugunku|kritik|borcu|bakiye|kasaya|kasadan|müşteriden|musteriden|tedarikçiye|tedarikciye|teklif|oluştur|olustur|hazırla|hazirla|cari|müşteri|musteri|dan|den|tan|ten)\b/gi, ' ')
             .replace(/\d+(?:[.,]\d+)?/g, ' ')
             .replace(/\s+/g, ' ')
             .trim();
@@ -881,7 +881,7 @@
         canConfirmResult(result) {
             if (!result) return false;
             if (result.intent === 'cash_movement') return Boolean(result.executable && result.draftReady);
-            if (result.intent === 'collection') {
+            if (result.intent === 'collection' || result.intent === 'stock_in') {
                 return Boolean(result.draftReady && (!result.requiresMatch || this.selectedCandidate || (result.candidates || []).length === 1));
             }
             return false;
@@ -890,6 +890,7 @@
         confirmationTitle() {
             if (!this.currentResult) return 'İşlemi onayla';
             if (this.currentResult.intent === 'collection') return 'Tahsilatı onayla';
+            if (this.currentResult.intent === 'stock_in') return 'Stok girişini onayla';
             return this.currentResult.confirmationTitle || 'İşlemi onayla';
         }
 
@@ -900,6 +901,11 @@
                 const amount = assistantResultField(this.currentResult, 'Tutar') || 'Belirtilen tutar';
                 return `${candidate ? candidate.label : 'Seçili cari'} için ${amount} tahsilat kaydedilecek.`;
             }
+            if (this.currentResult.intent === 'stock_in') {
+                const candidate = this.selectedCandidate || ((this.currentResult.candidates || []).length === 1 ? this.currentResult.candidates[0] : null);
+                const quantity = assistantResultField(this.currentResult, 'Miktar') || 'Belirtilen miktar';
+                return `${candidate ? candidate.label : 'Seçili ürün'} stoğuna ${quantity} giriş kaydedilecek.`;
+            }
             return this.currentResult.confirmationMessage || this.currentResult.summary || '';
         }
 
@@ -908,6 +914,10 @@
             if (this.currentResult && this.currentResult.intent === 'collection') {
                 const candidate = this.selectedCandidate || ((this.currentResult.candidates || []).length === 1 ? this.currentResult.candidates[0] : null);
                 if (candidate) fields.splice(1, 0, ['Seçili Cari', candidate.label]);
+            }
+            if (this.currentResult && this.currentResult.intent === 'stock_in') {
+                const candidate = this.selectedCandidate || ((this.currentResult.candidates || []).length === 1 ? this.currentResult.candidates[0] : null);
+                if (candidate) fields.splice(1, 0, ['Seçili Ürün', candidate.label]);
             }
             return fields;
         }

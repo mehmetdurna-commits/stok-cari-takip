@@ -27,6 +27,7 @@ import zipfile
 import secrets
 import sqlite3
 import smtplib
+import re
 from email.message import EmailMessage
 import re
 import uuid
@@ -4894,8 +4895,13 @@ def assistant_cari_candidates(term, limit=5):
 
 
 def assistant_parse_money(value):
-    raw = str(value or '').replace('₺', '').replace('TL', '').replace('tl', '').strip()
+    raw = str(value or '')
+    raw = re.sub(r'\b(tl|try|lira|adet|tane)\b|₺', '', raw, flags=re.IGNORECASE).strip()
     raw = raw.replace('.', '').replace(',', '.') if ',' in raw else raw
+    if re.fullmatch(r'\d{1,3}(?:\.\d{3})+', raw):
+        raw = raw.replace('.', '')
+    match = re.search(r'\d+(?:\.\d+)?', raw)
+    raw = match.group(0) if match else raw
     try:
         return round(float(raw), 2)
     except (TypeError, ValueError):
@@ -5036,6 +5042,51 @@ def execute_assistant_collection(command, selected_cari_id=None):
     }, None
 
 
+def execute_assistant_stock_in(command, selected_product_id=None):
+    analyzer = AssistantCommandAnalyzer()
+    result = enrich_assistant_analysis(analyzer.analyze(command))
+    if result.get('intent') != 'stock_in':
+        return None, ({'success': False, 'message': 'Bu komut stok girişi olarak okunamadı.'}, 400)
+
+    quantity = assistant_parse_money(assistant_field_value(result, 'Miktar'))
+    if quantity <= 0:
+        return None, ({'success': False, 'message': 'Stok giriş miktarı sıfırdan büyük olmalı.'}, 400)
+
+    tenant_ids = assistant_tenant_ids()
+    product = None
+    if selected_product_id:
+        try:
+            product = db.session.get(Urun, int(selected_product_id))
+        except (TypeError, ValueError):
+            product = None
+    if not product and len(result.get('candidates') or []) == 1:
+        product = db.session.get(Urun, int(result['candidates'][0]['id']))
+    if not product or product.user_id not in tenant_ids:
+        return None, ({'success': False, 'message': 'Stok girişi için geçerli ürün seçilmelidir.'}, 400)
+
+    warehouse = normalize_warehouse_name(product.depo_adi or DEFAULT_WAREHOUSE)
+    target_product, old_stock = add_stock_to_warehouse(
+        product,
+        quantity,
+        warehouse,
+        'Esstok Konuş stok girişi'
+    )
+    db.session.flush()
+    platform_audit(
+        'ASSISTANT_STOCK_IN',
+        f"Esstok Konuş ile {target_product.urun_adi} ürününe {quantity:g} {target_product.birim or 'Adet'} stok girişi kaydedildi.",
+        'Urun',
+        target_product.id,
+    )
+    db.session.commit()
+    return {
+        'success': True,
+        'message': f"{target_product.urun_adi} stoğuna {quantity:g} {target_product.birim or 'Adet'} eklendi. Yeni stok: {target_product.stok_miktari:g}",
+        'transaction_id': target_product.id,
+        'redirect_url': url_for('stok_giris'),
+    }, None
+
+
 @app.route('/api/assistant/analyze', methods=['POST'])
 @login_required
 def api_assistant_analyze():
@@ -5061,6 +5112,13 @@ def api_assistant_execute():
 
     analyzer = AssistantCommandAnalyzer()
     result = enrich_assistant_analysis(analyzer.analyze(command))
+    if result.get('intent') == 'stock_in':
+        stock_payload, stock_error = execute_assistant_stock_in(command, selected_candidate_id)
+        if stock_error:
+            error_payload, status_code = stock_error
+            return jsonify(error_payload), status_code
+        return jsonify(stock_payload)
+
     if result.get('intent') == 'collection':
         collection_payload, collection_error = execute_assistant_collection(command, selected_candidate_id)
         if collection_error:
@@ -5069,7 +5127,7 @@ def api_assistant_execute():
         return jsonify(collection_payload)
 
     if result.get('intent') != 'cash_movement':
-        return jsonify({'success': False, 'message': 'Bu işlem henüz otomatik uygulanamaz. Şimdilik kasa/banka hareketleri ve müşteri tahsilatları onayla kaydedilebilir.'}), 400
+        return jsonify({'success': False, 'message': 'Bu işlem henüz otomatik uygulanamaz. Şimdilik stok girişi, kasa/banka hareketleri ve müşteri tahsilatları onayla kaydedilebilir.'}), 400
 
     action = result.get('action') or {}
     amount = assistant_parse_money(action.get('amount'))
