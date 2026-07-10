@@ -110,10 +110,123 @@
                     routeHint: '/dashboard',
                     note: 'Bu cevap bilgilendirme amaçlıdır; işlem yapılmaz.'
                 }
+            },
+            {
+                keywords: ['şifre', 'sifre', 'parola', 'giriş yapamıyorum', 'giris yapamiyorum'],
+                result: {
+                    intent: 'help_login',
+                    title: 'Giriş ve şifre işlemleri',
+                    confidence: 'Yüksek',
+                    summary: 'Giriş yapamıyorsanız e-posta adresinizi kontrol edin ve Giriş ekranındaki “Şifremi unuttum” bağlantısıyla yeni şifre belirleyin.',
+                    fields: [['1', 'E-posta adresini kontrol edin'], ['2', 'Şifremi unuttum bağlantısını kullanın'], ['3', 'E-postadaki bağlantıyla şifreyi yenileyin']],
+                    routeHint: '/giris',
+                    note: 'Şifre sıfırlama e-postası gelmezse spam klasörünü kontrol edin veya destek talebi açın.'
+                }
+            },
+            {
+                keywords: ['iade', 'ürün iadesi', 'urun iadesi'],
+                result: {
+                    intent: 'help_return',
+                    title: 'İade işlemi nasıl yapılır?',
+                    confidence: 'Yüksek',
+                    summary: 'İade ekranında ilgili cari ve ürün seçilerek iade türü belirlenir; işlem cari hareketlere ve stok durumuna göre takip edilir.',
+                    fields: [['Cari', 'İadenin hangi müşteriye ait olduğunu belirtir'], ['Ürün', 'İade edilen ürünü ve miktarı gösterir'], ['İade Türü', 'Para iadesi, cari alacak veya değişim akışını belirler']],
+                    routeHint: '/iade',
+                    note: 'İade kaydı oluşturmadan önce ürün ve cari bilgisini kontrol edin.'
+                }
+            },
+            {
+                keywords: ['nakit', 'kasa', 'banka', 'pos hesabı', 'pos hesabi', 'para aktar'],
+                result: {
+                    intent: 'help_cash',
+                    title: 'Kasa, banka ve POS nasıl takip edilir?',
+                    confidence: 'Yüksek',
+                    summary: 'Nakit Yönetimi ve Ön Muhasebe hesaplarıyla kasa giriş/çıkışlarını, banka hareketlerini ve POS aktarımını takip edebilirsiniz.',
+                    fields: [['Kasa', 'Nakit giriş ve çıkışları gösterir'], ['Banka', 'Banka hesabına giren ve çıkan parayı izler'], ['POS', 'Kart satışlarından bekleyen tutarları takip eder']],
+                    routeHint: '/onmuhasebe/hesaplar',
+                    note: 'POS tahsilatları bankaya geçtiğinde hesaplar arası aktarım kullanılabilir.'
+                }
+            },
+            {
+                keywords: ['paket', 'limit', 'yükselt', 'yukselt', 'lisans', 'fiyat'],
+                result: {
+                    intent: 'help_package',
+                    title: 'Paket ve limit bilgileri',
+                    confidence: 'Yüksek',
+                    summary: 'Demo, Standart ve Profesyonel paketler ürün limiti ve kullanım kapsamına göre ayrılır. Paket yükseltme ekranından talep oluşturabilirsiniz.',
+                    fields: [['Demo', 'Deneme amaçlı sınırlı kullanım'], ['Standart', 'Belirli ürün limitine kadar kullanım'], ['Profesyonel', 'Sınırsız ürün ve geniş kullanım']],
+                    routeHint: '/paket-yukselt',
+                    note: 'Paket yükseltme işlemi ödeme/talep akışına yönlendirir.'
+                }
+            },
+            {
+                keywords: ['ayar', 'ayarlar', 'logo', 'firma bilgileri', 'bildirim'],
+                result: {
+                    intent: 'help_settings',
+                    title: 'Firma ayarları nereden yapılır?',
+                    confidence: 'Yüksek',
+                    summary: 'Ayarlar ekranından firma bilgileri, logo, tercihler ve bildirim ayarları yönetilir.',
+                    fields: [['Firma Bilgileri', 'Ad, adres, telefon ve logo'], ['Tercihler', 'Sayfa ve kullanım tercihleri'], ['Bildirimler', 'Uyarı ve bilgilendirme tercihleri']],
+                    routeHint: '/settings',
+                    note: 'Logo ve firma bilgileri teklif, ekstre ve bazı çıktılarda kullanılabilir.'
+                }
+            },
+            {
+                keywords: ['personel', 'maaş', 'maas', 'izin', 'avans', 'prim'],
+                result: {
+                    intent: 'help_personnel',
+                    title: 'Personel yönetimi nasıl kullanılır?',
+                    confidence: 'Yüksek',
+                    summary: 'Personel ekranından çalışan listesi, izin, avans, prim ve bordro akışları takip edilir.',
+                    fields: [['Personel', 'Çalışan kartlarını listeler'], ['İzin', 'Personelin izin durumunu takip eder'], ['Avans / Prim', 'Maaş dışı hareketleri gösterir']],
+                    routeHint: '/personel',
+                    note: 'Personel kayıtları düzenli tutulursa bordro ve ödeme listeleri daha sağlıklı hazırlanır.'
+                }
+            },
+            {
+                keywords: ['yazdır', 'yazdir', 'fiş', 'fis', 'irsaliye', 'ekstre'],
+                result: {
+                    intent: 'help_print',
+                    title: 'Yazdırma işlemleri nereden yapılır?',
+                    confidence: 'Yüksek',
+                    summary: 'Fiş, irsaliye, teklif ve cari ekstre çıktıları ilgili ekranlarda bulunan yazdırma butonlarıyla alınır.',
+                    fields: [['Fiş', 'POS veya Günlük Satışlar ekranından yazdırılır'], ['İrsaliye', 'Günlük Satışlar satış satırından alınır'], ['Ekstre', 'Cari detay ekranından yazdırılır']],
+                    routeHint: '/gunluk-satislar',
+                    note: 'Yazdırma penceresi açılmazsa tarayıcı pop-up izinlerini kontrol edin.'
+                }
+            },
+            {
+                keywords: ['fatura', 'e-fatura', 'efatura', 'entegratör', 'entegrator'],
+                result: {
+                    intent: 'help_invoice',
+                    title: 'Fatura ve entegrasyon durumu',
+                    confidence: 'Yüksek',
+                    summary: 'Esstok’ta satış, teklif, fiş, irsaliye ve cari kayıtları takip edilir. Resmi e-fatura/e-arşiv kesimi için entegratör bağlantısı ayrıca yapılandırılmalıdır.',
+                    fields: [['Bugün', 'Satış, fiş, irsaliye ve teklif çıktıları kullanılabilir'], ['Entegrasyon', 'Fatura entegratörü bilgileriyle geliştirilebilir'], ['Öneri', 'Canlı fatura kesmeden önce mali müşavir ve entegratör ayarları kontrol edilmelidir']],
+                    routeHint: '/teklifler',
+                    note: 'Bu cevap bilgilendirme amaçlıdır; resmi mali belge üretimi için entegratör altyapısı gerekir.'
+                }
             }
         ];
         const topic = topics.find((item) => item.keywords.some((keyword) => text.includes(keyword)));
         return topic ? createAnalysisResult(topic.result) : null;
+    }
+
+    function fallbackAnswer() {
+        return createAnalysisResult({
+            intent: 'help_general',
+            title: 'Size nasıl yardımcı olabilirim?',
+            confidence: 'Orta',
+            summary: 'Bu soruyu tek bir ekrana net bağlayamadım; yine de Esstok içinde stok, cari, POS, teklif, iade, rapor, ayarlar ve personel konularında yardımcı olabilirim.',
+            fields: [
+                ['Örnek', '“POS satışı nasıl yapılır?”'],
+                ['Örnek', '“Cari hesap nasıl takip edilir?”'],
+                ['Örnek', '“Stoğa 100 adet Selpak ekle”'],
+                ['Destek', 'Yanıt yeterli olmazsa destek talebi oluşturabilirsiniz']
+            ],
+            routeHint: '/destek',
+            note: 'Bu cevap destek amaçlıdır; kullanıcı onayı olmadan hiçbir işlem yapılmaz.'
+        });
     }
 
     function analyzeCommand(command) {
@@ -298,7 +411,7 @@
             });
         }
 
-        return createAnalysisResult();
+        return fallbackAnswer();
     }
 
     function escapeHtml(value) {
@@ -530,9 +643,13 @@
             `;
             }).join('');
             const routeHtml = result.routeHint ? `
-                <div class="rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/25 dark:text-blue-300">
-                    Önerilen ekran: <span class="font-black">${escapeHtml(result.routeHint)}</span>
-                </div>
+                <a href="${escapeHtml(this.safeInternalRoute(result.routeHint))}" class="flex w-full min-w-0 items-center justify-between gap-3 rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/25 dark:text-blue-300 dark:hover:bg-blue-950/40">
+                    <span class="min-w-0">
+                        <span class="block text-[10px] font-black uppercase tracking-[0.14em] text-blue-400 dark:text-blue-500">Önerilen ekran</span>
+                        <span class="block truncate font-black">${escapeHtml(result.routeHint)}</span>
+                    </span>
+                    <span class="material-symbols-outlined shrink-0 text-base">open_in_new</span>
+                </a>
             ` : '';
             const candidatesHtml = this.renderCandidates(result);
             const selectedHtml = this.renderSelectedCandidate();

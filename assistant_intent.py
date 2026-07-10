@@ -193,7 +193,7 @@ class AssistantCommandAnalyzer:
                 route_hint='/cariler',
             )
 
-        return self._result()
+        return self._result(**self._fallback_answer(text))
 
     def _result(self, **overrides):
         result = dict(self.DEFAULT_RESULT)
@@ -292,6 +292,134 @@ class AssistantCommandAnalyzer:
                     'note': 'Bu cevap bilgilendirme amaçlıdır; işlem yapılmaz.',
                 },
             ),
+            (
+                ('şifre', 'sifre', 'parola', 'giriş yapamıyorum', 'giris yapamiyorum'),
+                {
+                    'intent': 'help_login',
+                    'title': 'Giriş ve şifre işlemleri',
+                    'confidence': 'Yüksek',
+                    'summary': 'Giriş yapamıyorsanız e-posta adresinizi kontrol edin ve Giriş ekranındaki “Şifremi unuttum” bağlantısıyla yeni şifre belirleyin.',
+                    'fields': [
+                        ('1', 'E-posta adresini kontrol edin'),
+                        ('2', 'Şifremi unuttum bağlantısını kullanın'),
+                        ('3', 'Gelen e-postadaki bağlantıyla şifreyi yenileyin'),
+                    ],
+                    'route_hint': '/giris',
+                    'note': 'Şifre sıfırlama e-postası gelmezse spam klasörünü kontrol edin veya destek talebi açın.',
+                },
+            ),
+            (
+                ('iade', 'ürün iadesi', 'urun iadesi'),
+                {
+                    'intent': 'help_return',
+                    'title': 'İade işlemi nasıl yapılır?',
+                    'confidence': 'Yüksek',
+                    'summary': 'İade ekranında ilgili cari ve ürün seçilerek iade türü belirlenir; işlem cari hareketlere ve stok durumuna göre takip edilir.',
+                    'fields': [
+                        ('Cari', 'İadenin hangi müşteriye ait olduğunu belirtir'),
+                        ('Ürün', 'İade edilen ürünü ve miktarı gösterir'),
+                        ('İade Türü', 'Para iadesi, cari alacak veya değişim akışını belirler'),
+                    ],
+                    'route_hint': '/iade',
+                    'note': 'İade kaydı oluşturmadan önce ürün ve cari bilgisini kontrol edin.',
+                },
+            ),
+            (
+                ('nakit', 'kasa', 'banka', 'pos hesabı', 'pos hesabi', 'para aktar'),
+                {
+                    'intent': 'help_cash',
+                    'title': 'Kasa, banka ve POS nasıl takip edilir?',
+                    'confidence': 'Yüksek',
+                    'summary': 'Nakit Yönetimi ve Ön Muhasebe hesaplarıyla kasa giriş/çıkışlarını, banka hareketlerini ve POS aktarımını takip edebilirsiniz.',
+                    'fields': [
+                        ('Kasa', 'Nakit giriş ve çıkışları gösterir'),
+                        ('Banka', 'Banka hesabına giren ve çıkan parayı izler'),
+                        ('POS', 'Kart satışlarından bekleyen tutarları takip eder'),
+                    ],
+                    'route_hint': '/onmuhasebe/hesaplar',
+                    'note': 'POS tahsilatları bankaya geçtiğinde hesaplar arası aktarım kullanılabilir.',
+                },
+            ),
+            (
+                ('paket', 'limit', 'yükselt', 'yukselt', 'lisans', 'fiyat'),
+                {
+                    'intent': 'help_package',
+                    'title': 'Paket ve limit bilgileri',
+                    'confidence': 'Yüksek',
+                    'summary': 'Demo, Standart ve Profesyonel paketler ürün limiti ve kullanım kapsamına göre ayrılır. Paket yükseltme ekranından talep oluşturabilirsiniz.',
+                    'fields': [
+                        ('Demo', 'Deneme amaçlı sınırlı kullanım'),
+                        ('Standart', 'Belirli ürün limitine kadar kullanım'),
+                        ('Profesyonel', 'Sınırsız ürün ve geniş kullanım'),
+                    ],
+                    'route_hint': '/paket-yukselt',
+                    'note': 'Paket yükseltme işlemi ödeme/talep akışına yönlendirir.',
+                },
+            ),
+            (
+                ('ayar', 'ayarlar', 'logo', 'firma bilgileri', 'bildirim'),
+                {
+                    'intent': 'help_settings',
+                    'title': 'Firma ayarları nereden yapılır?',
+                    'confidence': 'Yüksek',
+                    'summary': 'Ayarlar ekranından firma bilgileri, logo, tercihler ve bildirim ayarları yönetilir.',
+                    'fields': [
+                        ('Firma Bilgileri', 'Ad, adres, telefon ve logo'),
+                        ('Tercihler', 'Sayfa ve kullanım tercihleri'),
+                        ('Bildirimler', 'Uyarı ve bilgilendirme tercihleri'),
+                    ],
+                    'route_hint': '/settings',
+                    'note': 'Logo ve firma bilgileri teklif, ekstre ve bazı çıktılarda kullanılabilir.',
+                },
+            ),
+            (
+                ('personel', 'maaş', 'maas', 'izin', 'avans', 'prim'),
+                {
+                    'intent': 'help_personnel',
+                    'title': 'Personel yönetimi nasıl kullanılır?',
+                    'confidence': 'Yüksek',
+                    'summary': 'Personel ekranından çalışan listesi, izin, avans, prim ve bordro akışları takip edilir.',
+                    'fields': [
+                        ('Personel', 'Çalışan kartlarını listeler'),
+                        ('İzin', 'Personelin izin durumunu takip eder'),
+                        ('Avans / Prim', 'Maaş dışı hareketleri gösterir'),
+                    ],
+                    'route_hint': '/personel',
+                    'note': 'Personel kayıtları düzenli tutulursa bordro ve ödeme listeleri daha sağlıklı hazırlanır.',
+                },
+            ),
+            (
+                ('yazdır', 'yazdir', 'fiş', 'fis', 'irsaliye', 'ekstre'),
+                {
+                    'intent': 'help_print',
+                    'title': 'Yazdırma işlemleri nereden yapılır?',
+                    'confidence': 'Yüksek',
+                    'summary': 'Fiş, irsaliye, teklif ve cari ekstre çıktıları ilgili ekranlarda bulunan yazdırma butonlarıyla alınır.',
+                    'fields': [
+                        ('Fiş', 'POS veya Günlük Satışlar ekranından yazdırılır'),
+                        ('İrsaliye', 'Günlük Satışlar satış satırından alınır'),
+                        ('Ekstre', 'Cari detay ekranından yazdırılır'),
+                    ],
+                    'route_hint': '/gunluk-satislar',
+                    'note': 'Yazdırma penceresi açılmazsa tarayıcı pop-up izinlerini kontrol edin.',
+                },
+            ),
+            (
+                ('fatura', 'e-fatura', 'efatura', 'entegratör', 'entegrator'),
+                {
+                    'intent': 'help_invoice',
+                    'title': 'Fatura ve entegrasyon durumu',
+                    'confidence': 'Yüksek',
+                    'summary': 'Esstok’ta satış, teklif, fiş, irsaliye ve cari kayıtları takip edilir. Resmi e-fatura/e-arşiv kesimi için entegratör bağlantısı ayrıca yapılandırılmalıdır.',
+                    'fields': [
+                        ('Bugün', 'Satış, fiş, irsaliye ve teklif çıktıları kullanılabilir'),
+                        ('Entegrasyon', 'Fatura entegratörü bilgileriyle geliştirilebilir'),
+                        ('Öneri', 'Canlı fatura kesmeden önce mali müşavir ve entegratör ayarları kontrol edilmelidir'),
+                    ],
+                    'route_hint': '/teklifler',
+                    'note': 'Bu cevap bilgilendirme amaçlıdır; resmi mali belge üretimi için entegratör altyapısı gerekir.',
+                },
+            ),
         ]
         for keywords, result in help_topics:
             if any(keyword in text for keyword in keywords):
@@ -299,8 +427,25 @@ class AssistantCommandAnalyzer:
         return None
 
     @staticmethod
+    def _fallback_answer(text):
+        return {
+            'intent': 'help_general',
+            'title': 'Size nasıl yardımcı olabilirim?',
+            'confidence': 'Orta',
+            'summary': 'Bu soruyu tek bir ekrana net bağlayamadım; yine de Esstok içinde stok, cari, POS, teklif, iade, rapor, ayarlar ve personel konularında yardımcı olabilirim.',
+            'fields': [
+                ('Örnek', '“POS satışı nasıl yapılır?”'),
+                ('Örnek', '“Cari hesap nasıl takip edilir?”'),
+                ('Örnek', '“Stoğa 100 adet Selpak ekle”'),
+                ('Destek', 'Yanıt yeterli olmazsa destek talebi oluşturabilirsiniz'),
+            ],
+            'route_hint': '/destek',
+            'note': 'Bu cevap destek amaçlıdır; kullanıcı onayı olmadan hiçbir işlem yapılmaz.',
+        }
+
+    @staticmethod
     def _normalize(value):
-        return re.sub(r'\s+', ' ', str(value or '').lower().replace('’', ' ').replace("'", ' ')).strip()
+        return re.sub(r'\s+', ' ', str(value or '').lower().replace('\u0307', '').replace('’', ' ').replace("'", ' ')).strip()
 
     @staticmethod
     def _extract_amount(text):
