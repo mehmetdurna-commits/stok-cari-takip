@@ -269,13 +269,49 @@
             this.analyze();
         }
 
-        analyze() {
+        async analyze() {
             const command = this.input.value || '';
-            const result = analyzeCommand(command);
+            const result = await this.analyzeWithApi(command);
             this.renderResult(result);
             if (!command.trim() && window.showToast) {
                 window.showToast('Önce bir komut yaz kral.', 'warning', 3500);
             }
+        }
+
+        async analyzeWithApi(command) {
+            try {
+                const response = await fetch('/api/assistant/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ command })
+                });
+                if (!response.ok) throw new Error(`Assistant API ${response.status}`);
+                const payload = await response.json();
+                if (payload && payload.success && payload.result) {
+                    return this.normalizeApiResult(payload.result);
+                }
+            } catch (error) {
+                console.warn('Assistant API kullanılamadı, yerel analiz devrede:', error);
+            }
+            return analyzeCommand(command);
+        }
+
+        normalizeApiResult(result) {
+            return {
+                intent: result.intent || 'unknown',
+                title: result.title || 'Komut analizi',
+                confidence: result.confidence || 'Düşük',
+                summary: result.summary || '',
+                fields: Array.isArray(result.fields) ? result.fields.map((field) => {
+                    if (Array.isArray(field)) return field;
+                    return [field.label || '', field.value || ''];
+                }) : [],
+                routeHint: result.route_hint || result.routeHint || '',
+                note: result.note || 'Bu sürümde işlem yapılmaz, sadece analiz edilir.'
+            };
         }
 
         renderResult(result) {
@@ -284,12 +320,16 @@
                 : (result.confidence === 'Orta'
                     ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300'
                     : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300');
-            const fieldsHtml = (result.fields || []).map(([label, value]) => `
+            const fieldsHtml = (result.fields || []).map((field) => {
+                const label = Array.isArray(field) ? field[0] : field.label;
+                const value = Array.isArray(field) ? field[1] : field.value;
+                return `
                 <div class="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-3 py-2 text-xs dark:bg-slate-950/50">
                     <span class="font-black uppercase tracking-wide text-slate-400">${escapeHtml(label)}</span>
                     <span class="text-right font-bold text-slate-900 dark:text-white">${escapeHtml(value)}</span>
                 </div>
-            `).join('');
+            `;
+            }).join('');
             const routeHtml = result.routeHint ? `
                 <div class="rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/25 dark:text-blue-300">
                     Önerilen ekran: <span class="font-black">${escapeHtml(result.routeHint)}</span>

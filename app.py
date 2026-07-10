@@ -42,6 +42,7 @@ import urllib.request
 import tempfile
 from functools import wraps
 from config import AppConfig, validate_runtime_config
+from assistant_intent import AssistantCommandAnalyzer
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
@@ -4816,6 +4817,20 @@ def settings_notification_history():
         'success': True,
         'history_enabled': True,
         'notifications': history[:20]
+    })
+
+
+@app.route('/api/assistant/analyze', methods=['POST'])
+@login_required
+def api_assistant_analyze():
+    payload = request.get_json(silent=True) or {}
+    command = (payload.get('command') or '').strip()
+    analyzer = AssistantCommandAnalyzer()
+    result = analyzer.analyze(command)
+    return jsonify({
+        'success': True,
+        'mode': 'analysis_only',
+        'result': result,
     })
 
 
