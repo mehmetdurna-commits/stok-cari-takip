@@ -4865,6 +4865,10 @@ def assistant_product_candidates(term, limit=5):
         'label': product.urun_adi,
         'subtitle': f"{product.stok_miktari or 0:g} {product.birim or 'Adet'} stok · {product.depo_adi or 'Ana Depo'}",
         'meta': product.barkod or '',
+        'price': float(product.satis_fiyati or 0),
+        'stock': float(product.stok_miktari or 0),
+        'barcode': product.barkod or '',
+        'unit': product.birim or 'Adet',
     } for product in products]
 
 

@@ -239,6 +239,7 @@
     const POS_STORAGE_SCOPE = {{ ('user:' ~ current_user.id) | tojson }};
     const POS_CART_STORAGE_KEY = `posCart:${POS_STORAGE_SCOPE}`;
     const POS_SALE_STORAGE_KEY = `posSaleData:${POS_STORAGE_SCOPE}`;
+    const ASSISTANT_POS_DRAFT_KEY = 'esstokAssistantPosDraft';
     let cart = [];
     let currentCustomer = null;
     let paymentInProgress = false;
@@ -307,6 +308,7 @@
             }
         }
         filterProducts();
+        consumeAssistantPosDraft();
 
         document.addEventListener('click', (event) => {
             const searchWrapper = document.getElementById('searchResultsDropdown');
@@ -415,24 +417,25 @@
         else if (receivedInput) receivedInput.placeholder = 'Gerekirse alınan tutarı yazın';
     }
 
-    function addToCart(id, name, price, stock, barkod) {
+    function addToCart(id, name, price, stock, barkod, quantity = 1) {
         const normalizedId = String(id);
+        const requestedQuantity = Math.max(1, parseInt(quantity, 10) || 1);
         const existingItem = cart.find(item => String(item.id) === normalizedId);
         const currentQty = existingItem ? existingItem.quantity : 0;
-        if (currentQty + 1 > stock) {
+        if (currentQty + requestedQuantity > stock) {
             showToast(`Yetersiz stok! Mevcut: ${stock}`, 'error');
             playScanFeedback('error');
-            return;
+            return false;
         }
-        if (existingItem) existingItem.quantity++;
-        else cart.push({ id: normalizedId, name, price, quantity: 1, stock, barkod, unit: 'Adet' });
+        if (existingItem) existingItem.quantity += requestedQuantity;
+        else cart.push({ id: normalizedId, name, price, quantity: requestedQuantity, stock, barkod, unit: 'Adet' });
         lastHighlightedCartItemId = normalizedId;
         if (lastHighlightTimer) clearTimeout(lastHighlightTimer);
         lastHighlightTimer = setTimeout(() => {
             lastHighlightedCartItemId = null;
             updateCart();
         }, 1000);
-        showToast(`${name} sepete eklendi`, 'success');
+        showToast(`${name} sepete eklendi${requestedQuantity > 1 ? ` (${requestedQuantity} adet)` : ''}`, 'success');
         playScanFeedback('success');
         updateCart();
         const barcodeInput = document.getElementById('barcodeInput');
@@ -440,6 +443,7 @@
             barcodeInput.value = '';
             barcodeInput.focus();
         }
+        return true;
     }
 
     function closeSearchResults() {
@@ -448,18 +452,45 @@
         selectedSearchResultIndex = -1;
     }
 
-    function addProductToCartById(productId) {
+    function addProductToCartById(productId, quantity = 1) {
         const product = productsData.find(item => String(item.id) === String(productId));
-        if (!product) return;
+        if (!product) return false;
         if (Number(product.stok_miktari || 0) <= 0) {
             showToast(`${product.urun_adi} için stok yok!`, 'error');
             playScanFeedback('error');
-            return;
+            return false;
         }
-        addToCart(product.id, product.urun_adi, Number(product.satis_fiyati || 0), Number(product.stok_miktari || 0), product.barkod || '');
+        const added = addToCart(product.id, product.urun_adi, Number(product.satis_fiyati || 0), Number(product.stok_miktari || 0), product.barkod || '', quantity);
         const searchInput = document.getElementById('searchInput');
         if (searchInput) searchInput.value = '';
         closeSearchResults();
+        return added;
+    }
+
+    function consumeAssistantPosDraft() {
+        let draft = null;
+        try {
+            const raw = localStorage.getItem(ASSISTANT_POS_DRAFT_KEY);
+            if (!raw) return;
+            draft = JSON.parse(raw);
+            localStorage.removeItem(ASSISTANT_POS_DRAFT_KEY);
+        } catch (error) {
+            localStorage.removeItem(ASSISTANT_POS_DRAFT_KEY);
+            return;
+        }
+        if (!draft || draft.source !== 'assistant' || !draft.productId) return;
+        const quantity = Math.max(1, parseInt(draft.quantity, 10) || 1);
+        const product = productsData.find(item => String(item.id) === String(draft.productId));
+        if (!product) {
+            showToast('Asistanın seçtiği ürün POS listesinde bulunamadı.', 'error', 5000);
+            return;
+        }
+        const added = addProductToCartById(product.id, quantity);
+        if (added) {
+            showToast(`Esstok Konuş: ${product.urun_adi} (${quantity} adet) sepete hazırlandı. Ödemeyi siz tamamlayın.`, 'success', 5500);
+            const cartPanel = document.getElementById('pos-cart-panel');
+            if (cartPanel) cartPanel.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        }
     }
 
     function getFirstAvailableSearchIndex(results = searchResults) {

@@ -49,6 +49,23 @@
         return Object.assign({}, DEFAULT_RESULT, overrides || {});
     }
 
+    function assistantResultField(result, label) {
+        const fields = result && Array.isArray(result.fields) ? result.fields : [];
+        const row = fields.find((field) => {
+            const fieldLabel = Array.isArray(field) ? field[0] : field.label;
+            return fieldLabel === label;
+        });
+        if (!row) return '';
+        return String(Array.isArray(row) ? row[1] : row.value || '').trim();
+    }
+
+    function parseQuantityValue(value) {
+        const match = String(value || '').replace(',', '.').match(/(\d+(?:\.\d+)?)/);
+        if (!match) return 1;
+        const quantity = Number(match[1]);
+        return Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+    }
+
     function helpAnswer(text) {
         const topics = [
             {
@@ -526,6 +543,12 @@
                 const confirmButton = event.target.closest('[data-assistant-confirm]');
                 if (confirmButton) {
                     this.openConfirmModal();
+                    return;
+                }
+
+                const posDraftButton = event.target.closest('[data-assistant-pos-draft]');
+                if (posDraftButton) {
+                    this.preparePosDraft();
                 }
             });
 
@@ -706,6 +729,7 @@
                     Onay Ekranını Aç
                 </button>
             ` : '';
+            const posDraftHtml = this.renderPosDraftButton(result);
             const candidatesHtml = this.renderCandidates(result);
             const selectedHtml = this.renderSelectedCandidate();
             this.result.innerHTML = `
@@ -721,6 +745,7 @@
                     <div class="grid gap-2">${fieldsHtml}</div>
                     ${candidatesHtml}
                     ${selectedHtml}
+                    ${posDraftHtml}
                     ${confirmHtml}
                     ${routeHtml}
                     <div class="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/25 dark:text-amber-200">
@@ -846,6 +871,68 @@
                     </a>
                 </div>
             `;
+        }
+
+        getActiveProductCandidate() {
+            if (!this.currentResult || this.currentResult.candidateType !== 'product') return null;
+            if (this.selectedCandidate) return this.selectedCandidate;
+            const candidates = this.currentResult.candidates || [];
+            return candidates.length === 1 ? candidates[0] : null;
+        }
+
+        renderPosDraftButton(result) {
+            if (!result || result.intent !== 'pos_sale') return '';
+            const product = this.getActiveProductCandidate();
+            const quantity = parseQuantityValue(assistantResultField(result, 'Miktar'));
+            const canTransfer = Boolean(result.draftReady && product && quantity > 0);
+            return `
+                <div class="rounded-3xl border border-blue-100 bg-blue-50/70 p-3 dark:border-blue-900/40 dark:bg-blue-950/20">
+                    <div class="flex items-start gap-3">
+                        <span class="material-symbols-outlined rounded-2xl bg-white p-2 text-blue-600 dark:bg-slate-900 dark:text-blue-300">point_of_sale</span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-xs font-black uppercase tracking-[0.14em] text-blue-500 dark:text-blue-300">POS Sepet Hazırlığı</p>
+                            <p class="mt-1 text-sm font-bold leading-5 text-slate-700 dark:text-slate-200">
+                                ${canTransfer
+                                    ? `${escapeHtml(product.label)} ürünü ${escapeHtml(quantity)} adet POS sepetine eklenecek. Satışı kullanıcı tamamlar.`
+                                    : 'POS sepetine aktarım için ürün eşleşmesi ve miktar net olmalı.'}
+                            </p>
+                        </div>
+                    </div>
+                    <button type="button" data-assistant-pos-draft="1" ${canTransfer ? '' : 'disabled'} class="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition ${canTransfer ? 'bg-slate-950 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100' : 'cursor-not-allowed bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}">
+                        <span class="material-symbols-outlined text-lg">shopping_cart_checkout</span>
+                        POS’a Aktar ve Beklet
+                    </button>
+                </div>
+            `;
+        }
+
+        preparePosDraft() {
+            const product = this.getActiveProductCandidate();
+            if (!this.currentResult || this.currentResult.intent !== 'pos_sale' || !product) {
+                if (window.showToast) window.showToast('POS için önce doğru ürünü seçin.', 'warning', 4000);
+                return;
+            }
+            const quantity = parseQuantityValue(assistantResultField(this.currentResult, 'Miktar'));
+            if (!quantity || quantity <= 0) {
+                if (window.showToast) window.showToast('POS aktarımı için geçerli miktar gerekli.', 'warning', 4000);
+                return;
+            }
+            const draft = {
+                source: 'assistant',
+                productId: String(product.id),
+                productName: product.label || assistantResultField(this.currentResult, 'Ürün') || '',
+                quantity,
+                command: this.input.value || '',
+                createdAt: new Date().toISOString()
+            };
+            try {
+                localStorage.setItem('esstokAssistantPosDraft', JSON.stringify(draft));
+            } catch (error) {
+                if (window.showToast) window.showToast('POS taslağı hazırlanamadı.', 'error', 4500);
+                return;
+            }
+            if (window.showToast) window.showToast('POS açılıyor; ürün sepete hazırlanacak.', 'success', 2500);
+            window.location.href = '/pos?assistant=pos_draft';
         }
 
         loadHistory() {
