@@ -36,6 +36,9 @@ class AssistantCommandAnalyzer:
                 ],
             )
 
+        if self._is_cash_movement(text):
+            return self._cash_movement_result(text, amount)
+
         help_result = self._help_answer(text)
         if help_result:
             return self._result(**help_result)
@@ -426,6 +429,48 @@ class AssistantCommandAnalyzer:
                 return result
         return None
 
+    def _cash_movement_result(self, text, amount):
+        account_type = 'bank' if any(word in text for word in ('bankadan', 'bankaya', 'banka')) else 'cash'
+        is_in = any(word in text for word in ('giriş', 'giris', 'yatır', 'yatir', 'geldi', 'ekle', 'kasaya', 'bankaya'))
+        is_out = any(word in text for word in ('çıkış', 'cikis', 'çıkar', 'cikar', 'ödeme', 'odeme', 'öde', 'ode', 'masraf', 'gider', 'harcama', 'kasadan', 'bankadan'))
+        movement = 'giris' if is_in and not is_out else 'cikis'
+        account_label = 'Banka' if account_type == 'bank' else 'Kasa'
+        description = self._clean_cash_description(text) or ('Para girişi' if movement == 'giris' else 'Para çıkışı')
+        amount_label = self._format_amount(amount, 'TL')
+        return self._result(
+            intent='cash_movement',
+            title=f'{account_label} {"girişi" if movement == "giris" else "çıkışı"} taslağı',
+            confidence='Yüksek' if amount else 'Orta',
+            summary=f'{account_label} hesabında {amount_label} {"giriş" if movement == "giris" else "çıkış"} işlemi için onay taslağı hazırlandı.',
+            fields=[
+                ('İşlem Türü', 'Para Girişi' if movement == 'giris' else 'Para Çıkışı'),
+                ('Hesap Türü', account_label),
+                ('Tutar', amount_label),
+                ('Açıklama', description),
+                ('Durum', 'Onay Bekliyor'),
+            ],
+            route_hint='/onmuhasebe/hesaplar',
+            note='Onay verirseniz bu işlem ilgili kasa/banka hesabına kaydedilir.',
+            action={
+                'type': 'cash_transaction',
+                'account_type': account_type,
+                'islem_tipi': movement,
+                'amount': amount.get('value') if amount else None,
+                'description': description,
+            },
+        )
+
+    @staticmethod
+    def _clean_cash_description(text):
+        cleaned = re.sub(
+            r'\b(kasadan|kasaya|kasa|bankadan|bankaya|banka|para|giriş|girişi|giris|girisi|çıkış|çıkışı|cikis|cikisi|çıkar|cikar|yatır|yatir|ödeme|odeme|öde|ode|yap|kaydet|tl|lira)\b',
+            ' ',
+            text or '',
+            flags=re.IGNORECASE,
+        )
+        cleaned = re.sub(r'\d+(?:[.,]\d+)?', ' ', cleaned)
+        return re.sub(r'\s+', ' ', cleaned).strip()
+
     @staticmethod
     def _fallback_answer(text):
         return {
@@ -493,6 +538,12 @@ class AssistantCommandAnalyzer:
     @staticmethod
     def _is_supplier_payment(text):
         return any(word in text for word in ('ödeme', 'odeme', 'tedarikçi', 'tedarikci'))
+
+    @staticmethod
+    def _is_cash_movement(text):
+        account_word = any(word in text for word in ('kasa', 'kasadan', 'kasaya', 'banka', 'bankadan', 'bankaya'))
+        movement_word = any(word in text for word in ('giriş', 'giris', 'çıkış', 'cikis', 'çıkar', 'cikar', 'yatır', 'yatir', 'masraf', 'gider', 'harcama', 'ödeme', 'odeme', 'öde', 'ode'))
+        return account_word and movement_word
 
     @staticmethod
     def _is_pos_sale(text):

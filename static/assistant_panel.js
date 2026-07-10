@@ -244,6 +244,43 @@
             });
         }
 
+        if ((text.includes('kasa') || text.includes('kasadan') || text.includes('kasaya') || text.includes('banka') || text.includes('bankadan') || text.includes('bankaya'))
+            && (text.includes('giriş') || text.includes('giris') || text.includes('çıkış') || text.includes('cikis') || text.includes('çıkar') || text.includes('cikar') || text.includes('masraf') || text.includes('gider') || text.includes('harcama') || text.includes('ödeme') || text.includes('odeme') || text.includes('öde') || text.includes('ode'))) {
+            const isBank = text.includes('banka') || text.includes('bankadan') || text.includes('bankaya');
+            const isIn = text.includes('giriş') || text.includes('giris') || text.includes('yatır') || text.includes('yatir') || text.includes('geldi') || text.includes('ekle') || text.includes('kasaya') || text.includes('bankaya');
+            const isOut = text.includes('çıkış') || text.includes('cikis') || text.includes('çıkar') || text.includes('cikar') || text.includes('ödeme') || text.includes('odeme') || text.includes('öde') || text.includes('ode') || text.includes('masraf') || text.includes('gider') || text.includes('harcama') || text.includes('kasadan') || text.includes('bankadan');
+            const movement = isIn && !isOut ? 'giris' : 'cikis';
+            const accountLabel = isBank ? 'Banka' : 'Kasa';
+            const description = cleanEntity(text).replace(/\b(para|giriş|girişi|giris|girisi|çıkış|çıkışı|cikis|cikisi|çıkar|cikar|yatır|yatir)\b/gi, ' ').replace(/\s+/g, ' ').trim() || (movement === 'giris' ? 'Para girişi' : 'Para çıkışı');
+            return createAnalysisResult({
+                intent: 'cash_movement',
+                title: `${accountLabel} ${movement === 'giris' ? 'girişi' : 'çıkışı'} taslağı`,
+                confidence: amount ? 'Yüksek' : 'Orta',
+                summary: `${accountLabel} hesabında ${formatAmount(amount, 'TL')} ${movement === 'giris' ? 'giriş' : 'çıkış'} işlemi için onay taslağı hazırlandı.`,
+                fields: [
+                    ['İşlem Türü', movement === 'giris' ? 'Para Girişi' : 'Para Çıkışı'],
+                    ['Hesap Türü', accountLabel],
+                    ['Tutar', formatAmount(amount, 'TL')],
+                    ['Açıklama', description],
+                    ['Durum', 'Onay Bekliyor']
+                ],
+                routeHint: '/onmuhasebe/hesaplar',
+                note: 'Onay verirseniz bu işlem ilgili kasa/banka hesabına kaydedilir.',
+                draftReady: Boolean(amount),
+                executable: Boolean(amount),
+                requiresConfirmation: true,
+                confirmationTitle: 'Para hareketini onayla',
+                confirmationMessage: `${accountLabel} hesabına ${formatAmount(amount, 'TL')} ${movement === 'giris' ? 'para girişi' : 'para çıkışı'} kaydedilecek.`,
+                action: {
+                    type: 'cash_transaction',
+                    account_type: isBank ? 'bank' : 'cash',
+                    islem_tipi: movement,
+                    amount: amount ? amount.value : null,
+                    description
+                }
+            });
+        }
+
         const helpResult = helpAnswer(text);
         if (helpResult) return helpResult;
 
@@ -445,6 +482,7 @@
             this.selectedCandidate = null;
             this.historyKey = 'esstok_assistant_recent_commands';
             this.history = this.loadHistory();
+            this.confirmModal = null;
         }
 
         init() {
@@ -482,6 +520,12 @@
                 if (historyButton) {
                     const index = Number(historyButton.dataset.assistantHistoryIndex);
                     this.useHistory(index);
+                    return;
+                }
+
+                const confirmButton = event.target.closest('[data-assistant-confirm]');
+                if (confirmButton) {
+                    this.openConfirmModal();
                 }
             });
 
@@ -614,7 +658,12 @@
                 candidates: Array.isArray(result.candidates) ? result.candidates : [],
                 missingFields: Array.isArray(result.missing_fields) ? result.missing_fields : [],
                 requiresMatch: Boolean(result.requires_match),
-                draftReady: Boolean(result.draft_ready)
+                draftReady: Boolean(result.draft_ready),
+                executable: Boolean(result.executable),
+                requiresConfirmation: Boolean(result.requires_confirmation),
+                confirmationTitle: result.confirmation_title || 'İşlemi onayla',
+                confirmationMessage: result.confirmation_message || '',
+                action: result.action || null
             };
         }
 
@@ -651,6 +700,12 @@
                     <span class="material-symbols-outlined shrink-0 text-base">open_in_new</span>
                 </a>
             ` : '';
+            const confirmHtml = result.executable && result.draftReady ? `
+                <button type="button" data-assistant-confirm="1" class="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700">
+                    <span class="material-symbols-outlined text-lg">verified</span>
+                    Onay Ekranını Aç
+                </button>
+            ` : '';
             const candidatesHtml = this.renderCandidates(result);
             const selectedHtml = this.renderSelectedCandidate();
             this.result.innerHTML = `
@@ -666,11 +721,129 @@
                     <div class="grid gap-2">${fieldsHtml}</div>
                     ${candidatesHtml}
                     ${selectedHtml}
+                    ${confirmHtml}
                     ${routeHtml}
                     <div class="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/25 dark:text-amber-200">
                         <span class="font-black">Güvenlik:</span> Kullanıcı onayı olmadan hiçbir stok, cari veya kasa işlemi yapılmaz.
                     </div>
                     <p class="text-xs font-semibold leading-5 text-slate-500 dark:text-slate-400">${escapeHtml(result.note)}</p>
+                </div>
+            `;
+        }
+
+        ensureConfirmModal() {
+            if (this.confirmModal) return this.confirmModal;
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 z-[140] hidden items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm';
+            modal.innerHTML = `
+                <div class="w-full max-w-md rounded-[2rem] border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+                    <div class="flex items-start gap-3">
+                        <span class="material-symbols-outlined rounded-2xl bg-emerald-50 p-2 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300">verified_user</span>
+                        <div class="min-w-0">
+                            <h3 data-confirm-title class="text-lg font-black text-slate-950 dark:text-white">İşlemi onayla</h3>
+                            <p data-confirm-message class="mt-2 text-sm font-semibold leading-6 text-slate-600 dark:text-slate-300"></p>
+                        </div>
+                    </div>
+                    <div data-confirm-details class="mt-4 space-y-2 rounded-3xl bg-slate-50 p-3 text-sm dark:bg-slate-950/40"></div>
+                    <div class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/25 dark:text-amber-200">
+                        Bu işlem onaydan sonra veritabanına kaydedilir ve işlem geçmişine yazılır.
+                    </div>
+                    <div class="mt-5 grid grid-cols-2 gap-2">
+                        <button type="button" data-confirm-cancel class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">Vazgeç</button>
+                        <button type="button" data-confirm-approve class="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700">Onayla</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modal.querySelector('[data-confirm-cancel]').addEventListener('click', () => this.closeConfirmModal());
+            modal.addEventListener('click', (event) => {
+                if (event.target === modal) this.closeConfirmModal();
+            });
+            modal.querySelector('[data-confirm-approve]').addEventListener('click', () => this.executeCurrentAction());
+            this.confirmModal = modal;
+            return modal;
+        }
+
+        openConfirmModal() {
+            if (!this.currentResult || !this.currentResult.executable) return;
+            const modal = this.ensureConfirmModal();
+            modal.querySelector('[data-confirm-title]').textContent = this.currentResult.confirmationTitle || 'İşlemi onayla';
+            modal.querySelector('[data-confirm-message]').textContent = this.currentResult.confirmationMessage || this.currentResult.summary || '';
+            const detailRows = (this.currentResult.fields || []).filter((field) => {
+                const label = Array.isArray(field) ? field[0] : field.label;
+                return label !== 'Durum';
+            }).map((field) => {
+                const label = Array.isArray(field) ? field[0] : field.label;
+                const value = Array.isArray(field) ? field[1] : field.value;
+                return `
+                    <div class="flex items-center justify-between gap-3 rounded-2xl bg-white px-3 py-2 dark:bg-slate-900">
+                        <span class="text-xs font-black uppercase tracking-wide text-slate-400">${escapeHtml(label)}</span>
+                        <span class="text-right text-sm font-black text-slate-900 dark:text-white">${escapeHtml(value)}</span>
+                    </div>
+                `;
+            }).join('');
+            modal.querySelector('[data-confirm-details]').innerHTML = detailRows;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        closeConfirmModal() {
+            if (!this.confirmModal) return;
+            this.confirmModal.classList.add('hidden');
+            this.confirmModal.classList.remove('flex');
+        }
+
+        async executeCurrentAction() {
+            if (!this.currentResult || !this.currentResult.executable) return;
+            const approveButton = this.confirmModal ? this.confirmModal.querySelector('[data-confirm-approve]') : null;
+            if (approveButton) {
+                approveButton.disabled = true;
+                approveButton.classList.add('opacity-70', 'cursor-wait');
+                approveButton.textContent = 'Kaydediliyor...';
+            }
+            try {
+                const response = await fetch('/api/assistant/execute', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ command: this.input.value || '' })
+                });
+                const payload = await response.json();
+                if (!response.ok || !payload.success) {
+                    throw new Error(payload.message || 'İşlem tamamlanamadı.');
+                }
+                this.closeConfirmModal();
+                if (window.showToast) window.showToast(payload.message || 'İşlem kaydedildi.', 'success', 4500);
+                this.renderExecutionSuccess(payload);
+            } catch (error) {
+                if (window.showToast) window.showToast(error.message || 'İşlem tamamlanamadı.', 'error', 5000);
+            } finally {
+                if (approveButton) {
+                    approveButton.disabled = false;
+                    approveButton.classList.remove('opacity-70', 'cursor-wait');
+                    approveButton.textContent = 'Onayla';
+                }
+            }
+        }
+
+        renderExecutionSuccess(payload) {
+            this.result.innerHTML = `
+                <div class="space-y-3">
+                    <div class="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/25 dark:text-emerald-200">
+                        <div class="flex items-start gap-3">
+                            <span class="material-symbols-outlined rounded-2xl bg-white/80 p-2 text-emerald-600 dark:bg-slate-900/70 dark:text-emerald-300">check_circle</span>
+                            <div>
+                                <p class="font-black">İşlem kaydedildi</p>
+                                <p class="mt-1 text-sm font-semibold leading-6">${escapeHtml(payload.message || 'Para hareketi başarıyla kaydedildi.')}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <a href="${escapeHtml(this.safeInternalRoute(payload.redirect_url || '/onmuhasebe/hesaplar'))}" class="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100">
+                        <span class="material-symbols-outlined text-lg">open_in_new</span>
+                        Para hesaplarına git
+                    </a>
                 </div>
             `;
         }

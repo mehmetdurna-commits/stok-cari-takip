@@ -4889,6 +4889,34 @@ def assistant_cari_candidates(term, limit=5):
     } for cari in cariler]
 
 
+def assistant_parse_money(value):
+    raw = str(value or '').replace('₺', '').replace('TL', '').replace('tl', '').strip()
+    raw = raw.replace('.', '').replace(',', '.') if ',' in raw else raw
+    try:
+        return round(float(raw), 2)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def assistant_default_account(account_type, ensure=False):
+    account_type = account_type if account_type in {'cash', 'bank'} else 'cash'
+    if ensure:
+        ensure_default_accounts_for_user(current_user.id)
+    tenant_ids = assistant_tenant_ids()
+    account = Account.query.filter(
+        Account.user_id == current_user.id,
+        Account.type == account_type,
+        Account.active.is_(True)
+    ).order_by(Account.id.asc()).first()
+    if account:
+        return account
+    return Account.query.filter(
+        Account.user_id.in_(tenant_ids),
+        Account.type == account_type,
+        Account.active.is_(True)
+    ).order_by(Account.id.asc()).first()
+
+
 def enrich_assistant_analysis(result):
     intent = result.get('intent')
     candidates = []
@@ -4903,11 +4931,35 @@ def enrich_assistant_analysis(result):
         requires_match = True
     elif intent == 'cari_create':
         result['candidate_type'] = 'cari'
+    elif intent == 'cash_movement':
+        action = result.get('action') or {}
+        account_type = action.get('account_type') or ('bank' if assistant_field_value(result, 'Hesap Türü') == 'Banka' else 'cash')
+        account = assistant_default_account(account_type)
+        result['executable'] = True
+        result['requires_confirmation'] = True
+        result['confirmation_title'] = 'Para hareketini onayla'
+        result['confirmation_message'] = (
+            f"{account.name if account else assistant_field_value(result, 'Hesap Türü')} hesabına "
+            f"{assistant_field_value(result, 'Tutar')} {assistant_field_value(result, 'İşlem Türü').lower()} kaydedilecek."
+        )
+        result['action'] = {
+            'type': 'cash_transaction',
+            'account_id': account.id if account else None,
+            'account_name': account.name if account else '',
+            'account_type': account_type,
+            'islem_tipi': action.get('islem_tipi') or ('giris' if assistant_field_value(result, 'İşlem Türü') == 'Para Girişi' else 'cikis'),
+            'amount': action.get('amount') or assistant_parse_money(assistant_field_value(result, 'Tutar')),
+            'description': action.get('description') or assistant_field_value(result, 'Açıklama'),
+        }
 
     result['candidates'] = candidates
     result['missing_fields'] = assistant_missing_fields(result)
     result['requires_match'] = requires_match
     result['draft_ready'] = not result['missing_fields'] and (not requires_match or bool(candidates))
+    if intent == 'cash_movement':
+        action = result.get('action') or {}
+        result['executable'] = bool(action.get('account_id') and assistant_parse_money(action.get('amount')) > 0 and not result['missing_fields'])
+        result['draft_ready'] = result['executable']
     if candidates:
         result['match_status'] = 'Aday bulundu'
         result['note'] = 'Bu sürümde işlem yapılmaz. Bulunan eşleşmeler sadece kontrol amaçlı gösterilir.'
@@ -4932,6 +4984,69 @@ def api_assistant_analyze():
         'success': True,
         'mode': 'analysis_only',
         'result': result,
+    })
+
+
+@app.route('/api/assistant/execute', methods=['POST'])
+@login_required
+def api_assistant_execute():
+    payload = request.get_json(silent=True) or {}
+    command = (payload.get('command') or '').strip()
+    if not command:
+        return jsonify({'success': False, 'message': 'İşlem için komut bulunamadı.'}), 400
+
+    analyzer = AssistantCommandAnalyzer()
+    result = enrich_assistant_analysis(analyzer.analyze(command))
+    if result.get('intent') != 'cash_movement':
+        return jsonify({'success': False, 'message': 'Bu işlem henüz otomatik uygulanamaz. Şimdilik sadece kasa/banka para hareketleri onayla kaydedilebilir.'}), 400
+
+    action = result.get('action') or {}
+    amount = assistant_parse_money(action.get('amount'))
+    if amount <= 0:
+        return jsonify({'success': False, 'message': 'Tutar sıfırdan büyük olmalı.'}), 400
+
+    islem_tipi = action.get('islem_tipi')
+    if islem_tipi not in {'giris', 'cikis'}:
+        return jsonify({'success': False, 'message': 'Geçersiz para hareketi yönü.'}), 400
+
+    account_id = action.get('account_id')
+    account = db.session.get(Account, int(account_id)) if account_id else None
+    if not account:
+        account = assistant_default_account(action.get('account_type'), ensure=True)
+    if not account or account.user_id not in assistant_tenant_ids() or not account.active:
+        return jsonify({'success': False, 'message': 'Uygun aktif kasa/banka hesabı bulunamadı.'}), 400
+    if account.type == 'pos':
+        return jsonify({'success': False, 'message': 'POS hesabı için doğrudan giriş/çıkış yapılamaz. POS aktarımı için Ön Muhasebe ekranını kullanın.'}), 400
+
+    odeme_turu = {'cash': 'Nakit', 'bank': 'Banka'}.get(account.type, 'Nakit')
+    description = (action.get('description') or assistant_field_value(result, 'Açıklama') or 'Esstok Konuş para hareketi').strip()
+    tx = CashTransaction(
+        user_id=account.user_id,
+        account_id=account.id,
+        cari_id=None,
+        tarih=utc_now(),
+        islem_tipi=islem_tipi,
+        tutar=amount,
+        odeme_turu=odeme_turu,
+        aciklama=description,
+        referans_tip='assistant',
+        ip_adresi=request.remote_addr,
+        user_agent=(request.user_agent.string or '')[:500],
+    )
+    db.session.add(tx)
+    db.session.flush()
+    platform_audit(
+        'ASSISTANT_CASH_TRANSACTION',
+        f"Esstok Konuş ile {account.name} hesabına {amount:.2f} TL {'giriş' if islem_tipi == 'giris' else 'çıkış'} kaydedildi. Açıklama: {description}",
+        'CashTransaction',
+        tx.id,
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'message': f"{account.name} hesabına {format_money(amount)} {'giriş' if islem_tipi == 'giris' else 'çıkış'} kaydedildi.",
+        'transaction_id': tx.id,
+        'redirect_url': url_for('onmuhasebe_hesaplar'),
     })
 
 
