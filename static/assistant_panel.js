@@ -67,6 +67,22 @@
         return Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
     }
 
+    function formatAssistantMoney(value) {
+        const amount = Number(value || 0);
+        return `₺${amount.toLocaleString('tr-TR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        })}`;
+    }
+
+    function formatAssistantNumber(value) {
+        const amount = Number(value || 0);
+        return amount.toLocaleString('tr-TR', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+        });
+    }
+
     function helpAnswer(text) {
         const topics = [
             {
@@ -680,6 +696,8 @@
                 matchStatus: result.match_status || '',
                 candidateType: result.candidate_type || '',
                 candidates: Array.isArray(result.candidates) ? result.candidates : [],
+                lookupType: result.lookup_type || '',
+                lookupItems: Array.isArray(result.lookup_items) ? result.lookup_items : [],
                 missingFields: Array.isArray(result.missing_fields) ? result.missing_fields : [],
                 requiresMatch: Boolean(result.requires_match),
                 draftReady: Boolean(result.draft_ready),
@@ -733,6 +751,8 @@
             const posDraftHtml = this.renderPosDraftButton(result);
             const candidatesHtml = this.renderCandidates(result);
             const selectedHtml = this.renderSelectedCandidate();
+            const customerBalanceHtml = this.renderCustomerBalanceAnswer(result);
+            const criticalStockHtml = this.renderCriticalStockAnswer(result);
             this.result.innerHTML = `
                 <div class="space-y-3">
                     <div class="flex items-start justify-between gap-3">
@@ -746,6 +766,8 @@
                     <div class="grid gap-2">${fieldsHtml}</div>
                     ${candidatesHtml}
                     ${selectedHtml}
+                    ${customerBalanceHtml}
+                    ${criticalStockHtml}
                     ${posDraftHtml}
                     ${confirmHtml}
                     ${routeHtml}
@@ -1073,6 +1095,75 @@
                             </div>
                         `).join('')}
                     </div>
+                </div>
+            `;
+        }
+
+        renderCustomerBalanceAnswer(result) {
+            if (!result || result.intent !== 'customer_balance') return '';
+            const candidate = this.selectedCandidate || ((result.candidates || []).length === 1 ? result.candidates[0] : null);
+            if (!candidate) return '';
+            const balance = Number(candidate.balance || 0);
+            const balanceTone = balance > 0
+                ? 'text-emerald-700 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-950/25'
+                : (balance < 0
+                    ? 'text-rose-700 bg-rose-50 dark:text-rose-300 dark:bg-rose-950/25'
+                    : 'text-slate-700 bg-slate-100 dark:text-slate-200 dark:bg-slate-800');
+            return `
+                <div class="rounded-3xl border border-emerald-100 bg-gradient-to-br from-white to-emerald-50/60 p-3 dark:border-emerald-900/40 dark:from-slate-950/30 dark:to-emerald-950/10">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="text-xs font-black uppercase tracking-[0.14em] text-emerald-600 dark:text-emerald-300">Cari Bakiye Özeti</p>
+                            <p class="mt-1 truncate text-sm font-black text-slate-950 dark:text-white">${escapeHtml(candidate.label)}</p>
+                            <p class="mt-0.5 text-xs font-semibold text-slate-500 dark:text-slate-400">${escapeHtml(candidate.type || 'Cari')}${candidate.phone ? ` · ${escapeHtml(candidate.phone)}` : ''}</p>
+                        </div>
+                        <span class="material-symbols-outlined rounded-2xl bg-white p-2 text-emerald-600 shadow-sm dark:bg-slate-900 dark:text-emerald-300">account_balance_wallet</span>
+                    </div>
+                    <div class="mt-3 grid gap-2">
+                        <div class="flex items-center justify-between rounded-2xl px-3 py-2 text-xs font-black ${balanceTone}">
+                            <span>Net bakiye</span>
+                            <span>${formatAssistantMoney(balance)}</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="rounded-2xl bg-white/80 px-3 py-2 text-xs dark:bg-slate-950/30">
+                                <p class="font-black uppercase tracking-wide text-slate-400">Satışlar</p>
+                                <p class="mt-1 font-black text-slate-900 dark:text-white">${formatAssistantMoney(candidate.credit || 0)}</p>
+                            </div>
+                            <div class="rounded-2xl bg-white/80 px-3 py-2 text-xs dark:bg-slate-950/30">
+                                <p class="font-black uppercase tracking-wide text-slate-400">Tahsilatlar</p>
+                                <p class="mt-1 font-black text-slate-900 dark:text-white">${formatAssistantMoney(candidate.debt || 0)}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        renderCriticalStockAnswer(result) {
+            if (!result || result.lookupType !== 'critical_stock') return '';
+            const items = result.lookupItems || [];
+            const rows = items.map((item) => `
+                <div class="flex items-center justify-between gap-3 rounded-2xl bg-white/80 px-3 py-2 text-xs dark:bg-slate-950/30">
+                    <div class="min-w-0">
+                        <p class="truncate font-black text-slate-900 dark:text-white">${escapeHtml(item.label)}</p>
+                        <p class="mt-0.5 truncate font-semibold text-slate-500 dark:text-slate-400">${escapeHtml(item.warehouse || 'Ana Depo')}${item.barcode ? ` · ${escapeHtml(item.barcode)}` : ''}</p>
+                    </div>
+                    <div class="shrink-0 text-right">
+                        <p class="font-black text-rose-600 dark:text-rose-300">${formatAssistantNumber(item.stock)} ${escapeHtml(item.unit || 'Adet')}</p>
+                        <p class="text-[10px] font-bold text-slate-400">Kritik: ${formatAssistantNumber(item.critical)}</p>
+                    </div>
+                </div>
+            `).join('');
+            return `
+                <div class="rounded-3xl border border-rose-100 bg-gradient-to-br from-white to-rose-50/60 p-3 dark:border-rose-900/40 dark:from-slate-950/30 dark:to-rose-950/10">
+                    <div class="mb-2 flex items-center justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-[0.14em] text-rose-600 dark:text-rose-300">Kritik Stok</p>
+                            <p class="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">${items.length ? 'İlk kritik ürünler listelendi.' : 'Kritik seviyede ürün bulunmadı.'}</p>
+                        </div>
+                        <a href="/urunler" class="rounded-2xl border border-rose-100 bg-white px-3 py-2 text-xs font-black text-rose-700 shadow-sm transition hover:bg-rose-50 dark:border-rose-900/40 dark:bg-slate-900 dark:text-rose-300">Stoka Git</a>
+                    </div>
+                    <div class="space-y-2">${rows || '<p class="rounded-2xl bg-white/80 px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950/30 dark:text-slate-400">Şu an kritik stok uyarısı yok.</p>'}</div>
                 </div>
             `;
         }

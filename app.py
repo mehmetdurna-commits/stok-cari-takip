@@ -4891,7 +4891,35 @@ def assistant_cari_candidates(term, limit=5):
         'label': cari.unvan,
         'subtitle': f"{cari.tipi or 'Cari'} · Bakiye {format_money(cari.bakiye or 0)}",
         'meta': cari.telefon or cari.yetkili or '',
+        'balance': float(cari.bakiye or 0),
+        'debt': float(cari.borc or 0),
+        'credit': float(cari.alacak or 0),
+        'type': cari.tipi or 'Cari',
+        'phone': cari.telefon or '',
+        'contact': cari.yetkili or '',
     } for cari in cariler]
+
+
+def assistant_critical_stock_items(limit=8):
+    tenant_ids = assistant_tenant_ids()
+    if not tenant_ids:
+        return []
+    products = Urun.query.filter(
+        Urun.user_id.in_(tenant_ids),
+        func.coalesce(Urun.stok_miktari, 0) <= func.coalesce(Urun.kritik_stok, 0)
+    ).order_by(
+        func.coalesce(Urun.stok_miktari, 0).asc(),
+        Urun.urun_adi.asc()
+    ).limit(limit).all()
+    return [{
+        'id': product.id,
+        'label': product.urun_adi,
+        'stock': float(product.stok_miktari or 0),
+        'critical': float(product.kritik_stok or 0),
+        'unit': product.birim or 'Adet',
+        'warehouse': product.depo_adi or 'Ana Depo',
+        'barcode': product.barkod or '',
+    } for product in products]
 
 
 def assistant_parse_money(value):
@@ -4941,6 +4969,15 @@ def enrich_assistant_analysis(result):
         requires_match = True
     elif intent == 'cari_create':
         result['candidate_type'] = 'cari'
+    elif intent == 'critical_stock':
+        critical_items = assistant_critical_stock_items()
+        result['lookup_type'] = 'critical_stock'
+        result['lookup_items'] = critical_items
+        result['summary'] = (
+            f"Kritik seviyede {len(critical_items)} ürün bulundu."
+            if critical_items else
+            "Kritik stok seviyesinde ürün görünmüyor."
+        )
     elif intent == 'cash_movement':
         action = result.get('action') or {}
         account_type = action.get('account_type') or ('bank' if assistant_field_value(result, 'Hesap Türü') == 'Banka' else 'cash')
