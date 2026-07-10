@@ -207,6 +207,8 @@
             this.listening = document.getElementById(this.options.listeningId);
             this.fab = document.getElementById(this.options.fabId);
             this.recognition = null;
+            this.currentResult = null;
+            this.selectedCandidate = null;
         }
 
         init() {
@@ -226,6 +228,13 @@
                     if (action === 'example') this.fillExample(element.dataset.assistantExample || '');
                     if (action === 'mic') this.startListening();
                 });
+            });
+
+            this.result.addEventListener('click', (event) => {
+                const candidateButton = event.target.closest('[data-assistant-candidate-index]');
+                if (!candidateButton) return;
+                const index = Number(candidateButton.dataset.assistantCandidateIndex);
+                this.selectCandidate(index);
             });
 
             this.input.addEventListener('keydown', (event) => {
@@ -272,6 +281,8 @@
         async analyze() {
             const command = this.input.value || '';
             const result = await this.analyzeWithApi(command);
+            this.currentResult = result;
+            this.selectedCandidate = null;
             this.renderResult(result);
             if (!command.trim() && window.showToast) {
                 window.showToast('Önce bir komut yaz kral.', 'warning', 3500);
@@ -317,6 +328,14 @@
             };
         }
 
+        selectCandidate(index) {
+            if (!this.currentResult || !Array.isArray(this.currentResult.candidates)) return;
+            const candidate = this.currentResult.candidates[index];
+            if (!candidate) return;
+            this.selectedCandidate = candidate;
+            this.renderResult(this.currentResult);
+        }
+
         renderResult(result) {
             const confidenceClass = result.confidence === 'Yüksek'
                 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
@@ -339,6 +358,8 @@
                 </div>
             ` : '';
             const candidatesHtml = this.renderCandidates(result);
+            const selectedHtml = this.renderSelectedCandidate();
+            const actionPreviewHtml = this.renderActionPreview(result);
             this.result.innerHTML = `
                 <div class="space-y-3">
                     <div class="flex items-start justify-between gap-3">
@@ -351,6 +372,8 @@
                     <div class="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold leading-6 text-white dark:bg-white dark:text-slate-950">${escapeHtml(result.summary)}</div>
                     <div class="grid gap-2">${fieldsHtml}</div>
                     ${candidatesHtml}
+                    ${selectedHtml}
+                    ${actionPreviewHtml}
                     ${routeHtml}
                     <div class="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/25 dark:text-amber-200">
                         <span class="font-black">Güvenlik:</span> Kullanıcı onayı olmadan hiçbir stok, cari veya kasa işlemi yapılmaz.
@@ -368,17 +391,23 @@
             const statusClass = result.candidates && result.candidates.length
                 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
                 : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
-            const items = (result.candidates || []).map((candidate) => `
-                <div class="rounded-2xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
+            const items = (result.candidates || []).map((candidate, index) => {
+                const isSelected = this.selectedCandidate && String(this.selectedCandidate.id) === String(candidate.id);
+                return `
+                <button type="button" data-assistant-candidate-index="${index}" class="w-full rounded-2xl border ${isSelected ? 'border-primary-300 bg-primary-50 ring-2 ring-primary-500/10 dark:border-primary-800 dark:bg-primary-950/20' : 'border-slate-200 bg-white hover:border-primary-200 hover:bg-blue-50/50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-primary-900/60 dark:hover:bg-primary-950/10'} px-3 py-2 text-left transition">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
                             <p class="truncate text-sm font-black text-slate-900 dark:text-white">${escapeHtml(candidate.label)}</p>
                             <p class="mt-0.5 truncate text-xs font-semibold text-slate-500 dark:text-slate-400">${escapeHtml(candidate.subtitle)}</p>
                         </div>
-                        ${candidate.meta ? `<span class="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-300">${escapeHtml(candidate.meta)}</span>` : ''}
+                        <div class="flex shrink-0 items-center gap-2">
+                            ${candidate.meta ? `<span class="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-300">${escapeHtml(candidate.meta)}</span>` : ''}
+                            <span class="material-symbols-outlined text-base ${isSelected ? 'text-primary-600' : 'text-slate-300'}">${isSelected ? 'check_circle' : 'radio_button_unchecked'}</span>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                </button>
+            `;
+            }).join('');
             return `
                 <div class="rounded-3xl border border-slate-200 bg-white/80 p-3 dark:border-slate-800 dark:bg-slate-950/30">
                     <div class="mb-2 flex items-center justify-between gap-3">
@@ -386,6 +415,40 @@
                         <span class="rounded-full px-2.5 py-1 text-[11px] font-black ${statusClass}">${escapeHtml(result.matchStatus || 'Kontrol')}</span>
                     </div>
                     ${items || '<p class="text-xs font-semibold leading-5 text-slate-500 dark:text-slate-400">Bu komuta uygun kayıt bulunamadı. Daha net ürün/cari adı yazılırsa eşleşme güçlenir.</p>'}
+                </div>
+            `;
+        }
+
+        renderSelectedCandidate() {
+            if (!this.selectedCandidate) return '';
+            return `
+                <div class="rounded-3xl border border-primary-100 bg-gradient-to-r from-primary-50 to-cyan-50 p-3 dark:border-primary-900/40 dark:from-primary-950/25 dark:to-cyan-950/20">
+                    <p class="text-xs font-black uppercase tracking-[0.14em] text-primary-600 dark:text-primary-300">Seçili kayıt</p>
+                    <div class="mt-2 flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-black text-slate-950 dark:text-white">${escapeHtml(this.selectedCandidate.label)}</p>
+                            <p class="mt-0.5 truncate text-xs font-semibold text-slate-600 dark:text-slate-300">${escapeHtml(this.selectedCandidate.subtitle)}</p>
+                        </div>
+                        <span class="material-symbols-outlined shrink-0 text-primary-600 dark:text-primary-300">verified</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        renderActionPreview(result) {
+            if (!result || result.intent === 'unknown') return '';
+            const isReady = Boolean(this.selectedCandidate) || !['stock_in', 'stock_out', 'collection', 'supplier_payment', 'customer_balance'].includes(result.intent);
+            return `
+                <div class="rounded-3xl border border-slate-200 bg-white/80 p-3 dark:border-slate-800 dark:bg-slate-950/30">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Sonraki Faz Önizlemesi</p>
+                            <p class="mt-1 text-sm font-bold text-slate-700 dark:text-slate-200">${isReady ? 'Bu taslak ileride onay kartına dönüşebilir.' : 'Önce doğru kayıt seçilmelidir.'}</p>
+                        </div>
+                        <button type="button" disabled class="shrink-0 rounded-2xl bg-slate-200 px-3 py-2 text-xs font-black text-slate-500 opacity-70 dark:bg-slate-800 dark:text-slate-400">
+                            Onayla Pasif
+                        </button>
+                    </div>
                 </div>
             `;
         }
