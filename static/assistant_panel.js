@@ -351,7 +351,7 @@
             this.setAnalyzing(false);
             this.renderResult(result);
             if (!command.trim() && window.showToast) {
-                window.showToast('Önce bir komut yaz kral.', 'warning', 3500);
+                window.showToast('Önce bir komut yazın veya sesli komut verin.', 'warning', 3500);
             }
         }
 
@@ -684,7 +684,7 @@
                 this.analyze();
             };
             this.recognition.onerror = () => {
-                if (window.showToast) window.showToast('Sesi alamadım kral. Tekrar dene veya komutu yaz.', 'warning', 4500);
+                if (window.showToast) window.showToast('Ses alınamadı. Tekrar deneyin veya komutu yazarak analiz edin.', 'warning', 4500);
             };
             this.recognition.onend = () => {
                 if (this.listening) this.listening.classList.add('hidden');
