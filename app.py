@@ -4977,6 +4977,65 @@ def enrich_assistant_analysis(result):
     return result
 
 
+def execute_assistant_collection(command, selected_cari_id=None):
+    analyzer = AssistantCommandAnalyzer()
+    result = enrich_assistant_analysis(analyzer.analyze(command))
+    if result.get('intent') != 'collection':
+        return None, ({'success': False, 'message': 'Bu komut tahsilat işlemi olarak okunamadı.'}, 400)
+
+    amount = assistant_parse_money(assistant_field_value(result, 'Tutar'))
+    if amount <= 0:
+        return None, ({'success': False, 'message': 'Tahsilat tutarı sıfırdan büyük olmalı.'}, 400)
+
+    tenant_ids = assistant_tenant_ids()
+    cari = None
+    if selected_cari_id:
+        try:
+            cari = db.session.get(Cari, int(selected_cari_id))
+        except (TypeError, ValueError):
+            cari = None
+    if not cari and len(result.get('candidates') or []) == 1:
+        cari = db.session.get(Cari, int(result['candidates'][0]['id']))
+    if not cari or cari.user_id not in tenant_ids:
+        return None, ({'success': False, 'message': 'Tahsilat için geçerli cari seçilmelidir.'}, 400)
+
+    tahsilat_turu = 'Nakit'
+    aciklama = 'Esstok Konuş ile tahsilat yapıldı'
+    adjust_cari_account(cari, amount, 'tahsilat')
+    hareket = CariHareket(
+        cari_id=cari.id,
+        user_id=current_user.id,
+        islem_tipi='tahsilat',
+        tutar=amount,
+        aciklama=aciklama,
+        odeme_turu=tahsilat_turu,
+        referans_tip='assistant_tahsilat'
+    )
+    db.session.add(hareket)
+    create_cash_transaction(
+        cari,
+        amount,
+        'giris',
+        tahsilat_turu,
+        aciklama,
+        referans_tip='assistant_tahsilat'
+    )
+    db.session.flush()
+    platform_audit(
+        'ASSISTANT_COLLECTION',
+        f"Esstok Konuş ile {cari.unvan} carisine {amount:.2f} TL tahsilat kaydedildi.",
+        'CariHareket',
+        hareket.id,
+    )
+    db.session.commit()
+    return {
+        'success': True,
+        'message': f"{cari.unvan} için {format_money(amount)} tahsilat kaydedildi.",
+        'transaction_id': hareket.id,
+        'redirect_url': url_for('cari_detay', id=cari.id),
+    }, None
+
+
 @app.route('/api/assistant/analyze', methods=['POST'])
 @login_required
 def api_assistant_analyze():
@@ -4996,13 +5055,21 @@ def api_assistant_analyze():
 def api_assistant_execute():
     payload = request.get_json(silent=True) or {}
     command = (payload.get('command') or '').strip()
+    selected_candidate_id = payload.get('selected_candidate_id')
     if not command:
         return jsonify({'success': False, 'message': 'İşlem için komut bulunamadı.'}), 400
 
     analyzer = AssistantCommandAnalyzer()
     result = enrich_assistant_analysis(analyzer.analyze(command))
+    if result.get('intent') == 'collection':
+        collection_payload, collection_error = execute_assistant_collection(command, selected_candidate_id)
+        if collection_error:
+            error_payload, status_code = collection_error
+            return jsonify(error_payload), status_code
+        return jsonify(collection_payload)
+
     if result.get('intent') != 'cash_movement':
-        return jsonify({'success': False, 'message': 'Bu işlem henüz otomatik uygulanamaz. Şimdilik sadece kasa/banka para hareketleri onayla kaydedilebilir.'}), 400
+        return jsonify({'success': False, 'message': 'Bu işlem henüz otomatik uygulanamaz. Şimdilik kasa/banka hareketleri ve müşteri tahsilatları onayla kaydedilebilir.'}), 400
 
     action = result.get('action') or {}
     amount = assistant_parse_money(action.get('amount'))

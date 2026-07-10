@@ -89,6 +89,13 @@ class AssistantCommandAnalyzer:
                     ('Durum', 'Onay Bekliyor'),
                 ],
                 route_hint='/cariler',
+                note='Cari eşleşmesini seçip onay verirseniz tahsilat kaydı oluşturulur.',
+                action={
+                    'type': 'cari_collection',
+                    'amount': amount.get('value') if amount else None,
+                    'payment_method': 'Nakit',
+                    'description': 'Esstok Konuş tahsilat kaydı',
+                },
             )
 
         if self._is_supplier_payment(text):
@@ -514,10 +521,11 @@ class AssistantCommandAnalyzer:
 
     @staticmethod
     def _clean_entity(text):
+        text = re.sub(r'\b([a-zçğıöşü0-9]+)(dan|den|tan|ten)\b', r'\1', text or '', flags=re.IGNORECASE)
         cleaned = re.sub(
-            r'\b(stoğa|stoga|stoktan|stok|ürün|urun|ekle|giriş|giris|çıkış|cikis|düş|dus|adet|tane|tl|lira|tahsilat|ödeme|odeme|al|yap|sat|satış|satis|pos|listele|göster|goster|bugünkü|bugunku|kritik|borcu|bakiye|kasaya|kasadan|müşteriden|musteriden|tedarikçiye|tedarikciye|teklif|oluştur|olustur|hazırla|hazirla|cari|müşteri|musteri)\b',
+            r'\b(stoğa|stoga|stoktan|stok|ürün|urun|ekle|giriş|giris|çıkış|cikis|düş|dus|adet|tane|tl|lira|tahsilat|ödeme|odeme|al|yap|sat|satış|satis|pos|listele|göster|goster|bugünkü|bugunku|kritik|borcu|bakiye|kasaya|kasadan|müşteriden|musteriden|tedarikçiye|tedarikciye|teklif|oluştur|olustur|hazırla|hazirla|cari|müşteri|musteri|dan|den|tan|ten)\b',
             ' ',
-            text or '',
+            text,
             flags=re.IGNORECASE,
         )
         cleaned = re.sub(r'\d+(?:[.,]\d+)?', ' ', cleaned)

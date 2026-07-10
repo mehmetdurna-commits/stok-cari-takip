@@ -33,7 +33,8 @@
 
     function cleanEntity(text) {
         return String(text || '')
-            .replace(/\b(stoğa|stoga|stoktan|stok|ürün|urun|ekle|giriş|giris|çıkış|cikis|düş|dus|adet|tane|tl|lira|tahsilat|ödeme|odeme|al|yap|sat|satış|satis|pos|listele|göster|goster|bugünkü|bugunku|kritik|borcu|bakiye|kasaya|kasadan|müşteriden|musteriden|tedarikçiye|tedarikciye|teklif|oluştur|olustur|hazırla|hazirla|cari|müşteri|musteri)\b/gi, ' ')
+            .replace(/\b([a-zçğıöşü0-9]+)(dan|den|tan|ten)\b/gi, '$1')
+            .replace(/\b(stoğa|stoga|stoktan|stok|ürün|urun|ekle|giriş|giris|çıkış|cikis|düş|dus|adet|tane|tl|lira|tahsilat|ödeme|odeme|al|yap|sat|satış|satis|pos|listele|göster|goster|bugünkü|bugunku|kritik|borcu|bakiye|kasaya|kasadan|müşteriden|musteriden|tedarikçiye|tedarikciye|teklif|oluştur|olustur|hazırla|hazirla|cari|müşteri|musteri|dan|den|tan|ten)\b/gi, ' ')
             .replace(/\d+(?:[.,]\d+)?/g, ' ')
             .replace(/\s+/g, ' ')
             .trim();
@@ -723,7 +724,7 @@
                     <span class="material-symbols-outlined shrink-0 text-base">open_in_new</span>
                 </a>
             ` : '';
-            const confirmHtml = result.executable && result.draftReady ? `
+            const confirmHtml = this.canConfirmResult(result) ? `
                 <button type="button" data-assistant-confirm="1" class="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700">
                     <span class="material-symbols-outlined text-lg">verified</span>
                     Onay Ekranını Aç
@@ -790,11 +791,12 @@
         }
 
         openConfirmModal() {
-            if (!this.currentResult || !this.currentResult.executable) return;
+            if (!this.canConfirmResult(this.currentResult)) return;
             const modal = this.ensureConfirmModal();
-            modal.querySelector('[data-confirm-title]').textContent = this.currentResult.confirmationTitle || 'İşlemi onayla';
-            modal.querySelector('[data-confirm-message]').textContent = this.currentResult.confirmationMessage || this.currentResult.summary || '';
-            const detailRows = (this.currentResult.fields || []).filter((field) => {
+            modal.querySelector('[data-confirm-title]').textContent = this.confirmationTitle();
+            modal.querySelector('[data-confirm-message]').textContent = this.confirmationMessage();
+            const detailFields = this.confirmationFields();
+            const detailRows = detailFields.filter((field) => {
                 const label = Array.isArray(field) ? field[0] : field.label;
                 return label !== 'Durum';
             }).map((field) => {
@@ -819,7 +821,7 @@
         }
 
         async executeCurrentAction() {
-            if (!this.currentResult || !this.currentResult.executable) return;
+            if (!this.canConfirmResult(this.currentResult)) return;
             const approveButton = this.confirmModal ? this.confirmModal.querySelector('[data-confirm-approve]') : null;
             if (approveButton) {
                 approveButton.disabled = true;
@@ -833,7 +835,10 @@
                         'Content-Type': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: JSON.stringify({ command: this.input.value || '' })
+                    body: JSON.stringify({
+                        command: this.input.value || '',
+                        selected_candidate_id: this.selectedCandidate ? this.selectedCandidate.id : null
+                    })
                 });
                 const payload = await response.json();
                 if (!response.ok || !payload.success) {
@@ -867,10 +872,44 @@
                     </div>
                     <a href="${escapeHtml(this.safeInternalRoute(payload.redirect_url || '/onmuhasebe/hesaplar'))}" class="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100">
                         <span class="material-symbols-outlined text-lg">open_in_new</span>
-                        Para hesaplarına git
+                        İlgili ekrana git
                     </a>
                 </div>
             `;
+        }
+
+        canConfirmResult(result) {
+            if (!result) return false;
+            if (result.intent === 'cash_movement') return Boolean(result.executable && result.draftReady);
+            if (result.intent === 'collection') {
+                return Boolean(result.draftReady && (!result.requiresMatch || this.selectedCandidate || (result.candidates || []).length === 1));
+            }
+            return false;
+        }
+
+        confirmationTitle() {
+            if (!this.currentResult) return 'İşlemi onayla';
+            if (this.currentResult.intent === 'collection') return 'Tahsilatı onayla';
+            return this.currentResult.confirmationTitle || 'İşlemi onayla';
+        }
+
+        confirmationMessage() {
+            if (!this.currentResult) return '';
+            if (this.currentResult.intent === 'collection') {
+                const candidate = this.selectedCandidate || ((this.currentResult.candidates || []).length === 1 ? this.currentResult.candidates[0] : null);
+                const amount = assistantResultField(this.currentResult, 'Tutar') || 'Belirtilen tutar';
+                return `${candidate ? candidate.label : 'Seçili cari'} için ${amount} tahsilat kaydedilecek.`;
+            }
+            return this.currentResult.confirmationMessage || this.currentResult.summary || '';
+        }
+
+        confirmationFields() {
+            const fields = this.currentResult && Array.isArray(this.currentResult.fields) ? [...this.currentResult.fields] : [];
+            if (this.currentResult && this.currentResult.intent === 'collection') {
+                const candidate = this.selectedCandidate || ((this.currentResult.candidates || []).length === 1 ? this.currentResult.candidates[0] : null);
+                if (candidate) fields.splice(1, 0, ['Seçili Cari', candidate.label]);
+            }
+            return fields;
         }
 
         getActiveProductCandidate() {
