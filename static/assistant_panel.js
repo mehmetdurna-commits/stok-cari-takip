@@ -209,6 +209,8 @@
             this.recognition = null;
             this.currentResult = null;
             this.selectedCandidate = null;
+            this.historyKey = 'esstok_assistant_recent_commands';
+            this.history = this.loadHistory();
         }
 
         init() {
@@ -232,9 +234,17 @@
 
             this.result.addEventListener('click', (event) => {
                 const candidateButton = event.target.closest('[data-assistant-candidate-index]');
-                if (!candidateButton) return;
-                const index = Number(candidateButton.dataset.assistantCandidateIndex);
-                this.selectCandidate(index);
+                if (candidateButton) {
+                    const index = Number(candidateButton.dataset.assistantCandidateIndex);
+                    this.selectCandidate(index);
+                    return;
+                }
+
+                const historyButton = event.target.closest('[data-assistant-history-index]');
+                if (historyButton) {
+                    const index = Number(historyButton.dataset.assistantHistoryIndex);
+                    this.useHistory(index);
+                }
             });
 
             this.input.addEventListener('keydown', (event) => {
@@ -283,6 +293,7 @@
             const result = await this.analyzeWithApi(command);
             this.currentResult = result;
             this.selectedCandidate = null;
+            this.saveHistory(command);
             this.renderResult(result);
             if (!command.trim() && window.showToast) {
                 window.showToast('Önce bir komut yaz kral.', 'warning', 3500);
@@ -364,6 +375,7 @@
             const selectedHtml = this.renderSelectedCandidate();
             const readinessHtml = this.renderReadiness(result);
             const actionPreviewHtml = this.renderActionPreview(result);
+            const historyHtml = this.renderHistory();
             this.result.innerHTML = `
                 <div class="space-y-3">
                     <div class="flex items-start justify-between gap-3">
@@ -380,10 +392,59 @@
                     ${selectedHtml}
                     ${actionPreviewHtml}
                     ${routeHtml}
+                    ${historyHtml}
                     <div class="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/25 dark:text-amber-200">
                         <span class="font-black">Güvenlik:</span> Kullanıcı onayı olmadan hiçbir stok, cari veya kasa işlemi yapılmaz.
                     </div>
                     <p class="text-xs font-semibold leading-5 text-slate-500 dark:text-slate-400">${escapeHtml(result.note)}</p>
+                </div>
+            `;
+        }
+
+        loadHistory() {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(this.historyKey) || '[]');
+                return Array.isArray(parsed) ? parsed.filter(Boolean).slice(0, 5) : [];
+            } catch (error) {
+                return [];
+            }
+        }
+
+        saveHistory(command) {
+            const value = String(command || '').trim();
+            if (!value) return;
+            this.history = [value]
+                .concat(this.history.filter((item) => item !== value))
+                .slice(0, 5);
+            try {
+                localStorage.setItem(this.historyKey, JSON.stringify(this.history));
+            } catch (error) {
+                console.warn('Asistan komut geçmişi kaydedilemedi:', error);
+            }
+        }
+
+        useHistory(index) {
+            const command = this.history[index];
+            if (!command) return;
+            this.input.value = command;
+            this.analyze();
+        }
+
+        renderHistory() {
+            if (!this.history.length) return '';
+            return `
+                <div class="rounded-3xl border border-slate-200 bg-white/80 p-3 dark:border-slate-800 dark:bg-slate-950/30">
+                    <div class="mb-2 flex items-center justify-between gap-3">
+                        <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Son Komutlar</p>
+                        <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-500 dark:bg-slate-800 dark:text-slate-300">Bu cihaz</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        ${this.history.map((item, index) => `
+                            <button type="button" data-assistant-history-index="${index}" class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:bg-primary-50 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-primary-900/60 dark:hover:bg-primary-950/20 dark:hover:text-primary-300">
+                                ${escapeHtml(item)}
+                            </button>
+                        `).join('')}
+                    </div>
                 </div>
             `;
         }

@@ -4827,13 +4827,37 @@ def assistant_field_value(result, label):
     return ''
 
 
+def assistant_tenant_ids():
+    try:
+        if not getattr(current_user, 'is_authenticated', False):
+            return []
+        return tenant_user_ids()
+    except Exception:
+        return []
+
+
+def assistant_missing_fields(result):
+    missing = []
+    for field in result.get('fields', []):
+        if not isinstance(field, dict):
+            continue
+        value = (field.get('value') or '').strip()
+        label = field.get('label') or ''
+        if value in {'', 'Eksik', 'Belirsiz'} and label not in {'Durum'}:
+            missing.append(label)
+    return missing
+
+
 def assistant_product_candidates(term, limit=5):
     term = (term or '').strip()
     if not term or term == 'Eksik':
         return []
+    tenant_ids = assistant_tenant_ids()
+    if not tenant_ids:
+        return []
     search = f'%{term}%'
     products = Urun.query.filter(
-        Urun.user_id.in_(tenant_user_ids()),
+        Urun.user_id.in_(tenant_ids),
         or_(Urun.urun_adi.ilike(search), Urun.barkod.ilike(search))
     ).order_by(Urun.urun_adi.asc()).limit(limit).all()
     return [{
@@ -4848,9 +4872,12 @@ def assistant_cari_candidates(term, limit=5):
     term = (term or '').strip()
     if not term or term == 'Eksik':
         return []
+    tenant_ids = assistant_tenant_ids()
+    if not tenant_ids:
+        return []
     search = f'%{term}%'
     cariler_query = Cari.query.filter(
-        Cari.user_id.in_(tenant_user_ids()),
+        Cari.user_id.in_(tenant_ids),
         or_(Cari.unvan.ilike(search), Cari.yetkili.ilike(search), Cari.telefon.ilike(search))
     )
     cariler = cariler_query.order_by(Cari.unvan.asc()).limit(limit).all()
@@ -4865,14 +4892,20 @@ def assistant_cari_candidates(term, limit=5):
 def enrich_assistant_analysis(result):
     intent = result.get('intent')
     candidates = []
+    requires_match = False
     if intent in {'stock_in', 'stock_out'}:
         candidates = assistant_product_candidates(assistant_field_value(result, 'Ürün'))
         result['candidate_type'] = 'product'
+        requires_match = True
     elif intent in {'collection', 'supplier_payment', 'customer_balance'}:
         candidates = assistant_cari_candidates(assistant_field_value(result, 'Cari'))
         result['candidate_type'] = 'cari'
+        requires_match = True
 
     result['candidates'] = candidates
+    result['missing_fields'] = assistant_missing_fields(result)
+    result['requires_match'] = requires_match
+    result['draft_ready'] = not result['missing_fields'] and (not requires_match or bool(candidates))
     if candidates:
         result['match_status'] = 'Aday bulundu'
         result['note'] = 'Bu sürümde işlem yapılmaz. Bulunan eşleşmeler sadece kontrol amaçlı gösterilir.'
@@ -4881,6 +4914,8 @@ def enrich_assistant_analysis(result):
         result['note'] = 'Bu sürümde işlem yapılmaz. Ürün veya cari eşleşmesi bulunamazsa kullanıcıdan netleştirme istenir.'
     else:
         result['match_status'] = 'Eşleşme gerekmiyor'
+        if not result['missing_fields'] and intent != 'unknown':
+            result['draft_ready'] = True
     return result
 
 
