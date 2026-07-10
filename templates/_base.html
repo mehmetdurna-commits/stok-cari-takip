@@ -1339,6 +1339,8 @@
             right: 1.25rem;
             bottom: 5.75rem;
             z-index: 116;
+            display: flex;
+            flex-direction: column;
             width: min(29rem, calc(100vw - 2rem));
             max-height: min(42rem, calc(100vh - 7rem));
             overflow: hidden;
@@ -1356,10 +1358,23 @@
         }
 
         .voice-assistant-glow {
+            display: flex;
+            min-height: 0;
+            max-height: inherit;
+            flex: 1;
+            flex-direction: column;
             background:
                 radial-gradient(circle at 15% 15%, rgba(34, 211, 238, 0.24), transparent 30%),
                 radial-gradient(circle at 85% 0%, rgba(99, 102, 241, 0.24), transparent 28%),
                 linear-gradient(135deg, rgba(248, 250, 252, 0.95), rgba(239, 246, 255, 0.88));
+        }
+
+        .voice-assistant-body {
+            min-height: 0;
+            flex: 1;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            scroll-padding-bottom: 6rem;
         }
 
         .dark .voice-assistant-glow {
@@ -1739,7 +1754,7 @@
                             </div>
                         </div>
 
-                        <div class="max-h-[calc(100vh-12rem)] space-y-4 overflow-y-auto p-4 pb-8">
+                        <div class="voice-assistant-body space-y-4 p-4 pb-24">
                             <div class="rounded-3xl border border-slate-200 bg-white/86 p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/72">
                                 <label for="voice-assistant-input" class="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-400">Komut</label>
                                 <textarea id="voice-assistant-input" rows="3" class="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-primary-400 focus:bg-white focus:ring-4 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-950/60 dark:text-white dark:focus:border-primary-500" placeholder="Örn: Stoğa 100 adet Selpak ekle"></textarea>
