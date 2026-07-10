@@ -324,7 +324,10 @@
                 note: result.note || 'Bu sürümde işlem yapılmaz, sadece analiz edilir.',
                 matchStatus: result.match_status || '',
                 candidateType: result.candidate_type || '',
-                candidates: Array.isArray(result.candidates) ? result.candidates : []
+                candidates: Array.isArray(result.candidates) ? result.candidates : [],
+                missingFields: Array.isArray(result.missing_fields) ? result.missing_fields : [],
+                requiresMatch: Boolean(result.requires_match),
+                draftReady: Boolean(result.draft_ready)
             };
         }
 
@@ -359,6 +362,7 @@
             ` : '';
             const candidatesHtml = this.renderCandidates(result);
             const selectedHtml = this.renderSelectedCandidate();
+            const readinessHtml = this.renderReadiness(result);
             const actionPreviewHtml = this.renderActionPreview(result);
             this.result.innerHTML = `
                 <div class="space-y-3">
@@ -371,6 +375,7 @@
                     </div>
                     <div class="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold leading-6 text-white dark:bg-white dark:text-slate-950">${escapeHtml(result.summary)}</div>
                     <div class="grid gap-2">${fieldsHtml}</div>
+                    ${readinessHtml}
                     ${candidatesHtml}
                     ${selectedHtml}
                     ${actionPreviewHtml}
@@ -379,6 +384,41 @@
                         <span class="font-black">Güvenlik:</span> Kullanıcı onayı olmadan hiçbir stok, cari veya kasa işlemi yapılmaz.
                     </div>
                     <p class="text-xs font-semibold leading-5 text-slate-500 dark:text-slate-400">${escapeHtml(result.note)}</p>
+                </div>
+            `;
+        }
+
+        renderReadiness(result) {
+            const missing = result.missingFields || [];
+            const matchNeeded = result.requiresMatch && !this.selectedCandidate;
+            const ready = result.draftReady && !matchNeeded;
+            const statusClass = ready
+                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
+                : 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300';
+            const items = [];
+            if (missing.length) {
+                missing.forEach((field) => items.push(`Eksik alan: ${field}`));
+            }
+            if (matchNeeded) {
+                items.push(result.candidateType === 'product' ? 'Ürün eşleşmesi seçilmeli' : 'Cari eşleşmesi seçilmeli');
+            }
+            if (!items.length) {
+                items.push('Taslak analiz için yeterli görünüyor');
+            }
+            return `
+                <div class="rounded-3xl border border-slate-200 bg-white/80 p-3 dark:border-slate-800 dark:bg-slate-950/30">
+                    <div class="mb-2 flex items-center justify-between gap-3">
+                        <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Taslak Kontrolü</p>
+                        <span class="rounded-full px-2.5 py-1 text-[11px] font-black ${statusClass}">${ready ? 'Hazır' : 'Kontrol Gerekli'}</span>
+                    </div>
+                    <div class="space-y-1.5">
+                        ${items.map((item) => `
+                            <div class="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300">
+                                <span class="material-symbols-outlined text-base ${ready ? 'text-emerald-500' : 'text-amber-500'}">${ready ? 'check_circle' : 'info'}</span>
+                                ${escapeHtml(item)}
+                            </div>
+                        `).join('')}
+                    </div>
                 </div>
             `;
         }
@@ -437,7 +477,14 @@
 
         renderActionPreview(result) {
             if (!result || result.intent === 'unknown') return '';
-            const isReady = Boolean(this.selectedCandidate) || !['stock_in', 'stock_out', 'collection', 'supplier_payment', 'customer_balance'].includes(result.intent);
+            const isReady = (result.draftReady && (!result.requiresMatch || Boolean(this.selectedCandidate)));
+            const safeRoute = this.safeInternalRoute(result.routeHint);
+            const routeButton = result.routeHint ? `
+                <a href="${escapeHtml(safeRoute)}" class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-2xl border border-primary-100 bg-primary-50 px-3 py-2 text-xs font-black text-primary-700 transition hover:bg-primary-100 dark:border-primary-900/40 dark:bg-primary-950/25 dark:text-primary-300">
+                    <span class="material-symbols-outlined text-base">open_in_new</span>
+                    Ekrana Git
+                </a>
+            ` : '';
             return `
                 <div class="rounded-3xl border border-slate-200 bg-white/80 p-3 dark:border-slate-800 dark:bg-slate-950/30">
                     <div class="flex items-center justify-between gap-3">
@@ -445,12 +492,21 @@
                             <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Sonraki Faz Önizlemesi</p>
                             <p class="mt-1 text-sm font-bold text-slate-700 dark:text-slate-200">${isReady ? 'Bu taslak ileride onay kartına dönüşebilir.' : 'Önce doğru kayıt seçilmelidir.'}</p>
                         </div>
-                        <button type="button" disabled class="shrink-0 rounded-2xl bg-slate-200 px-3 py-2 text-xs font-black text-slate-500 opacity-70 dark:bg-slate-800 dark:text-slate-400">
-                            Onayla Pasif
-                        </button>
+                        <div class="flex shrink-0 flex-col gap-2 sm:flex-row">
+                            ${routeButton}
+                            <button type="button" disabled class="rounded-2xl bg-slate-200 px-3 py-2 text-xs font-black text-slate-500 opacity-70 dark:bg-slate-800 dark:text-slate-400">
+                                Onayla Pasif
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
+        }
+
+        safeInternalRoute(route) {
+            const value = String(route || '').trim();
+            if (!value.startsWith('/') || value.startsWith('//')) return '#';
+            return value;
         }
 
         startListening() {
