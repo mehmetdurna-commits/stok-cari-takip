@@ -36,6 +36,10 @@ class AssistantCommandAnalyzer:
                 ],
             )
 
+        help_result = self._help_answer(text)
+        if help_result:
+            return self._result(**help_result)
+
         if self._is_stock_in(text):
             product = self._clean_entity(text)
             return self._result(
@@ -203,6 +207,96 @@ class AssistantCommandAnalyzer:
                 normalized_fields.append(field)
         result['fields'] = normalized_fields
         return result
+
+    @staticmethod
+    def _help_answer(text):
+        help_topics = [
+            (
+                ('nasıl satış', 'satis nasil', 'satış nasıl', 'satışı nasıl', 'satisi nasil', 'pos nasıl', 'pos nasil'),
+                {
+                    'intent': 'help_pos',
+                    'title': 'POS satışı nasıl yapılır?',
+                    'confidence': 'Yüksek',
+                    'summary': 'POS ekranında ürünü barkodla okutun veya arayın, sepete ekleyin, ödeme tipini seçin ve satışı tamamlayın.',
+                    'fields': [
+                        ('1', 'Ürünü okut veya ara'),
+                        ('2', 'Sepeti kontrol et'),
+                        ('3', 'Nakit, kart veya veresiye seç'),
+                        ('4', 'Satışı tamamla'),
+                    ],
+                    'route_hint': '/pos',
+                    'note': 'Bu cevap bilgilendirme amaçlıdır; işlem yapılmaz.',
+                },
+            ),
+            (
+                ('stok nasıl', 'stok nasil', 'ürün nasıl', 'urun nasil'),
+                {
+                    'intent': 'help_stock',
+                    'title': 'Stok nasıl yönetilir?',
+                    'confidence': 'Yüksek',
+                    'summary': 'Ürün kartlarını Ürünler ekranından açabilir, stok girişlerini Stok Girişi ekranından yapabilirsiniz.',
+                    'fields': [
+                        ('Ürün Kartı', 'Ürün adı, barkod, fiyat ve kritik stok bilgisi'),
+                        ('Stok Girişi', 'Alınan ürün miktarını stoğa ekler'),
+                        ('Kritik Stok', 'Azalan ürünleri takip etmeyi kolaylaştırır'),
+                    ],
+                    'route_hint': '/urunler',
+                    'note': 'Bu cevap bilgilendirme amaçlıdır; işlem yapılmaz.',
+                },
+            ),
+            (
+                ('cari nasıl', 'cari nasil', 'cari hesap nasıl', 'cari hesap nasil', 'tahsilat nasıl', 'tahsilat nasil', 'müşteri borcu', 'musteri borcu'),
+                {
+                    'intent': 'help_cari',
+                    'title': 'Cari hesap nasıl takip edilir?',
+                    'confidence': 'Yüksek',
+                    'summary': 'Cariler ekranında müşteri ve tedarikçileri takip eder, tahsilat ve ödeme hareketlerini kayıt altına alırsınız.',
+                    'fields': [
+                        ('Müşteri', 'Veresiye satış sonrası borç oluşur'),
+                        ('Tahsilat', 'Müşteri borcunu azaltır'),
+                        ('Ekstre', 'Tüm cari hareketleri tarih sırasıyla gösterir'),
+                    ],
+                    'route_hint': '/cariler',
+                    'note': 'Bu cevap bilgilendirme amaçlıdır; işlem yapılmaz.',
+                },
+            ),
+            (
+                ('teklif nasıl', 'teklif nasil'),
+                {
+                    'intent': 'help_quote',
+                    'title': 'Teklif nasıl hazırlanır?',
+                    'confidence': 'Yüksek',
+                    'summary': 'Teklifler ekranından cari seçip ürün kalemlerini eklersiniz; ardından yazdırılabilir teklif çıktısı alabilirsiniz.',
+                    'fields': [
+                        ('1', 'Cari seç'),
+                        ('2', 'Ürün kalemlerini ekle'),
+                        ('3', 'KDV ve geçerlilik bilgilerini kontrol et'),
+                        ('4', 'Teklifi yazdır veya kaydet'),
+                    ],
+                    'route_hint': '/teklifler',
+                    'note': 'Bu cevap bilgilendirme amaçlıdır; işlem yapılmaz.',
+                },
+            ),
+            (
+                ('rapor', 'bugün ne oldu', 'bugun ne oldu', 'özet', 'ozet'),
+                {
+                    'intent': 'help_reports',
+                    'title': 'İşletme özeti nereden görülür?',
+                    'confidence': 'Yüksek',
+                    'summary': 'Ana Panel ve Raporlar ekranları satış, stok ve cari durumunu hızlıca görmeniz için hazırlanmıştır.',
+                    'fields': [
+                        ('Ana Panel', 'Güncel işletme durumunu gösterir'),
+                        ('Raporlar', 'Satış, stok ve cari özetlerini derler'),
+                    ],
+                    'route_hint': '/dashboard',
+                    'note': 'Bu cevap bilgilendirme amaçlıdır; işlem yapılmaz.',
+                },
+            ),
+        ]
+        for keywords, result in help_topics:
+            if any(keyword in text for keyword in keywords):
+                return result
+        return None
 
     @staticmethod
     def _normalize(value):

@@ -49,6 +49,73 @@
         return Object.assign({}, DEFAULT_RESULT, overrides || {});
     }
 
+    function helpAnswer(text) {
+        const topics = [
+            {
+                keywords: ['nasıl satış', 'satis nasil', 'satış nasıl', 'satışı nasıl', 'satisi nasil', 'pos nasıl', 'pos nasil'],
+                result: {
+                    intent: 'help_pos',
+                    title: 'POS satışı nasıl yapılır?',
+                    confidence: 'Yüksek',
+                    summary: 'POS ekranında ürünü barkodla okutun veya arayın, sepete ekleyin, ödeme tipini seçin ve satışı tamamlayın.',
+                    fields: [['1', 'Ürünü okut veya ara'], ['2', 'Sepeti kontrol et'], ['3', 'Ödeme tipini seç'], ['4', 'Satışı tamamla']],
+                    routeHint: '/pos',
+                    note: 'Bu cevap bilgilendirme amaçlıdır; işlem yapılmaz.'
+                }
+            },
+            {
+                keywords: ['stok nasıl', 'stok nasil', 'ürün nasıl', 'urun nasil'],
+                result: {
+                    intent: 'help_stock',
+                    title: 'Stok nasıl yönetilir?',
+                    confidence: 'Yüksek',
+                    summary: 'Ürün kartlarını Ürünler ekranından açabilir, stok girişlerini Stok Girişi ekranından yapabilirsiniz.',
+                    fields: [['Ürün Kartı', 'Ad, barkod, fiyat ve kritik stok'], ['Stok Girişi', 'Alınan ürün miktarını stoğa ekler'], ['Kritik Stok', 'Azalan ürünleri gösterir']],
+                    routeHint: '/urunler',
+                    note: 'Bu cevap bilgilendirme amaçlıdır; işlem yapılmaz.'
+                }
+            },
+            {
+                keywords: ['cari nasıl', 'cari nasil', 'cari hesap nasıl', 'cari hesap nasil', 'tahsilat nasıl', 'tahsilat nasil', 'müşteri borcu', 'musteri borcu'],
+                result: {
+                    intent: 'help_cari',
+                    title: 'Cari hesap nasıl takip edilir?',
+                    confidence: 'Yüksek',
+                    summary: 'Cariler ekranında müşteri ve tedarikçileri takip eder, tahsilat ve ödeme hareketlerini kayıt altına alırsınız.',
+                    fields: [['Müşteri', 'Veresiye satış sonrası borç oluşur'], ['Tahsilat', 'Müşteri borcunu azaltır'], ['Ekstre', 'Hareketleri tarih sırasıyla gösterir']],
+                    routeHint: '/cariler',
+                    note: 'Bu cevap bilgilendirme amaçlıdır; işlem yapılmaz.'
+                }
+            },
+            {
+                keywords: ['teklif nasıl', 'teklif nasil'],
+                result: {
+                    intent: 'help_quote',
+                    title: 'Teklif nasıl hazırlanır?',
+                    confidence: 'Yüksek',
+                    summary: 'Teklifler ekranından cari seçip ürün kalemlerini eklersiniz; ardından yazdırılabilir teklif çıktısı alabilirsiniz.',
+                    fields: [['1', 'Cari seç'], ['2', 'Ürün kalemlerini ekle'], ['3', 'KDV ve geçerlilik bilgisini kontrol et'], ['4', 'Kaydet veya yazdır']],
+                    routeHint: '/teklifler',
+                    note: 'Bu cevap bilgilendirme amaçlıdır; işlem yapılmaz.'
+                }
+            },
+            {
+                keywords: ['rapor', 'bugün ne oldu', 'bugun ne oldu', 'özet', 'ozet'],
+                result: {
+                    intent: 'help_reports',
+                    title: 'İşletme özeti nereden görülür?',
+                    confidence: 'Yüksek',
+                    summary: 'Ana Panel ve Raporlar ekranları satış, stok ve cari durumunu hızlıca görmeniz için hazırlanmıştır.',
+                    fields: [['Ana Panel', 'Güncel işletme durumunu gösterir'], ['Raporlar', 'Satış, stok ve cari özetlerini derler']],
+                    routeHint: '/dashboard',
+                    note: 'Bu cevap bilgilendirme amaçlıdır; işlem yapılmaz.'
+                }
+            }
+        ];
+        const topic = topics.find((item) => item.keywords.some((keyword) => text.includes(keyword)));
+        return topic ? createAnalysisResult(topic.result) : null;
+    }
+
     function analyzeCommand(command) {
         const raw = String(command || '').trim();
         const text = normalizeCommand(raw);
@@ -63,6 +130,9 @@
                 ]
             });
         }
+
+        const helpResult = helpAnswer(text);
+        if (helpResult) return helpResult;
 
         if ((text.includes('stoğa') || text.includes('stoga') || text.includes('stok')) && (text.includes('ekle') || text.includes('giriş') || text.includes('giris'))) {
             const product = cleanEntity(text);
@@ -266,6 +336,8 @@
 
         init() {
             if (!this.panel || !this.input || !this.result) return;
+            document.body.appendChild(this.panel);
+            if (this.fab) document.body.appendChild(this.fab);
             this.bindEvents();
             this.renderWelcome();
             window.esstokAssistantPanel = this;
@@ -395,22 +467,19 @@
         }
 
         renderWelcome() {
-            const historyHtml = this.renderHistory();
             this.result.innerHTML = `
-                <div class="space-y-3">
-                    <div class="flex items-start gap-3">
+                <div class="space-y-3 text-sm">
+                    <div class="flex items-start gap-3 rounded-3xl bg-white/72 p-3 dark:bg-slate-950/30">
                         <span class="material-symbols-outlined rounded-2xl bg-primary-50 p-2 text-primary-600 dark:bg-primary-950/40 dark:text-primary-300">tips_and_updates</span>
                         <div>
                             <p class="font-black text-slate-800 dark:text-white">Esstok Konuş hazır.</p>
-                            <p class="mt-1 leading-6">Komutu yaz veya söyle; ben önce anladığım işlemi taslak olarak göstereyim.</p>
+                            <p class="mt-1 leading-6">Komut yazın, soru sorun veya sesli deneyin. İşlem yapmadan önce sadece taslak gösterilir.</p>
                         </div>
                     </div>
-                    <div class="grid gap-2 sm:grid-cols-3">
-                        <div class="rounded-2xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">Kayıt yapmaz</div>
-                        <div class="rounded-2xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 dark:bg-blue-950/30 dark:text-blue-300">Önce analiz eder</div>
-                        <div class="rounded-2xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">Onay ister</div>
+                    <div class="grid gap-2">
+                        <button type="button" data-assistant-history-index="-101" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">POS satışı nasıl yapılır?</button>
+                        <button type="button" data-assistant-history-index="-102" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Cari hesap nasıl takip edilir?</button>
                     </div>
-                    ${historyHtml}
                 </div>
             `;
         }
@@ -467,9 +536,6 @@
             ` : '';
             const candidatesHtml = this.renderCandidates(result);
             const selectedHtml = this.renderSelectedCandidate();
-            const readinessHtml = this.renderReadiness(result);
-            const actionPreviewHtml = this.renderActionPreview(result);
-            const historyHtml = this.renderHistory();
             this.result.innerHTML = `
                 <div class="space-y-3">
                     <div class="flex items-start justify-between gap-3">
@@ -481,12 +547,9 @@
                     </div>
                     <div class="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold leading-6 text-white dark:bg-white dark:text-slate-950">${escapeHtml(result.summary)}</div>
                     <div class="grid gap-2">${fieldsHtml}</div>
-                    ${readinessHtml}
                     ${candidatesHtml}
                     ${selectedHtml}
-                    ${actionPreviewHtml}
                     ${routeHtml}
-                    ${historyHtml}
                     <div class="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/25 dark:text-amber-200">
                         <span class="font-black">Güvenlik:</span> Kullanıcı onayı olmadan hiçbir stok, cari veya kasa işlemi yapılmaz.
                     </div>
@@ -518,6 +581,16 @@
         }
 
         useHistory(index) {
+            if (index === -101) {
+                this.input.value = 'POS satışı nasıl yapılır?';
+                this.analyze();
+                return;
+            }
+            if (index === -102) {
+                this.input.value = 'Cari hesap nasıl takip edilir?';
+                this.analyze();
+                return;
+            }
             const command = this.history[index];
             if (!command) return;
             this.input.value = command;
