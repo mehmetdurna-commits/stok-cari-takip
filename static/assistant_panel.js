@@ -673,9 +673,11 @@
                             <p class="mt-1 leading-6">Komut yazın, soru sorun veya sesli deneyin. İşlem yapmadan önce sadece taslak gösterilir.</p>
                         </div>
                     </div>
-                    <div class="grid gap-2">
+                    <div class="grid gap-2 sm:grid-cols-2">
                         <button type="button" data-assistant-history-index="-101" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">POS satışı nasıl yapılır?</button>
                         <button type="button" data-assistant-history-index="-102" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Cari hesap nasıl takip edilir?</button>
+                        <button type="button" data-assistant-history-index="-103" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Kritik stokları göster</button>
+                        <button type="button" data-assistant-history-index="-104" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Stoğa 10 adet Selpak ekle</button>
                     </div>
                 </div>
             `;
@@ -1036,6 +1038,16 @@
             }
             if (index === -102) {
                 this.input.value = 'Cari hesap nasıl takip edilir?';
+                this.analyze();
+                return;
+            }
+            if (index === -103) {
+                this.input.value = 'Kritik stokları göster';
+                this.analyze();
+                return;
+            }
+            if (index === -104) {
+                this.input.value = 'Stoğa 10 adet Selpak ekle';
                 this.analyze();
                 return;
             }
