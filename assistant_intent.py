@@ -39,6 +39,21 @@ class AssistantCommandAnalyzer:
         if self._is_cash_movement(text):
             return self._cash_movement_result(text, amount)
 
+        if self._is_today_summary(text):
+            return self._result(
+                intent='today_summary',
+                title='Bugün ne oldu?',
+                confidence='Yüksek',
+                summary='Bugünün işletme özeti hazırlanıyor.',
+                fields=[
+                    ('İşlem Türü', 'İşletme Özeti'),
+                    ('Dönem', 'Bugün'),
+                    ('Durum', 'Bilgi'),
+                ],
+                route_hint='/dashboard',
+                note='Bu cevap sadece bilgi verir; kullanıcı onayı olmadan işlem yapılmaz.',
+            )
+
         help_result = self._help_answer(text)
         if help_result:
             return self._result(**help_result)
@@ -573,6 +588,19 @@ class AssistantCommandAnalyzer:
     @staticmethod
     def _is_cari_create(text):
         return ('cari' in text or 'müşteri' in text or 'musteri' in text) and any(word in text for word in ('ekle', 'oluştur', 'olustur', 'aç', 'ac'))
+
+    @staticmethod
+    def _is_today_summary(text):
+        return any(phrase in text for phrase in (
+            'bugün ne oldu',
+            'bugun ne oldu',
+            'bugünkü özet',
+            'bugunku ozet',
+            'işletme özeti',
+            'isletme ozeti',
+            'bugün durum',
+            'bugun durum',
+        ))
 
     @staticmethod
     def _is_daily_sales(text):

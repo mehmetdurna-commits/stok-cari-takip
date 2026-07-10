@@ -677,7 +677,7 @@
                         <button type="button" data-assistant-history-index="-101" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">POS satışı nasıl yapılır?</button>
                         <button type="button" data-assistant-history-index="-102" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Cari hesap nasıl takip edilir?</button>
                         <button type="button" data-assistant-history-index="-103" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Kritik stokları göster</button>
-                        <button type="button" data-assistant-history-index="-104" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Stoğa 10 adet Selpak ekle</button>
+                        <button type="button" data-assistant-history-index="-104" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Bugün ne oldu?</button>
                     </div>
                 </div>
             `;
@@ -700,6 +700,7 @@
                 candidates: Array.isArray(result.candidates) ? result.candidates : [],
                 lookupType: result.lookup_type || '',
                 lookupItems: Array.isArray(result.lookup_items) ? result.lookup_items : [],
+                todaySummary: result.today_summary || null,
                 missingFields: Array.isArray(result.missing_fields) ? result.missing_fields : [],
                 requiresMatch: Boolean(result.requires_match),
                 draftReady: Boolean(result.draft_ready),
@@ -755,6 +756,7 @@
             const selectedHtml = this.renderSelectedCandidate();
             const customerBalanceHtml = this.renderCustomerBalanceAnswer(result);
             const criticalStockHtml = this.renderCriticalStockAnswer(result);
+            const todaySummaryHtml = this.renderTodaySummaryAnswer(result);
             this.result.innerHTML = `
                 <div class="space-y-3">
                     <div class="flex items-start justify-between gap-3">
@@ -767,6 +769,7 @@
                     <div class="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold leading-6 text-white dark:bg-white dark:text-slate-950">${escapeHtml(result.summary)}</div>
                     <div class="grid gap-2">${fieldsHtml}</div>
                     ${routeHtml}
+                    ${todaySummaryHtml}
                     ${candidatesHtml}
                     ${selectedHtml}
                     ${customerBalanceHtml}
@@ -1047,7 +1050,7 @@
                 return;
             }
             if (index === -104) {
-                this.input.value = 'Stoğa 10 adet Selpak ekle';
+                this.input.value = 'Bugün ne oldu?';
                 this.analyze();
                 return;
             }
@@ -1147,6 +1150,57 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            `;
+        }
+
+        renderTodaySummaryAnswer(result) {
+            if (!result || result.lookupType !== 'today_summary' || !result.todaySummary) return '';
+            const summary = result.todaySummary;
+            const payments = Array.isArray(summary.payment_breakdown) ? summary.payment_breakdown : [];
+            const recentSales = Array.isArray(summary.recent_sales) ? summary.recent_sales : [];
+            const paymentRows = payments.map((item) => `
+                <div class="flex items-center justify-between gap-2 rounded-2xl bg-white/80 px-3 py-2 text-xs dark:bg-slate-950/30">
+                    <span class="font-black text-slate-600 dark:text-slate-300">${escapeHtml(item.label)}</span>
+                    <span class="font-black text-slate-950 dark:text-white">${formatAssistantMoney(item.total)}</span>
+                </div>
+            `).join('');
+            const saleRows = recentSales.map((item) => `
+                <div class="flex items-center justify-between gap-2 text-xs font-bold text-slate-500 dark:text-slate-400">
+                    <span class="truncate">${escapeHtml(item.invoice)}</span>
+                    <span class="shrink-0">${escapeHtml(item.time)} · ${formatAssistantMoney(item.total)}</span>
+                </div>
+            `).join('');
+            return `
+                <div class="rounded-3xl border border-cyan-100 bg-gradient-to-br from-white to-cyan-50/70 p-3 dark:border-cyan-900/40 dark:from-slate-950/30 dark:to-cyan-950/10">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-[0.14em] text-cyan-700 dark:text-cyan-300">Bugün Ne Oldu?</p>
+                            <p class="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">${escapeHtml(summary.date || '')} işletme özeti</p>
+                        </div>
+                        <span class="material-symbols-outlined rounded-2xl bg-white p-2 text-cyan-700 shadow-sm dark:bg-slate-900 dark:text-cyan-300">monitoring</span>
+                    </div>
+                    <div class="mt-3 grid grid-cols-2 gap-2">
+                        <div class="rounded-2xl bg-white/85 px-3 py-2 dark:bg-slate-950/30">
+                            <p class="text-[10px] font-black uppercase tracking-wide text-slate-400">Satış</p>
+                            <p class="mt-1 text-sm font-black text-slate-950 dark:text-white">${formatAssistantMoney(summary.sales_total)}</p>
+                            <p class="text-[11px] font-bold text-slate-400">${formatAssistantNumber(summary.sales_count)} işlem</p>
+                        </div>
+                        <div class="rounded-2xl bg-white/85 px-3 py-2 dark:bg-slate-950/30">
+                            <p class="text-[10px] font-black uppercase tracking-wide text-slate-400">Tahsilat</p>
+                            <p class="mt-1 text-sm font-black text-emerald-700 dark:text-emerald-300">${formatAssistantMoney(summary.collections_total)}</p>
+                        </div>
+                        <div class="rounded-2xl bg-white/85 px-3 py-2 dark:bg-slate-950/30">
+                            <p class="text-[10px] font-black uppercase tracking-wide text-slate-400">Açık Cari</p>
+                            <p class="mt-1 text-sm font-black text-amber-700 dark:text-amber-300">${formatAssistantMoney(summary.open_receivable)}</p>
+                        </div>
+                        <div class="rounded-2xl bg-white/85 px-3 py-2 dark:bg-slate-950/30">
+                            <p class="text-[10px] font-black uppercase tracking-wide text-slate-400">Kritik Stok</p>
+                            <p class="mt-1 text-sm font-black text-rose-700 dark:text-rose-300">${formatAssistantNumber(summary.critical_count)} ürün</p>
+                        </div>
+                    </div>
+                    ${paymentRows ? `<div class="mt-3 space-y-2"><p class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Ödeme Dağılımı</p>${paymentRows}</div>` : ''}
+                    ${saleRows ? `<div class="mt-3 rounded-2xl bg-white/70 px-3 py-2 dark:bg-slate-950/25"><p class="mb-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Son Satışlar</p>${saleRows}</div>` : ''}
                 </div>
             `;
         }

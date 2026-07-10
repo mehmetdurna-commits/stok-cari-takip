@@ -4900,6 +4900,80 @@ def assistant_cari_candidates(term, limit=5):
     } for cari in cariler]
 
 
+def assistant_today_summary():
+    tenant_ids = assistant_tenant_ids()
+    today = local_today()
+    today_start, today_end = local_day_bounds(today)
+    empty = {
+        'date': today.strftime('%d.%m.%Y'),
+        'sales_count': 0,
+        'sales_total': 0,
+        'collections_total': 0,
+        'critical_count': 0,
+        'open_receivable': 0,
+        'payment_breakdown': [],
+        'recent_sales': [],
+    }
+    if not tenant_ids or not today_start or not today_end:
+        return empty
+
+    sales = Satis.query.filter(
+        Satis.user_id.in_(tenant_ids),
+        Satis.tarih >= today_start,
+        Satis.tarih < today_end,
+        Satis.durum != 'iptal'
+    ).order_by(Satis.tarih.desc()).all()
+    sales_total = sum(float(sale.genel_toplam or 0) for sale in sales)
+
+    sale_cash_transactions = CashTransaction.query.filter(
+        CashTransaction.user_id.in_(tenant_ids),
+        CashTransaction.tarih >= today_start,
+        CashTransaction.tarih < today_end,
+        CashTransaction.islem_tipi == 'giris',
+        CashTransaction.referans_tip == 'satis'
+    ).all()
+    payment_totals = {}
+    for transaction in sale_cash_transactions:
+        key = (transaction.odeme_turu or 'Belirtilmedi').strip() or 'Belirtilmedi'
+        payment_totals[key] = payment_totals.get(key, 0) + float(transaction.tutar or 0)
+
+    collections_total = db.session.query(func.coalesce(func.sum(CashTransaction.tutar), 0)).filter(
+        CashTransaction.user_id.in_(tenant_ids),
+        CashTransaction.tarih >= today_start,
+        CashTransaction.tarih < today_end,
+        CashTransaction.islem_tipi == 'giris',
+        CashTransaction.referans_tip.in_(('cari_tahsilat', 'assistant_tahsilat'))
+    ).scalar() or 0
+
+    critical_count = Urun.query.filter(
+        Urun.user_id.in_(tenant_ids),
+        func.coalesce(Urun.stok_miktari, 0) <= func.coalesce(Urun.kritik_stok, 0)
+    ).count()
+
+    open_receivable = sum(float(cari.bakiye or 0) for cari in Cari.query.filter(Cari.user_id.in_(tenant_ids)).all() if (cari.bakiye or 0) > 0)
+
+    return {
+        'date': today.strftime('%d.%m.%Y'),
+        'sales_count': len(sales),
+        'sales_total': round(sales_total, 2),
+        'collections_total': round(float(collections_total or 0), 2),
+        'critical_count': int(critical_count or 0),
+        'open_receivable': round(open_receivable, 2),
+        'payment_breakdown': [
+            {'label': key, 'total': round(total, 2)}
+            for key, total in sorted(payment_totals.items(), key=lambda item: item[1], reverse=True)[:4]
+        ],
+        'recent_sales': [
+            {
+                'invoice': sale.fatura_no,
+                'total': round(float(sale.genel_toplam or 0), 2),
+                'time': to_local_datetime(sale.tarih).strftime('%H:%M') if sale.tarih else '',
+            }
+            for sale in sales[:3]
+        ],
+    }
+
+
 def assistant_critical_stock_items(limit=8):
     tenant_ids = assistant_tenant_ids()
     if not tenant_ids:
@@ -4977,6 +5051,15 @@ def enrich_assistant_analysis(result):
             f"Kritik seviyede {len(critical_items)} ürün bulundu."
             if critical_items else
             "Kritik stok seviyesinde ürün görünmüyor."
+        )
+    elif intent == 'today_summary':
+        summary = assistant_today_summary()
+        result['lookup_type'] = 'today_summary'
+        result['today_summary'] = summary
+        result['summary'] = (
+            f"Bugün {summary['sales_count']} satış, {format_money(summary['sales_total'])} ciro görünüyor."
+            if summary['sales_count'] else
+            "Bugün henüz satış görünmüyor; kasa, cari ve stok durumu kontrol edildi."
         )
     elif intent == 'cash_movement':
         action = result.get('action') or {}
