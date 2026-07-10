@@ -4820,13 +4820,77 @@ def settings_notification_history():
     })
 
 
+def assistant_field_value(result, label):
+    for field in result.get('fields', []):
+        if isinstance(field, dict) and field.get('label') == label:
+            return (field.get('value') or '').strip()
+    return ''
+
+
+def assistant_product_candidates(term, limit=5):
+    term = (term or '').strip()
+    if not term or term == 'Eksik':
+        return []
+    search = f'%{term}%'
+    products = Urun.query.filter(
+        Urun.user_id.in_(tenant_user_ids()),
+        or_(Urun.urun_adi.ilike(search), Urun.barkod.ilike(search))
+    ).order_by(Urun.urun_adi.asc()).limit(limit).all()
+    return [{
+        'id': product.id,
+        'label': product.urun_adi,
+        'subtitle': f"{product.stok_miktari or 0:g} {product.birim or 'Adet'} stok · {product.depo_adi or 'Ana Depo'}",
+        'meta': product.barkod or '',
+    } for product in products]
+
+
+def assistant_cari_candidates(term, limit=5):
+    term = (term or '').strip()
+    if not term or term == 'Eksik':
+        return []
+    search = f'%{term}%'
+    cariler_query = Cari.query.filter(
+        Cari.user_id.in_(tenant_user_ids()),
+        or_(Cari.unvan.ilike(search), Cari.yetkili.ilike(search), Cari.telefon.ilike(search))
+    )
+    cariler = cariler_query.order_by(Cari.unvan.asc()).limit(limit).all()
+    return [{
+        'id': cari.id,
+        'label': cari.unvan,
+        'subtitle': f"{cari.tipi or 'Cari'} · Bakiye {format_money(cari.bakiye or 0)}",
+        'meta': cari.telefon or cari.yetkili or '',
+    } for cari in cariler]
+
+
+def enrich_assistant_analysis(result):
+    intent = result.get('intent')
+    candidates = []
+    if intent in {'stock_in', 'stock_out'}:
+        candidates = assistant_product_candidates(assistant_field_value(result, 'Ürün'))
+        result['candidate_type'] = 'product'
+    elif intent in {'collection', 'supplier_payment', 'customer_balance'}:
+        candidates = assistant_cari_candidates(assistant_field_value(result, 'Cari'))
+        result['candidate_type'] = 'cari'
+
+    result['candidates'] = candidates
+    if candidates:
+        result['match_status'] = 'Aday bulundu'
+        result['note'] = 'Bu sürümde işlem yapılmaz. Bulunan eşleşmeler sadece kontrol amaçlı gösterilir.'
+    elif result.get('candidate_type'):
+        result['match_status'] = 'Eşleşme bulunamadı'
+        result['note'] = 'Bu sürümde işlem yapılmaz. Ürün veya cari eşleşmesi bulunamazsa kullanıcıdan netleştirme istenir.'
+    else:
+        result['match_status'] = 'Eşleşme gerekmiyor'
+    return result
+
+
 @app.route('/api/assistant/analyze', methods=['POST'])
 @login_required
 def api_assistant_analyze():
     payload = request.get_json(silent=True) or {}
     command = (payload.get('command') or '').strip()
     analyzer = AssistantCommandAnalyzer()
-    result = analyzer.analyze(command)
+    result = enrich_assistant_analysis(analyzer.analyze(command))
     return jsonify({
         'success': True,
         'mode': 'analysis_only',
