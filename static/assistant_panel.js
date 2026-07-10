@@ -766,13 +766,13 @@
                     </div>
                     <div class="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold leading-6 text-white dark:bg-white dark:text-slate-950">${escapeHtml(result.summary)}</div>
                     <div class="grid gap-2">${fieldsHtml}</div>
+                    ${routeHtml}
                     ${candidatesHtml}
                     ${selectedHtml}
                     ${customerBalanceHtml}
                     ${criticalStockHtml}
                     ${posDraftHtml}
                     ${confirmHtml}
-                    ${routeHtml}
                     <div class="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/25 dark:text-amber-200">
                         <span class="font-black">Güvenlik:</span> Kullanıcı onayı olmadan hiçbir stok, cari veya kasa işlemi yapılmaz.
                     </div>
