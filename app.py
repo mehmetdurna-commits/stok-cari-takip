@@ -4893,14 +4893,16 @@ def enrich_assistant_analysis(result):
     intent = result.get('intent')
     candidates = []
     requires_match = False
-    if intent in {'stock_in', 'stock_out'}:
+    if intent in {'stock_in', 'stock_out', 'pos_sale'}:
         candidates = assistant_product_candidates(assistant_field_value(result, 'Ürün'))
         result['candidate_type'] = 'product'
         requires_match = True
-    elif intent in {'collection', 'supplier_payment', 'customer_balance'}:
+    elif intent in {'collection', 'supplier_payment', 'customer_balance', 'quote'}:
         candidates = assistant_cari_candidates(assistant_field_value(result, 'Cari'))
         result['candidate_type'] = 'cari'
         requires_match = True
+    elif intent == 'cari_create':
+        result['candidate_type'] = 'cari'
 
     result['candidates'] = candidates
     result['missing_fields'] = assistant_missing_fields(result)

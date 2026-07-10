@@ -33,7 +33,7 @@
 
     function cleanEntity(text) {
         return String(text || '')
-            .replace(/\b(stoğa|stoga|stoktan|stok|ekle|giriş|giris|çıkış|cikis|düş|dus|adet|tane|tl|lira|tahsilat|ödeme|odeme|al|yap|listele|göster|goster|bugünkü|bugunku|kritik|borcu|bakiye|kasaya|kasadan|müşteriden|musteriden|tedarikçiye|tedarikciye)\b/gi, ' ')
+            .replace(/\b(stoğa|stoga|stoktan|stok|ürün|urun|ekle|giriş|giris|çıkış|cikis|düş|dus|adet|tane|tl|lira|tahsilat|ödeme|odeme|al|yap|sat|satış|satis|pos|listele|göster|goster|bugünkü|bugunku|kritik|borcu|bakiye|kasaya|kasadan|müşteriden|musteriden|tedarikçiye|tedarikciye|teklif|oluştur|olustur|hazırla|hazirla|cari|müşteri|musteri)\b/gi, ' ')
             .replace(/\d+(?:[.,]\d+)?/g, ' ')
             .replace(/\s+/g, ' ')
             .trim();
@@ -132,6 +132,56 @@
             });
         }
 
+        const isSaleQuery = text.includes('göster') || text.includes('goster') || text.includes('listele') || text.includes('bugünkü') || text.includes('bugunku') || text.includes('günlük') || text.includes('gunluk');
+        if (!isSaleQuery && (text.includes('satış') || text.includes('satis') || text.includes('pos') || /\bsat\b/.test(text))) {
+            const product = cleanEntity(text);
+            return createAnalysisResult({
+                intent: 'pos_sale',
+                title: 'Hızlı satış taslağı',
+                confidence: product && amount ? 'Yüksek' : 'Orta',
+                summary: `${product || 'Seçilecek ürün'} için POS satış taslağı hazırlandı.`,
+                fields: [
+                    ['İşlem Türü', 'Hızlı Satış'],
+                    ['Ürün', product || 'Eksik'],
+                    ['Miktar', formatAmount(amount, 'adet')],
+                    ['Durum', 'Onay Bekliyor']
+                ],
+                routeHint: '/pos'
+            });
+        }
+
+        if (text.includes('teklif') && (text.includes('oluştur') || text.includes('olustur') || text.includes('hazırla') || text.includes('hazirla') || text.includes('aç') || text.includes('ac'))) {
+            const customer = cleanEntity(text);
+            return createAnalysisResult({
+                intent: 'quote',
+                title: 'Teklif oluşturma taslağı',
+                confidence: customer ? 'Orta' : 'Düşük',
+                summary: `${customer || 'Seçilecek cari'} için teklif oluşturma taslağı hazırlandı.`,
+                fields: [
+                    ['İşlem Türü', 'Teklif Oluştur'],
+                    ['Cari', customer || 'Eksik'],
+                    ['Durum', 'Onay Bekliyor']
+                ],
+                routeHint: '/teklif/ekle'
+            });
+        }
+
+        if ((text.includes('cari') || text.includes('müşteri') || text.includes('musteri')) && (text.includes('ekle') || text.includes('oluştur') || text.includes('olustur') || text.includes('aç') || text.includes('ac'))) {
+            const customer = cleanEntity(text);
+            return createAnalysisResult({
+                intent: 'cari_create',
+                title: 'Cari ekleme taslağı',
+                confidence: customer ? 'Orta' : 'Düşük',
+                summary: `${customer || 'Yeni cari'} için cari kartı açma taslağı hazırlandı.`,
+                fields: [
+                    ['İşlem Türü', 'Cari Ekle'],
+                    ['Cari', customer || 'Eksik'],
+                    ['Durum', 'Onay Bekliyor']
+                ],
+                routeHint: '/cari-ekle'
+            });
+        }
+
         if (text.includes('bugünkü satış') || text.includes('bugunku satis') || text.includes('günlük satış') || text.includes('gunluk satis')) {
             return createAnalysisResult({
                 intent: 'daily_sales',
@@ -206,6 +256,7 @@
             this.micButton = document.getElementById(this.options.micId);
             this.listening = document.getElementById(this.options.listeningId);
             this.fab = document.getElementById(this.options.fabId);
+            this.analyzeButton = this.panel ? this.panel.querySelector('[data-assistant-action="analyze"]') : null;
             this.recognition = null;
             this.currentResult = null;
             this.selectedCandidate = null;
@@ -216,6 +267,7 @@
         init() {
             if (!this.panel || !this.input || !this.result) return;
             this.bindEvents();
+            this.renderWelcome();
             window.esstokAssistantPanel = this;
         }
 
@@ -229,6 +281,7 @@
                     if (action === 'analyze') this.analyze();
                     if (action === 'example') this.fillExample(element.dataset.assistantExample || '');
                     if (action === 'mic') this.startListening();
+                    if (action === 'clear') this.clear();
                 });
             });
 
@@ -290,14 +343,34 @@
 
         async analyze() {
             const command = this.input.value || '';
+            this.setAnalyzing(true);
             const result = await this.analyzeWithApi(command);
             this.currentResult = result;
             this.selectedCandidate = null;
             this.saveHistory(command);
+            this.setAnalyzing(false);
             this.renderResult(result);
             if (!command.trim() && window.showToast) {
                 window.showToast('Önce bir komut yaz kral.', 'warning', 3500);
             }
+        }
+
+        clear() {
+            this.input.value = '';
+            this.currentResult = null;
+            this.selectedCandidate = null;
+            this.renderWelcome();
+            this.input.focus();
+        }
+
+        setAnalyzing(isAnalyzing) {
+            if (!this.analyzeButton) return;
+            this.analyzeButton.disabled = isAnalyzing;
+            this.analyzeButton.classList.toggle('opacity-70', isAnalyzing);
+            this.analyzeButton.classList.toggle('cursor-wait', isAnalyzing);
+            this.analyzeButton.innerHTML = isAnalyzing
+                ? '<span class="material-symbols-outlined text-lg animate-spin">progress_activity</span> Analiz Ediliyor'
+                : '<span class="material-symbols-outlined text-lg">psychology</span> Analiz Et';
         }
 
         async analyzeWithApi(command) {
@@ -319,6 +392,27 @@
                 console.warn('Assistant API kullanılamadı, yerel analiz devrede:', error);
             }
             return analyzeCommand(command);
+        }
+
+        renderWelcome() {
+            const historyHtml = this.renderHistory();
+            this.result.innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex items-start gap-3">
+                        <span class="material-symbols-outlined rounded-2xl bg-primary-50 p-2 text-primary-600 dark:bg-primary-950/40 dark:text-primary-300">tips_and_updates</span>
+                        <div>
+                            <p class="font-black text-slate-800 dark:text-white">Esstok Konuş hazır.</p>
+                            <p class="mt-1 leading-6">Komutu yaz veya söyle; ben önce anladığım işlemi taslak olarak göstereyim.</p>
+                        </div>
+                    </div>
+                    <div class="grid gap-2 sm:grid-cols-3">
+                        <div class="rounded-2xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">Kayıt yapmaz</div>
+                        <div class="rounded-2xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 dark:bg-blue-950/30 dark:text-blue-300">Önce analiz eder</div>
+                        <div class="rounded-2xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">Onay ister</div>
+                    </div>
+                    ${historyHtml}
+                </div>
+            `;
         }
 
         normalizeApiResult(result) {

@@ -100,6 +100,52 @@ class AssistantCommandAnalyzer:
                 route_hint='/cariler',
             )
 
+        if self._is_pos_sale(text):
+            product = self._clean_entity(text)
+            return self._result(
+                intent='pos_sale',
+                title='Hızlı satış taslağı',
+                confidence='Yüksek' if product and amount else 'Orta',
+                summary=f'{product or "Seçilecek ürün"} için POS satış taslağı hazırlandı.',
+                fields=[
+                    ('İşlem Türü', 'Hızlı Satış'),
+                    ('Ürün', product or 'Eksik'),
+                    ('Miktar', self._format_amount(amount, 'adet')),
+                    ('Durum', 'Onay Bekliyor'),
+                ],
+                route_hint='/pos',
+            )
+
+        if self._is_quote(text):
+            customer = self._clean_entity(text)
+            return self._result(
+                intent='quote',
+                title='Teklif oluşturma taslağı',
+                confidence='Orta' if customer else 'Düşük',
+                summary=f'{customer or "Seçilecek cari"} için teklif oluşturma taslağı hazırlandı.',
+                fields=[
+                    ('İşlem Türü', 'Teklif Oluştur'),
+                    ('Cari', customer or 'Eksik'),
+                    ('Durum', 'Onay Bekliyor'),
+                ],
+                route_hint='/teklif/ekle',
+            )
+
+        if self._is_cari_create(text):
+            customer = self._clean_entity(text)
+            return self._result(
+                intent='cari_create',
+                title='Cari ekleme taslağı',
+                confidence='Orta' if customer else 'Düşük',
+                summary=f'{customer or "Yeni cari"} için cari kartı açma taslağı hazırlandı.',
+                fields=[
+                    ('İşlem Türü', 'Cari Ekle'),
+                    ('Cari', customer or 'Eksik'),
+                    ('Durum', 'Onay Bekliyor'),
+                ],
+                route_hint='/cari-ekle',
+            )
+
         if self._is_daily_sales(text):
             return self._result(
                 intent='daily_sales',
@@ -185,7 +231,7 @@ class AssistantCommandAnalyzer:
     @staticmethod
     def _clean_entity(text):
         cleaned = re.sub(
-            r'\b(stoğa|stoga|stoktan|stok|ekle|giriş|giris|çıkış|cikis|düş|dus|adet|tane|tl|lira|tahsilat|ödeme|odeme|al|yap|listele|göster|goster|bugünkü|bugunku|kritik|borcu|bakiye|kasaya|kasadan|müşteriden|musteriden|tedarikçiye|tedarikciye)\b',
+            r'\b(stoğa|stoga|stoktan|stok|ürün|urun|ekle|giriş|giris|çıkış|cikis|düş|dus|adet|tane|tl|lira|tahsilat|ödeme|odeme|al|yap|sat|satış|satis|pos|listele|göster|goster|bugünkü|bugunku|kritik|borcu|bakiye|kasaya|kasadan|müşteriden|musteriden|tedarikçiye|tedarikciye|teklif|oluştur|olustur|hazırla|hazirla|cari|müşteri|musteri)\b',
             ' ',
             text or '',
             flags=re.IGNORECASE,
@@ -208,6 +254,20 @@ class AssistantCommandAnalyzer:
     @staticmethod
     def _is_supplier_payment(text):
         return any(word in text for word in ('ödeme', 'odeme', 'tedarikçi', 'tedarikci'))
+
+    @staticmethod
+    def _is_pos_sale(text):
+        if any(word in text for word in ('göster', 'goster', 'listele', 'bugünkü', 'bugunku', 'günlük', 'gunluk')):
+            return False
+        return any(word in text for word in ('satış', 'satis', 'sat ', ' pos')) or ('sat' in text and 'tahsilat' not in text)
+
+    @staticmethod
+    def _is_quote(text):
+        return 'teklif' in text and any(word in text for word in ('oluştur', 'olustur', 'hazırla', 'hazirla', 'aç', 'ac'))
+
+    @staticmethod
+    def _is_cari_create(text):
+        return ('cari' in text or 'müşteri' in text or 'musteri' in text) and any(word in text for word in ('ekle', 'oluştur', 'olustur', 'aç', 'ac'))
 
     @staticmethod
     def _is_daily_sales(text):
