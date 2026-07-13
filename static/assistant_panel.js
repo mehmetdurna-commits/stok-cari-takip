@@ -34,7 +34,7 @@
     function cleanEntity(text) {
         return String(text || '')
             .replace(/\b([a-zçğıöşü0-9]+)(dan|den|tan|ten)\b/gi, '$1')
-            .replace(/\b(stoğa|stoga|stoktan|stok|ürün|urun|ekle|giriş|girişi|giris|girisi|çıkış|çıkışı|cikis|cikisi|düş|dus|adet|tane|tl|lira|tahsilat|ödeme|odeme|al|yap|sat|satış|satis|pos|listele|göster|goster|bugünkü|bugunku|kritik|borcu|bakiye|kasaya|kasadan|müşteriden|musteriden|tedarikçiye|tedarikciye|teklif|oluştur|olustur|hazırla|hazirla|cari|müşteri|musteri|dan|den|tan|ten)\b/gi, ' ')
+            .replace(/\b(stoğa|stoga|stoktan|stok|ürün|urun|ekle|giriş|girişi|giris|girisi|çıkış|çıkışı|cikis|cikisi|düş|dus|adet|tane|tl|lira|tahsilat|ödeme|odeme|al|yap|sat|satış|satis|pos|listele|göster|goster|bugünkü|bugunku|kritik|borcu|bakiye|kasaya|kasadan|müşteriden|musteriden|tedarikçiye|tedarikciye|teklif|oluştur|olustur|hazırla|hazirla|cari|müşteri|musteri|ne|kadar|nedir|kaç|kac|var|mi|mı|mu|mü|in|ın|un|ün|dan|den|tan|ten)\b/gi, ' ')
             .replace(/\d+(?:[.,]\d+)?/g, ' ')
             .replace(/\s+/g, ' ')
             .trim();
@@ -546,6 +546,8 @@
             this.selectedCandidate = null;
             this.historyKey = 'esstok_assistant_recent_commands';
             this.history = this.loadHistory();
+            this.contextKey = 'esstok_assistant_conversation_context';
+            this.conversationContext = this.loadConversationContext();
             this.confirmModal = null;
         }
 
@@ -641,15 +643,17 @@
         }
 
         async analyze() {
-            const command = this.input.value || '';
+            const rawCommand = this.input.value || '';
+            const command = this.resolveContextualCommand(rawCommand);
             this.setAnalyzing(true);
             try {
                 const result = await this.analyzeWithApi(command);
                 this.currentResult = result;
                 this.selectedCandidate = null;
-                this.saveHistory(command);
+                this.updateConversationContext(result);
+                this.saveHistory(rawCommand);
                 this.renderResult(result);
-                if (!command.trim() && window.showToast) {
+                if (!rawCommand.trim() && window.showToast) {
                     window.showToast('Önce bir komut yazın veya sesli komut verin.', 'warning', 3500);
                 }
             } catch (error) {
@@ -657,6 +661,7 @@
                 const fallback = analyzeCommand(command);
                 this.currentResult = fallback;
                 this.selectedCandidate = null;
+                this.updateConversationContext(fallback);
                 this.renderResult(fallback);
                 if (window.showToast) {
                     window.showToast('Bağlantı kurulamadı; komut cihazda analiz edildi.', 'warning', 4500);
@@ -670,8 +675,109 @@
             this.input.value = '';
             this.currentResult = null;
             this.selectedCandidate = null;
+            this.conversationContext = { product: null, cari: null };
+            this.saveConversationContext();
             this.renderWelcome();
             this.input.focus();
+        }
+
+        loadConversationContext() {
+            try {
+                const parsed = JSON.parse(sessionStorage.getItem(this.contextKey) || '{}');
+                return {
+                    product: parsed && parsed.product && parsed.product.id ? parsed.product : null,
+                    cari: parsed && parsed.cari && parsed.cari.id ? parsed.cari : null
+                };
+            } catch (error) {
+                return { product: null, cari: null };
+            }
+        }
+
+        saveConversationContext() {
+            try {
+                sessionStorage.setItem(this.contextKey, JSON.stringify(this.conversationContext));
+            } catch (error) {
+                console.debug('Asistan konuşma hafızası kaydedilemedi:', error);
+            }
+        }
+
+        rememberCandidate(kind, candidate) {
+            if (!candidate || !candidate.id || !candidate.label || !['product', 'cari'].includes(kind)) return;
+            this.conversationContext[kind] = {
+                id: candidate.id,
+                label: candidate.label,
+                subtitle: candidate.subtitle || ''
+            };
+            this.saveConversationContext();
+        }
+
+        updateConversationContext(result) {
+            if (!result || !['product', 'cari'].includes(result.candidateType)) return;
+            const candidates = Array.isArray(result.candidates) ? result.candidates : [];
+            if (candidates.length === 1) {
+                this.rememberCandidate(result.candidateType, candidates[0]);
+                return;
+            }
+            this.conversationContext[result.candidateType] = null;
+            this.saveConversationContext();
+        }
+
+        resolveContextualCommand(command) {
+            const raw = String(command || '').trim();
+            if (!raw) return raw;
+            const normalized = normalizeCommand(raw);
+            const product = this.conversationContext.product;
+            const cari = this.conversationContext.cari;
+
+            if (product) {
+                const productPronoun = /\b(bundan|bunu|bu üründen|bu urunden|aynısından|aynisindan)\b/i;
+                const shortProductAction = /\d+(?:[.,]\d+)?/.test(normalized)
+                    && /\b(sat|satış|satis|stoğa|stoga|stoktan|ekle|düş|dus)\b/i.test(normalized)
+                    && normalized.split(' ').length <= 7;
+                if (productPronoun.test(raw)) {
+                    return raw.replace(productPronoun, product.label);
+                }
+                if (shortProductAction && !normalized.includes(normalizeCommand(product.label))) {
+                    return `${product.label} ${raw}`;
+                }
+            }
+
+            if (cari) {
+                const cariPronoun = /\b(ondan|bunun|bu müşteriden|bu musteriden|bu cariden)\b/i;
+                if (cariPronoun.test(raw)) {
+                    return raw.replace(cariPronoun, cari.label);
+                }
+                if (/\b(tahsilat|tahsil et)\b/i.test(normalized) && !normalized.includes(normalizeCommand(cari.label))) {
+                    return `${raw} ${cari.label}`;
+                }
+                if (/(borcu|bakiye|alacağı|alacagi)/i.test(normalized) && !normalized.includes(normalizeCommand(cari.label))) {
+                    return `${cari.label} borcu`;
+                }
+            }
+
+            return raw;
+        }
+
+        renderConversationMemory() {
+            const product = this.conversationContext.product;
+            const cari = this.conversationContext.cari;
+            if (!product && !cari) return '';
+            const chips = [];
+            if (product) {
+                chips.push(`<span class="inline-flex max-w-full items-center gap-1.5 rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-black text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-300"><span class="material-symbols-outlined text-sm">inventory_2</span><span class="truncate">${escapeHtml(product.label)}</span></span>`);
+            }
+            if (cari) {
+                chips.push(`<span class="inline-flex max-w-full items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"><span class="material-symbols-outlined text-sm">person</span><span class="truncate">${escapeHtml(cari.label)}</span></span>`);
+            }
+            return `
+                <div class="rounded-2xl border border-slate-200 bg-white/75 px-3 py-2 dark:border-slate-800 dark:bg-slate-950/30">
+                    <div class="flex items-center justify-between gap-2">
+                        <p class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Konuşma Hafızası</p>
+                        <span class="text-[10px] font-bold text-slate-400">Temizle ile sıfırlanır</span>
+                    </div>
+                    <div class="mt-2 flex flex-wrap gap-2">${chips.join('')}</div>
+                </div>
+            `;
         }
 
         setAnalyzing(isAnalyzing) {
@@ -713,6 +819,7 @@
         }
 
         renderWelcome() {
+            const memoryHtml = this.renderConversationMemory();
             this.result.innerHTML = `
                 <div class="space-y-3 text-sm">
                     <div class="flex items-start gap-3 rounded-3xl bg-white/72 p-3 dark:bg-slate-950/30">
@@ -730,6 +837,7 @@
                         <button type="button" data-assistant-history-index="-103" class="flex min-h-12 items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300"><span class="material-symbols-outlined text-base text-blue-600">account_balance_wallet</span><span>Param nerede?</span></button>
                         <button type="button" data-assistant-history-index="-106" class="flex min-h-12 items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300"><span class="material-symbols-outlined text-base text-indigo-600">point_of_sale</span><span>POS nasıl kullanılır?</span></button>
                     </div>
+                    ${memoryHtml}
                 </div>
             `;
         }
@@ -771,6 +879,9 @@
             const candidate = this.currentResult.candidates[index];
             if (!candidate) return;
             this.selectedCandidate = candidate;
+            if (this.currentResult.candidateType === 'product' || this.currentResult.candidateType === 'cari') {
+                this.rememberCandidate(this.currentResult.candidateType, candidate);
+            }
             this.renderResult(this.currentResult);
         }
 
@@ -815,6 +926,7 @@
             const accountOverviewHtml = this.renderAccountOverview(result);
             const businessPrioritiesHtml = this.renderBusinessPriorities(result);
             const productLookupHtml = this.renderProductLookup(result);
+            const conversationMemoryHtml = this.renderConversationMemory();
             this.result.innerHTML = `
                 <div class="space-y-3">
                     <div class="flex items-start justify-between gap-3">
@@ -826,6 +938,7 @@
                     </div>
                     <div class="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold leading-6 text-white dark:bg-white dark:text-slate-950">${escapeHtml(result.summary)}</div>
                     <div class="grid gap-2">${fieldsHtml}</div>
+                    ${conversationMemoryHtml}
                     ${routeHtml}
                     ${todaySummaryHtml}
                     ${receivablesHtml}

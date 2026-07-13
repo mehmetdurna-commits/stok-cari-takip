@@ -606,7 +606,7 @@ class AssistantCommandAnalyzer:
     def _clean_entity(text):
         text = re.sub(r'\b([a-zçğıöşü0-9]+)(dan|den|tan|ten)\b', r'\1', text or '', flags=re.IGNORECASE)
         cleaned = re.sub(
-            r'\b(stoğa|stoga|stoktan|stok|ürün|urun|ekle|giriş|girişi|giris|girisi|çıkış|çıkışı|cikis|cikisi|düş|dus|adet|tane|tl|lira|tahsilat|ödeme|odeme|al|yap|sat|satış|satis|pos|listele|göster|goster|bugünkü|bugunku|kritik|borcu|bakiye|kasaya|kasadan|müşteriden|musteriden|tedarikçiye|tedarikciye|teklif|oluştur|olustur|hazırla|hazirla|cari|müşteri|musteri|dan|den|tan|ten)\b',
+            r'\b(stoğa|stoga|stoktan|stok|ürün|urun|ekle|giriş|girişi|giris|girisi|çıkış|çıkışı|cikis|cikisi|düş|dus|adet|tane|tl|lira|tahsilat|ödeme|odeme|al|yap|sat|satış|satis|pos|listele|göster|goster|bugünkü|bugunku|kritik|borcu|bakiye|kasaya|kasadan|müşteriden|musteriden|tedarikçiye|tedarikciye|teklif|oluştur|olustur|hazırla|hazirla|cari|müşteri|musteri|ne|kadar|nedir|kaç|kac|var|mi|mı|mu|mü|in|ın|un|ün|dan|den|tan|ten)\b',
             ' ',
             text,
             flags=re.IGNORECASE,
