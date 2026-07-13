@@ -40,6 +40,13 @@
             .trim();
     }
 
+    function cleanProductQuery(text) {
+        return String(text || '')
+            .replace(/\b(stokta|stok|kaç|kac|tane|adet|var|kaldı|kaldi|fiyatı|fiyati|fiyat|satış|satis|alış|alis|barkodu|barkod|ürün|urun|bilgisi|kritik|mi|mı|mu|mü|ne|nedir|göster|goster|söyle|soyle)\b/gi, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
     function formatAmount(amount, fallbackUnit) {
         if (!amount) return 'Eksik';
         const unit = fallbackUnit || amount.unit || '';
@@ -312,6 +319,29 @@
                     amount: amount ? amount.value : null,
                     description
                 }
+            });
+        }
+
+        const isProductLookup = [
+            'stokta kaç', 'stokta kac', 'kaç tane var', 'kac tane var',
+            'kaç adet var', 'kac adet var', 'fiyatı ne', 'fiyati ne',
+            'satış fiyatı', 'satis fiyati', 'alış fiyatı', 'alis fiyati',
+            'barkodu ne', 'ürün bilgisi', 'urun bilgisi', 'kritik mi'
+        ].some((phrase) => text.includes(phrase));
+        if (isProductLookup) {
+            const product = cleanProductQuery(text);
+            return createAnalysisResult({
+                intent: 'product_lookup',
+                title: 'Ürün bilgisi',
+                confidence: product ? 'Yüksek' : 'Orta',
+                summary: `${product || 'Seçilecek ürün'} için stok ve fiyat bilgileri aranıyor.`,
+                fields: [
+                    ['İşlem Türü', 'Ürün Bilgi Sorgusu'],
+                    ['Ürün', product || 'Eksik'],
+                    ['Durum', 'Bilgi']
+                ],
+                routeHint: '/urunler',
+                note: 'Bağlantı kurulunca güncel ürün bilgileri gösterilir; hiçbir kayıt değiştirilmez.'
             });
         }
 
@@ -782,6 +812,7 @@
             const receivablesHtml = this.renderReceivablesOverview(result);
             const accountOverviewHtml = this.renderAccountOverview(result);
             const businessPrioritiesHtml = this.renderBusinessPriorities(result);
+            const productLookupHtml = this.renderProductLookup(result);
             this.result.innerHTML = `
                 <div class="space-y-3">
                     <div class="flex items-start justify-between gap-3">
@@ -800,6 +831,7 @@
                     ${businessPrioritiesHtml}
                     ${candidatesHtml}
                     ${selectedHtml}
+                    ${productLookupHtml}
                     ${customerBalanceHtml}
                     ${criticalStockHtml}
                     ${posDraftHtml}
@@ -1367,6 +1399,54 @@
                         <span class="material-symbols-outlined rounded-2xl bg-white p-2 text-violet-700 shadow-sm dark:bg-slate-900 dark:text-violet-300">task_alt</span>
                     </div>
                     <div class="mt-3 space-y-2">${rows || '<div class="rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-3 text-xs font-bold text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300">Şu anda acil dikkat gerektiren bir konu görünmüyor.</div>'}</div>
+                </div>
+            `;
+        }
+
+        renderProductLookup(result) {
+            if (!result || result.intent !== 'product_lookup') return '';
+            const candidate = this.selectedCandidate || ((result.candidates || []).length === 1 ? result.candidates[0] : null);
+            if (!candidate) return '';
+            const stock = Number(candidate.stock || 0);
+            const critical = Number(candidate.critical || 0);
+            const stockState = stock <= 0
+                ? { label: 'Stok Yok', tone: 'bg-rose-50 text-rose-700 dark:bg-rose-950/25 dark:text-rose-300' }
+                : (stock <= critical
+                    ? { label: 'Kritik', tone: 'bg-amber-50 text-amber-700 dark:bg-amber-950/25 dark:text-amber-300' }
+                    : { label: 'Yeterli', tone: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/25 dark:text-emerald-300' });
+            return `
+                <div class="rounded-3xl border border-cyan-100 bg-gradient-to-br from-white to-cyan-50/70 p-3 dark:border-cyan-900/40 dark:from-slate-950/30 dark:to-cyan-950/10">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="text-xs font-black uppercase tracking-[0.14em] text-cyan-700 dark:text-cyan-300">Ürün Özeti</p>
+                            <p class="mt-1 truncate text-base font-black text-slate-950 dark:text-white">${escapeHtml(candidate.label)}</p>
+                            <p class="mt-0.5 truncate text-xs font-semibold text-slate-500 dark:text-slate-400">${escapeHtml(candidate.category || 'Kategorisiz')} · ${escapeHtml(candidate.warehouse || 'Ana Depo')}</p>
+                        </div>
+                        <span class="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-black ${stockState.tone}">${stockState.label}</span>
+                    </div>
+                    <div class="mt-3 grid grid-cols-2 gap-2">
+                        <div class="rounded-2xl bg-white/85 px-3 py-2 dark:bg-slate-950/30">
+                            <p class="text-[10px] font-black uppercase tracking-wide text-slate-400">Mevcut Stok</p>
+                            <p class="mt-1 text-sm font-black text-slate-950 dark:text-white">${formatAssistantNumber(stock)} ${escapeHtml(candidate.unit || 'Adet')}</p>
+                            <p class="text-[10px] font-bold text-slate-400">Kritik: ${formatAssistantNumber(critical)}</p>
+                        </div>
+                        <div class="rounded-2xl bg-white/85 px-3 py-2 dark:bg-slate-950/30">
+                            <p class="text-[10px] font-black uppercase tracking-wide text-slate-400">Satış Fiyatı</p>
+                            <p class="mt-1 text-sm font-black text-blue-700 dark:text-blue-300">${formatAssistantMoney(candidate.price)}</p>
+                        </div>
+                        <div class="rounded-2xl bg-white/85 px-3 py-2 dark:bg-slate-950/30">
+                            <p class="text-[10px] font-black uppercase tracking-wide text-slate-400">Alış Fiyatı</p>
+                            <p class="mt-1 text-sm font-black text-slate-950 dark:text-white">${formatAssistantMoney(candidate.purchase_price)}</p>
+                        </div>
+                        <div class="rounded-2xl bg-white/85 px-3 py-2 dark:bg-slate-950/30">
+                            <p class="text-[10px] font-black uppercase tracking-wide text-slate-400">Barkod</p>
+                            <p class="mt-1 truncate text-xs font-black text-slate-950 dark:text-white">${escapeHtml(candidate.barcode || 'Tanımlı değil')}</p>
+                        </div>
+                    </div>
+                    <a href="/urun/${encodeURIComponent(candidate.id)}" class="mt-3 flex items-center justify-center gap-2 rounded-2xl border border-cyan-100 bg-white px-3 py-2 text-xs font-black text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-900/40 dark:bg-slate-900 dark:text-cyan-300">
+                        <span class="material-symbols-outlined text-base">open_in_new</span>
+                        Ürün Kartını Aç
+                    </a>
                 </div>
             `;
         }

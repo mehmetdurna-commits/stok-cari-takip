@@ -99,6 +99,22 @@ class AssistantCommandAnalyzer:
                 note='Bu liste yalnızca karar desteği sağlar; herhangi bir kayıt otomatik değiştirilmez.',
             )
 
+        if self._is_product_lookup(text):
+            product = self._clean_product_query(text)
+            return self._result(
+                intent='product_lookup',
+                title='Ürün bilgisi',
+                confidence='Yüksek' if product else 'Orta',
+                summary=f'{product or "Seçilecek ürün"} için stok ve fiyat bilgileri aranıyor.',
+                fields=[
+                    ('İşlem Türü', 'Ürün Bilgi Sorgusu'),
+                    ('Ürün', product or 'Eksik'),
+                    ('Durum', 'Bilgi'),
+                ],
+                route_hint='/urunler',
+                note='Bu sorgu ürün bilgilerini gösterir; stok veya fiyat kaydı değiştirilmez.',
+            )
+
         help_result = self._help_answer(text)
         if help_result:
             return self._result(**help_result)
@@ -685,6 +701,37 @@ class AssistantCommandAnalyzer:
             'isletmede sorun var mi',
             'kontrol etmem gerekenler',
         ))
+
+    @staticmethod
+    def _is_product_lookup(text):
+        return any(phrase in text for phrase in (
+            'stokta kaç',
+            'stokta kac',
+            'kaç tane var',
+            'kac tane var',
+            'kaç adet var',
+            'kac adet var',
+            'fiyatı ne',
+            'fiyati ne',
+            'satış fiyatı',
+            'satis fiyati',
+            'alış fiyatı',
+            'alis fiyati',
+            'barkodu ne',
+            'ürün bilgisi',
+            'urun bilgisi',
+            'kritik mi',
+        ))
+
+    @staticmethod
+    def _clean_product_query(text):
+        cleaned = re.sub(
+            r'\b(stokta|stok|kaç|kac|tane|adet|var|kaldı|kaldi|fiyatı|fiyati|fiyat|satış|satis|alış|alis|barkodu|barkod|ürün|urun|bilgisi|kritik|mi|mı|mu|mü|ne|nedir|göster|goster|söyle|soyle)\b',
+            ' ',
+            text or '',
+            flags=re.IGNORECASE,
+        )
+        return re.sub(r'\s+', ' ', cleaned).strip()
 
     @staticmethod
     def _is_daily_sales(text):

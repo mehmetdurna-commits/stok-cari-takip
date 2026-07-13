@@ -4856,10 +4856,21 @@ def assistant_product_candidates(term, limit=5):
     tenant_ids = assistant_tenant_ids()
     if not tenant_ids:
         return []
-    search = f'%{term}%'
+    search_terms = [term]
+    possessive_base = re.sub(r'(ın|in|un|ün)$', '', term, flags=re.IGNORECASE).strip()
+    if possessive_base and possessive_base != term:
+        search_terms.append(possessive_base)
+        consonant_map = {'b': 'p', 'd': 't', 'c': 'ç', 'g': 'k', 'ğ': 'k'}
+        final = possessive_base[-1].lower()
+        if final in consonant_map:
+            search_terms.append(f"{possessive_base[:-1]}{consonant_map[final]}")
+    filters = []
+    for search_term in dict.fromkeys(search_terms):
+        search = f'%{search_term}%'
+        filters.extend((Urun.urun_adi.ilike(search), Urun.barkod.ilike(search)))
     products = Urun.query.filter(
         Urun.user_id.in_(tenant_ids),
-        or_(Urun.urun_adi.ilike(search), Urun.barkod.ilike(search))
+        or_(*filters)
     ).order_by(Urun.urun_adi.asc()).limit(limit).all()
     return [{
         'id': product.id,
@@ -4867,7 +4878,11 @@ def assistant_product_candidates(term, limit=5):
         'subtitle': f"{product.stok_miktari or 0:g} {product.birim or 'Adet'} stok · {product.depo_adi or 'Ana Depo'}",
         'meta': product.barkod or '',
         'price': float(product.satis_fiyati or 0),
+        'purchase_price': float(product.alis_fiyati or 0),
         'stock': float(product.stok_miktari or 0),
+        'critical': float(product.kritik_stok or 0),
+        'category': product.kategori or 'Kategorisiz',
+        'warehouse': product.depo_adi or 'Ana Depo',
         'barcode': product.barkod or '',
         'unit': product.birim or 'Adet',
     } for product in products]
@@ -5179,7 +5194,7 @@ def enrich_assistant_analysis(result):
     intent = result.get('intent')
     candidates = []
     requires_match = False
-    if intent in {'stock_in', 'stock_out', 'pos_sale'}:
+    if intent in {'stock_in', 'stock_out', 'pos_sale', 'product_lookup'}:
         candidates = assistant_product_candidates(assistant_field_value(result, 'Ürün'))
         result['candidate_type'] = 'product'
         requires_match = True
