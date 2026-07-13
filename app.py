@@ -5065,6 +5065,83 @@ def assistant_account_overview():
     }
 
 
+def assistant_business_priorities():
+    tenant_ids = assistant_tenant_ids()
+    if not tenant_ids:
+        return {'status': 'clear', 'items': []}
+
+    items = []
+    out_of_stock_count = Urun.query.filter(
+        Urun.user_id.in_(tenant_ids),
+        func.coalesce(Urun.stok_miktari, 0) <= 0
+    ).count()
+    if out_of_stock_count:
+        items.append({
+            'severity': 'critical',
+            'icon': 'inventory_2',
+            'title': 'Stoksuz ürünler var',
+            'detail': f'{out_of_stock_count} ürünün kullanılabilir stoğu kalmadı.',
+            'route': '/urunler',
+            'action': 'Ürünleri Gör',
+        })
+
+    critical_stock_count = Urun.query.filter(
+        Urun.user_id.in_(tenant_ids),
+        func.coalesce(Urun.stok_miktari, 0) > 0,
+        func.coalesce(Urun.stok_miktari, 0) <= func.coalesce(Urun.kritik_stok, 0)
+    ).count()
+    if critical_stock_count:
+        items.append({
+            'severity': 'warning',
+            'icon': 'warning',
+            'title': 'Kritik stok yaklaşmış',
+            'detail': f'{critical_stock_count} ürün kritik stok seviyesinde.',
+            'route': '/urunler',
+            'action': 'Stoğu Kontrol Et',
+        })
+
+    receivables = assistant_receivables_overview()
+    if receivables['customer_count']:
+        items.append({
+            'severity': 'info',
+            'icon': 'group',
+            'title': 'Açık müşteri alacakları',
+            'detail': f"{receivables['customer_count']} müşteriden toplam {format_money(receivables['total'])} alınacak var.",
+            'route': '/cariler',
+            'action': 'Carileri Gör',
+        })
+
+    draft_quote_count = Teklif.query.filter(
+        Teklif.user_id.in_(tenant_ids),
+        Teklif.durum == 'taslak'
+    ).count()
+    if draft_quote_count:
+        items.append({
+            'severity': 'neutral',
+            'icon': 'description',
+            'title': 'Taslak teklifler bekliyor',
+            'detail': f'{draft_quote_count} teklif henüz tamamlanmamış.',
+            'route': '/teklifler',
+            'action': 'Teklifleri Gör',
+        })
+
+    accounts = assistant_account_overview()
+    if accounts['pos_total'] > 0:
+        items.append({
+            'severity': 'success',
+            'icon': 'credit_card',
+            'title': 'POS aktarımı bekleniyor',
+            'detail': f"POS hesaplarında {format_money(accounts['pos_total'])} bekliyor.",
+            'route': '/onmuhasebe/hesaplar',
+            'action': 'Hesapları Gör',
+        })
+
+    return {
+        'status': 'attention' if items else 'clear',
+        'items': items[:5],
+    }
+
+
 def assistant_parse_money(value):
     raw = str(value or '')
     raw = re.sub(r'\b(tl|try|lira|adet|tane)\b|₺', '', raw, flags=re.IGNORECASE).strip()
@@ -5147,6 +5224,15 @@ def enrich_assistant_analysis(result):
             f"Kasa ve bankada {format_money(overview['available_total'])}, POS hesaplarında {format_money(overview['pos_total'])} görünüyor."
             if overview['accounts'] else
             "Aktif para hesabı bulunamadı."
+        )
+    elif intent == 'business_priorities':
+        priorities = assistant_business_priorities()
+        result['lookup_type'] = 'business_priorities'
+        result['business_priorities'] = priorities
+        result['summary'] = (
+            f"Dikkat gerektiren {len(priorities['items'])} konu bulundu."
+            if priorities['items'] else
+            "Şu anda acil dikkat gerektiren bir konu görünmüyor."
         )
     elif intent == 'cash_movement':
         action = result.get('action') or {}

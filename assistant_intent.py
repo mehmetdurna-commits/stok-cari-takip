@@ -84,6 +84,21 @@ class AssistantCommandAnalyzer:
                 note='POS bakiyesi bankaya aktarılmayı bekleyen tutardır; kullanılabilir kasa ve banka toplamından ayrı gösterilir.',
             )
 
+        if self._is_business_priorities(text):
+            return self._result(
+                intent='business_priorities',
+                title='İşletme öncelikleri',
+                confidence='Yüksek',
+                summary='Dikkat gerektiren işletme kayıtları önem sırasına göre hazırlanıyor.',
+                fields=[
+                    ('İşlem Türü', 'Kontrol Sorgusu'),
+                    ('Konu', 'Günün Öncelikleri'),
+                    ('Durum', 'Bilgi'),
+                ],
+                route_hint='/dashboard',
+                note='Bu liste yalnızca karar desteği sağlar; herhangi bir kayıt otomatik değiştirilmez.',
+            )
+
         help_result = self._help_answer(text)
         if help_result:
             return self._result(**help_result)
@@ -656,6 +671,19 @@ class AssistantCommandAnalyzer:
             'para hesapları',
             'para hesaplari',
             'ne kadar param var',
+        ))
+
+    @staticmethod
+    def _is_business_priorities(text):
+        return any(phrase in text for phrase in (
+            'bugün neye dikkat etmeliyim',
+            'bugun neye dikkat etmeliyim',
+            'önceliklerim neler',
+            'onceliklerim neler',
+            'ne yapmam gerekiyor',
+            'işletmede sorun var mı',
+            'isletmede sorun var mi',
+            'kontrol etmem gerekenler',
         ))
 
     @staticmethod

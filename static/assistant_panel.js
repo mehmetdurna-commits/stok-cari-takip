@@ -677,7 +677,7 @@
                         <button type="button" data-assistant-history-index="-101" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Bugün ne oldu?</button>
                         <button type="button" data-assistant-history-index="-102" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Kimden alacağım var?</button>
                         <button type="button" data-assistant-history-index="-103" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Param nerede?</button>
-                        <button type="button" data-assistant-history-index="-104" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Kritik stokları göster</button>
+                        <button type="button" data-assistant-history-index="-104" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Bugün neye dikkat etmeliyim?</button>
                     </div>
                 </div>
             `;
@@ -703,6 +703,7 @@
                 todaySummary: result.today_summary || null,
                 receivablesOverview: result.receivables_overview || null,
                 accountOverview: result.account_overview || null,
+                businessPriorities: result.business_priorities || null,
                 missingFields: Array.isArray(result.missing_fields) ? result.missing_fields : [],
                 requiresMatch: Boolean(result.requires_match),
                 draftReady: Boolean(result.draft_ready),
@@ -761,6 +762,7 @@
             const todaySummaryHtml = this.renderTodaySummaryAnswer(result);
             const receivablesHtml = this.renderReceivablesOverview(result);
             const accountOverviewHtml = this.renderAccountOverview(result);
+            const businessPrioritiesHtml = this.renderBusinessPriorities(result);
             this.result.innerHTML = `
                 <div class="space-y-3">
                     <div class="flex items-start justify-between gap-3">
@@ -776,6 +778,7 @@
                     ${todaySummaryHtml}
                     ${receivablesHtml}
                     ${accountOverviewHtml}
+                    ${businessPrioritiesHtml}
                     ${candidatesHtml}
                     ${selectedHtml}
                     ${customerBalanceHtml}
@@ -1056,7 +1059,7 @@
                 return;
             }
             if (index === -104) {
-                this.input.value = 'Kritik stokları göster';
+                this.input.value = 'Bugün neye dikkat etmeliyim?';
                 this.analyze();
                 return;
             }
@@ -1305,6 +1308,46 @@
                         </div>
                     </div>
                     <div class="mt-3 space-y-2">${rows || '<p class="rounded-2xl bg-white/80 px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950/30 dark:text-slate-400">Aktif para hesabı bulunmuyor.</p>'}</div>
+                </div>
+            `;
+        }
+
+        renderBusinessPriorities(result) {
+            if (!result || result.lookupType !== 'business_priorities' || !result.businessPriorities) return '';
+            const priorities = result.businessPriorities;
+            const items = Array.isArray(priorities.items) ? priorities.items : [];
+            const tones = {
+                critical: 'border-rose-100 bg-rose-50/80 text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300',
+                warning: 'border-amber-100 bg-amber-50/80 text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300',
+                info: 'border-blue-100 bg-blue-50/80 text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-300',
+                success: 'border-emerald-100 bg-emerald-50/80 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300',
+                neutral: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-300'
+            };
+            const rows = items.map((item, index) => `
+                <a href="${escapeHtml(this.safeInternalRoute(item.route || '/dashboard'))}" class="block rounded-2xl border px-3 py-2.5 transition hover:-translate-y-0.5 hover:shadow-sm ${tones[item.severity] || tones.neutral}">
+                    <span class="flex items-start gap-2.5">
+                        <span class="material-symbols-outlined mt-0.5 text-lg">${escapeHtml(item.icon || 'info')}</span>
+                        <span class="min-w-0 flex-1">
+                            <span class="flex items-center justify-between gap-2">
+                                <span class="font-black text-slate-950 dark:text-white">${index + 1}. ${escapeHtml(item.title)}</span>
+                                <span class="material-symbols-outlined shrink-0 text-base">arrow_forward</span>
+                            </span>
+                            <span class="mt-0.5 block text-xs font-semibold leading-5 text-slate-600 dark:text-slate-300">${escapeHtml(item.detail)}</span>
+                            <span class="mt-1 block text-[10px] font-black uppercase tracking-wide">${escapeHtml(item.action || 'İncele')}</span>
+                        </span>
+                    </span>
+                </a>
+            `).join('');
+            return `
+                <div class="rounded-3xl border border-violet-100 bg-gradient-to-br from-white to-violet-50/70 p-3 dark:border-violet-900/40 dark:from-slate-950/30 dark:to-violet-950/10">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300">Bugün Neye Dikkat Etmeliyim?</p>
+                            <p class="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">İşletmenin müdahale gerektiren konuları önem sırasıyla listelendi.</p>
+                        </div>
+                        <span class="material-symbols-outlined rounded-2xl bg-white p-2 text-violet-700 shadow-sm dark:bg-slate-900 dark:text-violet-300">task_alt</span>
+                    </div>
+                    <div class="mt-3 space-y-2">${rows || '<div class="rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-3 text-xs font-bold text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300">Şu anda acil dikkat gerektiren bir konu görünmüyor.</div>'}</div>
                 </div>
             `;
         }
