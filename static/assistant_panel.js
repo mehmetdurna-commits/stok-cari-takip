@@ -613,14 +613,26 @@
         async analyze() {
             const command = this.input.value || '';
             this.setAnalyzing(true);
-            const result = await this.analyzeWithApi(command);
-            this.currentResult = result;
-            this.selectedCandidate = null;
-            this.saveHistory(command);
-            this.setAnalyzing(false);
-            this.renderResult(result);
-            if (!command.trim() && window.showToast) {
-                window.showToast('Önce bir komut yazın veya sesli komut verin.', 'warning', 3500);
+            try {
+                const result = await this.analyzeWithApi(command);
+                this.currentResult = result;
+                this.selectedCandidate = null;
+                this.saveHistory(command);
+                this.renderResult(result);
+                if (!command.trim() && window.showToast) {
+                    window.showToast('Önce bir komut yazın veya sesli komut verin.', 'warning', 3500);
+                }
+            } catch (error) {
+                console.error('Asistan analizi tamamlanamadı:', error);
+                const fallback = analyzeCommand(command);
+                this.currentResult = fallback;
+                this.selectedCandidate = null;
+                this.renderResult(fallback);
+                if (window.showToast) {
+                    window.showToast('Bağlantı kurulamadı; komut cihazda analiz edildi.', 'warning', 4500);
+                }
+            } finally {
+                this.setAnalyzing(false);
             }
         }
 
@@ -643,14 +655,19 @@
         }
 
         async analyzeWithApi(command) {
+            const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            const timeoutId = controller ? window.setTimeout(() => controller.abort(), 8000) : null;
             try {
                 const response = await fetch('/api/assistant/analyze', {
                     method: 'POST',
+                    credentials: 'same-origin',
+                    cache: 'no-store',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: JSON.stringify({ command })
+                    body: JSON.stringify({ command }),
+                    signal: controller ? controller.signal : undefined
                 });
                 if (!response.ok) throw new Error(`Assistant API ${response.status}`);
                 const payload = await response.json();
@@ -659,6 +676,8 @@
                 }
             } catch (error) {
                 console.warn('Assistant API kullanılamadı, yerel analiz devrede:', error);
+            } finally {
+                if (timeoutId) window.clearTimeout(timeoutId);
             }
             return analyzeCommand(command);
         }
@@ -1442,29 +1461,55 @@
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) {
                 if (window.showToast) {
-                    window.showToast('Bu tarayıcı sesli komutu desteklemiyor. Şimdilik komutu yazarak analiz edebilirsin.', 'warning', 5000);
+                    window.showToast('Sesli komut bu tarayıcıda kullanılamıyor. Sayfayı güncel Chrome ile açın veya komutu yazın.', 'warning', 6000);
                 }
                 return;
             }
+            if (this.recognition) {
+                try {
+                    this.recognition.abort();
+                } catch (error) {
+                    console.debug('Önceki ses oturumu zaten kapalı.', error);
+                }
+            }
             this.recognition = new SpeechRecognition();
             this.recognition.lang = 'tr-TR';
+            this.recognition.continuous = false;
             this.recognition.interimResults = false;
             this.recognition.maxAlternatives = 1;
-            if (this.listening) this.listening.classList.remove('hidden');
-            if (this.micButton) this.micButton.classList.add('animate-pulse');
+            this.recognition.onstart = () => {
+                if (this.listening) this.listening.classList.remove('hidden');
+                if (this.micButton) this.micButton.classList.add('animate-pulse');
+            };
             this.recognition.onresult = (event) => {
                 const transcript = event.results && event.results[0] && event.results[0][0] ? event.results[0][0].transcript : '';
                 if (transcript) this.input.value = transcript;
                 this.analyze();
             };
-            this.recognition.onerror = () => {
-                if (window.showToast) window.showToast('Ses alınamadı. Tekrar deneyin veya komutu yazarak analiz edin.', 'warning', 4500);
+            this.recognition.onerror = (event) => {
+                const messages = {
+                    'not-allowed': 'Mikrofon izni kapalı. Chrome > Site ayarları > Mikrofon bölümünden Esstok için izin verin.',
+                    'service-not-allowed': 'Telefonun ses tanıma hizmeti kapalı. Google sesle yazma hizmetini açıp tekrar deneyin.',
+                    'audio-capture': 'Telefonda kullanılabilir mikrofon bulunamadı veya başka bir uygulama mikrofonu kullanıyor.',
+                    'network': 'Ses tanıma servisine bağlanılamadı. İnternet bağlantısını kontrol edip tekrar deneyin.',
+                    'no-speech': 'Ses duyulamadı. Mikrofona biraz daha yakın konuşup tekrar deneyin.',
+                    'aborted': 'Sesli komut durduruldu.'
+                };
+                const message = messages[event.error] || 'Ses alınamadı. Tekrar deneyin veya komutu yazarak analiz edin.';
+                if (window.showToast) window.showToast(message, 'warning', 6500);
             };
             this.recognition.onend = () => {
                 if (this.listening) this.listening.classList.add('hidden');
                 if (this.micButton) this.micButton.classList.remove('animate-pulse');
             };
-            this.recognition.start();
+            try {
+                this.recognition.start();
+            } catch (error) {
+                console.warn('Sesli komut başlatılamadı:', error);
+                if (this.listening) this.listening.classList.add('hidden');
+                if (this.micButton) this.micButton.classList.remove('animate-pulse');
+                if (window.showToast) window.showToast('Mikrofon başlatılamadı. İzni kontrol edip tekrar deneyin.', 'warning', 5500);
+            }
         }
     }
 

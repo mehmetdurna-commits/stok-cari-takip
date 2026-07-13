@@ -1349,6 +1349,7 @@
             background: rgba(255, 255, 255, 0.94);
             box-shadow: 0 30px 80px rgba(15, 23, 42, 0.22);
             backdrop-filter: blur(22px);
+            touch-action: manipulation;
         }
 
         .dark .voice-assistant-panel {
@@ -1426,6 +1427,7 @@
                 bottom: 5rem;
                 width: auto;
                 max-height: calc(100vh - 6rem);
+                max-height: calc(100dvh - 6rem);
             }
         }
     </style>
@@ -2785,7 +2787,7 @@
         };
     </script>
     {% if is_auth %}
-    <script src="{{ url_for('static', filename='assistant_panel.js') }}"></script>
+    <script src="{{ url_for('static', filename='assistant_panel.js', v='20260713-mobile-1') }}"></script>
     {% endif %}
     {% block scripts %}{% endblock %}
 </body>
