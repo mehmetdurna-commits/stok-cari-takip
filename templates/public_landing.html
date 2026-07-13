@@ -68,6 +68,7 @@
             </a>
             <nav class="hidden items-center gap-6 text-sm font-black text-slate-600 lg:flex">
                 <a href="#cozumler" class="hover:text-primary-700">Çözümler</a>
+                <a href="#esstok-konus" class="hover:text-primary-700">Esstok Konuş</a>
                 <a href="#akis" class="hover:text-primary-700">Akış</a>
                 <a href="{{ url_for('pricing_page') }}" class="hover:text-primary-700">Fiyatlar</a>
                 <a href="#sss" class="hover:text-primary-700">SSS</a>
@@ -162,6 +163,124 @@
             </section>
         </main>
     </div>
+
+    <section id="esstok-konus" class="bg-white py-20">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="landing-blue-card overflow-hidden rounded-[2rem] p-6 sm:p-8 lg:p-10">
+                <div class="grid gap-10 lg:grid-cols-12 lg:items-center">
+                    <div class="lg:col-span-6">
+                        <div class="inline-flex items-center gap-2 rounded-full border border-primary-200 bg-white/85 px-4 py-2 text-xs font-black uppercase tracking-widest text-primary-700 shadow-sm">
+                            <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
+                            Akıllı işletme asistanı
+                        </div>
+                        <h2 class="mt-5 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">
+                            İşletmenizi yazarak veya konuşarak yönetin.
+                        </h2>
+                        <p class="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
+                            Esstok Konuş; satış, stok, cari ve kasa bilgilerinizi sade dille anlamanıza yardımcı olur. Sorunuzu sorun veya yapmak istediğiniz işlemi söyleyin; asistan önce ne anladığını gösterir.
+                        </p>
+
+                        <div class="mt-7 grid gap-3 sm:grid-cols-2">
+                            {% set assistant_features = [
+                                ('query_stats', 'Bugünü özetler', 'Satış, tahsilat ve dikkat isteyen işleri anlatır.'),
+                                ('inventory_2', 'Stoğu cevaplar', 'Ürün miktarı, fiyatı ve kritik stokları bulur.'),
+                                ('groups', 'Cariyi açıklar', 'Kimden alacağınızı ve müşteri bakiyesini gösterir.'),
+                                ('task_alt', 'Onayla işlem yapar', 'Stok, kasa ve satış işlemlerini önce taslak olarak sunar.')
+                            ] %}
+                            {% for icon, title, description in assistant_features %}
+                            <div class="rounded-2xl border border-white/90 bg-white/75 p-4 shadow-sm backdrop-blur">
+                                <div class="flex items-start gap-3">
+                                    <span class="material-symbols-outlined rounded-xl bg-primary-50 p-2 text-primary-700">{{ icon }}</span>
+                                    <div>
+                                        <p class="font-black text-slate-950">{{ title }}</p>
+                                        <p class="mt-1 text-sm leading-6 text-slate-600">{{ description }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
+                            <a href="{{ url_for('kayit') }}" class="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-primary-600 px-6 py-3 font-black text-white shadow-xl shadow-primary-600/20 transition hover:bg-primary-700">
+                                Esstok Konuş'u Dene
+                                <span class="material-symbols-outlined">arrow_forward</span>
+                            </a>
+                            <p class="flex items-center gap-2 text-sm font-bold text-slate-600">
+                                <span class="material-symbols-outlined text-emerald-600">verified_user</span>
+                                Kullanıcı onayı olmadan işlem yapılmaz.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-6">
+                        <div class="mx-auto max-w-xl rounded-[2rem] border border-white/90 bg-white/95 p-4 shadow-2xl shadow-primary-900/15 sm:p-5">
+                            <div class="flex items-center justify-between border-b border-slate-200 pb-4">
+                                <div class="flex items-center gap-3">
+                                    <span class="flex size-11 items-center justify-center rounded-2xl bg-primary-600 text-white shadow-lg shadow-primary-600/20">
+                                        <span class="material-symbols-outlined">graphic_eq</span>
+                                    </span>
+                                    <div>
+                                        <p class="font-black text-slate-950">Esstok Konuş</p>
+                                        <p class="text-xs font-bold text-slate-500">İşletme asistanınız hazır</p>
+                                    </div>
+                                </div>
+                                <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">Güvenli mod</span>
+                            </div>
+
+                            <div class="mt-4 rounded-2xl bg-slate-50 p-4">
+                                <p class="text-xs font-black uppercase tracking-widest text-slate-500">Komut veya soru</p>
+                                <p class="mt-2 text-base font-bold text-slate-800">Kasadan 250 TL kargo masrafı çıkışı yap.</p>
+                                <div class="mt-4 flex gap-2">
+                                    <span class="inline-flex items-center gap-1.5 rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white">
+                                        <span class="material-symbols-outlined text-base">mic</span>
+                                        Konuş
+                                    </span>
+                                    <span class="inline-flex items-center gap-1.5 rounded-xl bg-primary-600 px-3 py-2 text-xs font-black text-white">
+                                        <span class="material-symbols-outlined text-base">psychology</span>
+                                        Analiz Et
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 rounded-2xl border border-primary-100 bg-primary-50/70 p-4">
+                                <div class="flex items-center justify-between gap-3">
+                                    <p class="text-xs font-black uppercase tracking-widest text-primary-700">Anladığım işlem</p>
+                                    <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-700">Onay bekliyor</span>
+                                </div>
+                                <div class="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+                                    <div class="rounded-xl bg-white p-3">
+                                        <p class="text-xs font-black text-slate-400">İŞLEM</p>
+                                        <p class="mt-1 font-black text-slate-950">Kasa çıkışı</p>
+                                    </div>
+                                    <div class="rounded-xl bg-white p-3">
+                                        <p class="text-xs font-black text-slate-400">TUTAR</p>
+                                        <p class="mt-1 font-black text-slate-950">₺250,00</p>
+                                    </div>
+                                    <div class="rounded-xl bg-white p-3 sm:col-span-2">
+                                        <p class="text-xs font-black text-slate-400">AÇIKLAMA</p>
+                                        <p class="mt-1 font-black text-slate-950">Kargo masrafı</p>
+                                    </div>
+                                </div>
+                                <div class="mt-3 flex items-center justify-between gap-3 rounded-xl bg-emerald-50 px-3 py-2.5 text-xs font-bold text-emerald-800">
+                                    <span>İşlem yalnızca sizin onayınızla tamamlanır.</span>
+                                    <span class="material-symbols-outlined text-lg">lock</span>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 grid grid-cols-2 gap-2 text-xs font-black text-slate-600 sm:grid-cols-4">
+                                {% for icon, text in [('analytics', 'Bugün ne oldu?'), ('warning', 'Kritik stoklar'), ('groups', 'Kimden alacağım?'), ('account_balance_wallet', 'Param nerede?')] %}
+                                <div class="flex min-h-16 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                                    <span class="material-symbols-outlined text-lg text-primary-600">{{ icon }}</span>
+                                    <span>{{ text }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
     <section id="akis" class="bg-white py-20">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
