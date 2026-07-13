@@ -1373,9 +1373,18 @@
         .voice-assistant-body {
             min-height: 0;
             flex: 1;
+            overflow-x: hidden;
             overflow-y: auto;
+            -ms-overflow-style: none;
             overscroll-behavior: contain;
-            scroll-padding-bottom: 6rem;
+            scrollbar-width: none;
+            scroll-padding-bottom: 1rem;
+        }
+
+        .voice-assistant-body::-webkit-scrollbar {
+            display: none;
+            width: 0;
+            height: 0;
         }
 
         .dark .voice-assistant-glow {
@@ -1756,7 +1765,7 @@
                             </div>
                         </div>
 
-                        <div class="voice-assistant-body space-y-4 p-4 pb-24">
+                        <div class="voice-assistant-body space-y-4 p-4">
                             <div class="rounded-3xl border border-slate-200 bg-white/86 p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/72">
                                 <label for="voice-assistant-input" class="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-400">Komut</label>
                                 <textarea id="voice-assistant-input" rows="3" class="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-primary-400 focus:bg-white focus:ring-4 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-950/60 dark:text-white dark:focus:border-primary-500" placeholder="Örn: Stoğa 100 adet Selpak ekle"></textarea>
@@ -2787,7 +2796,7 @@
         };
     </script>
     {% if is_auth %}
-    <script src="{{ url_for('static', filename='assistant_panel.js', v='20260713-product-2') }}"></script>
+    <script src="{{ url_for('static', filename='assistant_panel.js', v='20260713-suggestions-3') }}"></script>
     {% endif %}
     {% block scripts %}{% endblock %}
 </body>

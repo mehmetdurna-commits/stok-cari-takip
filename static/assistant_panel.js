@@ -722,11 +722,13 @@
                             <p class="mt-1 leading-6">Komut yazın, soru sorun veya sesli deneyin. İşlem yapmadan önce sadece taslak gösterilir.</p>
                         </div>
                     </div>
-                    <div class="grid gap-2 sm:grid-cols-2">
-                        <button type="button" data-assistant-history-index="-101" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Bugün ne oldu?</button>
-                        <button type="button" data-assistant-history-index="-102" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Kimden alacağım var?</button>
-                        <button type="button" data-assistant-history-index="-103" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Param nerede?</button>
-                        <button type="button" data-assistant-history-index="-104" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Bugün neye dikkat etmeliyim?</button>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" data-assistant-history-index="-101" class="flex min-h-12 items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300"><span class="material-symbols-outlined text-base text-cyan-600">monitoring</span><span>Bugün ne oldu?</span></button>
+                        <button type="button" data-assistant-history-index="-104" class="flex min-h-12 items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300"><span class="material-symbols-outlined text-base text-violet-600">task_alt</span><span>Neye dikkat etmeliyim?</span></button>
+                        <button type="button" data-assistant-history-index="-105" class="flex min-h-12 items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300"><span class="material-symbols-outlined text-base text-rose-600">warning</span><span>Kritik stoklar</span></button>
+                        <button type="button" data-assistant-history-index="-102" class="flex min-h-12 items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300"><span class="material-symbols-outlined text-base text-emerald-600">group</span><span>Kimden alacağım?</span></button>
+                        <button type="button" data-assistant-history-index="-103" class="flex min-h-12 items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300"><span class="material-symbols-outlined text-base text-blue-600">account_balance_wallet</span><span>Param nerede?</span></button>
+                        <button type="button" data-assistant-history-index="-106" class="flex min-h-12 items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300"><span class="material-symbols-outlined text-base text-indigo-600">point_of_sale</span><span>POS nasıl kullanılır?</span></button>
                     </div>
                 </div>
             `;
@@ -1111,6 +1113,16 @@
             }
             if (index === -104) {
                 this.input.value = 'Bugün neye dikkat etmeliyim?';
+                this.analyze();
+                return;
+            }
+            if (index === -105) {
+                this.input.value = 'Kritik stokları göster';
+                this.analyze();
+                return;
+            }
+            if (index === -106) {
+                this.input.value = 'POS satışı nasıl yapılır?';
                 this.analyze();
                 return;
             }
