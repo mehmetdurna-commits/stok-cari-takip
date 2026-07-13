@@ -54,6 +54,36 @@ class AssistantCommandAnalyzer:
                 note='Bu cevap sadece bilgi verir; kullanıcı onayı olmadan işlem yapılmaz.',
             )
 
+        if self._is_receivables_overview(text):
+            return self._result(
+                intent='receivables_overview',
+                title='Müşteri alacakları',
+                confidence='Yüksek',
+                summary='Müşterilerden alınacak açık bakiyeler hazırlanıyor.',
+                fields=[
+                    ('İşlem Türü', 'Bilgi Sorgusu'),
+                    ('Konu', 'Müşteri Alacakları'),
+                    ('Durum', 'Bilgi'),
+                ],
+                route_hint='/cariler',
+                note='Bu ekran yalnızca mevcut cari bakiyeleri özetler; herhangi bir kayıt değiştirilmez.',
+            )
+
+        if self._is_account_overview(text):
+            return self._result(
+                intent='account_overview',
+                title='Para hesapları özeti',
+                confidence='Yüksek',
+                summary='Kasa, banka ve POS hesaplarının güncel durumu hazırlanıyor.',
+                fields=[
+                    ('İşlem Türü', 'Bilgi Sorgusu'),
+                    ('Konu', 'Para Hesapları'),
+                    ('Durum', 'Bilgi'),
+                ],
+                route_hint='/onmuhasebe/hesaplar',
+                note='POS bakiyesi bankaya aktarılmayı bekleyen tutardır; kullanılabilir kasa ve banka toplamından ayrı gösterilir.',
+            )
+
         help_result = self._help_answer(text)
         if help_result:
             return self._result(**help_result)
@@ -600,6 +630,32 @@ class AssistantCommandAnalyzer:
             'isletme ozeti',
             'bugün durum',
             'bugun durum',
+        ))
+
+    @staticmethod
+    def _is_receivables_overview(text):
+        return any(phrase in text for phrase in (
+            'kimden alacağım var',
+            'kimden alacagim var',
+            'en çok borcu olan',
+            'en cok borcu olan',
+            'müşteri borçları',
+            'musteri borclari',
+            'alacak listesi',
+            'açık cari listesi',
+            'acik cari listesi',
+        ))
+
+    @staticmethod
+    def _is_account_overview(text):
+        return any(phrase in text for phrase in (
+            'param nerede',
+            'kasam ne durumda',
+            'kasa banka pos durumu',
+            'hesap bakiyeleri',
+            'para hesapları',
+            'para hesaplari',
+            'ne kadar param var',
         ))
 
     @staticmethod

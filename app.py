@@ -4996,6 +4996,75 @@ def assistant_critical_stock_items(limit=8):
     } for product in products]
 
 
+def assistant_receivables_overview(limit=8):
+    tenant_ids = assistant_tenant_ids()
+    if not tenant_ids:
+        return {'total': 0, 'customer_count': 0, 'items': []}
+
+    cariler = Cari.query.filter(Cari.user_id.in_(tenant_ids)).all()
+    receivables = [cari for cari in cariler if float(cari.bakiye or 0) > 0]
+    receivables.sort(key=lambda cari: float(cari.bakiye or 0), reverse=True)
+    return {
+        'total': round(sum(float(cari.bakiye or 0) for cari in receivables), 2),
+        'customer_count': len(receivables),
+        'items': [
+            {
+                'id': cari.id,
+                'label': cari.unvan,
+                'balance': round(float(cari.bakiye or 0), 2),
+                'phone': cari.telefon or '',
+                'contact': cari.yetkili or '',
+            }
+            for cari in receivables[:limit]
+        ],
+    }
+
+
+def assistant_account_overview():
+    tenant_ids = assistant_tenant_ids()
+    empty = {'available_total': 0, 'pos_total': 0, 'accounts': []}
+    if not tenant_ids:
+        return empty
+
+    accounts = Account.query.filter(
+        Account.user_id.in_(tenant_ids),
+        Account.active.is_(True)
+    ).order_by(Account.type.asc(), Account.name.asc()).all()
+    if not accounts:
+        return empty
+
+    account_ids = [account.id for account in accounts]
+    movement_rows = db.session.query(
+        CashTransaction.account_id,
+        func.coalesce(func.sum(case(
+            (CashTransaction.islem_tipi == 'giris', CashTransaction.tutar),
+            else_=-CashTransaction.tutar
+        )), 0)
+    ).filter(
+        CashTransaction.user_id.in_(tenant_ids),
+        CashTransaction.account_id.in_(account_ids)
+    ).group_by(CashTransaction.account_id).all()
+    movement_totals = {account_id: float(total or 0) for account_id, total in movement_rows}
+    labels = {'cash': 'Kasa', 'bank': 'Banka', 'pos': 'POS'}
+    items = []
+    for account in accounts:
+        balance = float(account.opening_balance or 0) + movement_totals.get(account.id, 0)
+        items.append({
+            'id': account.id,
+            'name': account.name,
+            'type': account.type,
+            'type_label': labels.get(account.type, 'Hesap'),
+            'balance': round(balance, 2),
+            'currency': account.currency or 'TRY',
+        })
+
+    return {
+        'available_total': round(sum(item['balance'] for item in items if item['type'] in {'cash', 'bank'}), 2),
+        'pos_total': round(sum(item['balance'] for item in items if item['type'] == 'pos'), 2),
+        'accounts': items,
+    }
+
+
 def assistant_parse_money(value):
     raw = str(value or '')
     raw = re.sub(r'\b(tl|try|lira|adet|tane)\b|₺', '', raw, flags=re.IGNORECASE).strip()
@@ -5060,6 +5129,24 @@ def enrich_assistant_analysis(result):
             f"Bugün {summary['sales_count']} satış, {format_money(summary['sales_total'])} ciro görünüyor."
             if summary['sales_count'] else
             "Bugün henüz satış görünmüyor; kasa, cari ve stok durumu kontrol edildi."
+        )
+    elif intent == 'receivables_overview':
+        overview = assistant_receivables_overview()
+        result['lookup_type'] = 'receivables_overview'
+        result['receivables_overview'] = overview
+        result['summary'] = (
+            f"{overview['customer_count']} müşteriden toplam {format_money(overview['total'])} alacak görünüyor."
+            if overview['customer_count'] else
+            "Açık bakiyesi bulunan müşteri görünmüyor."
+        )
+    elif intent == 'account_overview':
+        overview = assistant_account_overview()
+        result['lookup_type'] = 'account_overview'
+        result['account_overview'] = overview
+        result['summary'] = (
+            f"Kasa ve bankada {format_money(overview['available_total'])}, POS hesaplarında {format_money(overview['pos_total'])} görünüyor."
+            if overview['accounts'] else
+            "Aktif para hesabı bulunamadı."
         )
     elif intent == 'cash_movement':
         action = result.get('action') or {}

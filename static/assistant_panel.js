@@ -674,10 +674,10 @@
                         </div>
                     </div>
                     <div class="grid gap-2 sm:grid-cols-2">
-                        <button type="button" data-assistant-history-index="-101" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">POS satışı nasıl yapılır?</button>
-                        <button type="button" data-assistant-history-index="-102" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Cari hesap nasıl takip edilir?</button>
-                        <button type="button" data-assistant-history-index="-103" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Kritik stokları göster</button>
-                        <button type="button" data-assistant-history-index="-104" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Bugün ne oldu?</button>
+                        <button type="button" data-assistant-history-index="-101" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Bugün ne oldu?</button>
+                        <button type="button" data-assistant-history-index="-102" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Kimden alacağım var?</button>
+                        <button type="button" data-assistant-history-index="-103" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Param nerede?</button>
+                        <button type="button" data-assistant-history-index="-104" class="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-xs font-bold text-slate-600 transition hover:border-primary-200 hover:text-primary-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">Kritik stokları göster</button>
                     </div>
                 </div>
             `;
@@ -701,6 +701,8 @@
                 lookupType: result.lookup_type || '',
                 lookupItems: Array.isArray(result.lookup_items) ? result.lookup_items : [],
                 todaySummary: result.today_summary || null,
+                receivablesOverview: result.receivables_overview || null,
+                accountOverview: result.account_overview || null,
                 missingFields: Array.isArray(result.missing_fields) ? result.missing_fields : [],
                 requiresMatch: Boolean(result.requires_match),
                 draftReady: Boolean(result.draft_ready),
@@ -757,6 +759,8 @@
             const customerBalanceHtml = this.renderCustomerBalanceAnswer(result);
             const criticalStockHtml = this.renderCriticalStockAnswer(result);
             const todaySummaryHtml = this.renderTodaySummaryAnswer(result);
+            const receivablesHtml = this.renderReceivablesOverview(result);
+            const accountOverviewHtml = this.renderAccountOverview(result);
             this.result.innerHTML = `
                 <div class="space-y-3">
                     <div class="flex items-start justify-between gap-3">
@@ -770,6 +774,8 @@
                     <div class="grid gap-2">${fieldsHtml}</div>
                     ${routeHtml}
                     ${todaySummaryHtml}
+                    ${receivablesHtml}
+                    ${accountOverviewHtml}
                     ${candidatesHtml}
                     ${selectedHtml}
                     ${customerBalanceHtml}
@@ -1035,22 +1041,22 @@
 
         useHistory(index) {
             if (index === -101) {
-                this.input.value = 'POS satışı nasıl yapılır?';
+                this.input.value = 'Bugün ne oldu?';
                 this.analyze();
                 return;
             }
             if (index === -102) {
-                this.input.value = 'Cari hesap nasıl takip edilir?';
+                this.input.value = 'Kimden alacağım var?';
                 this.analyze();
                 return;
             }
             if (index === -103) {
-                this.input.value = 'Kritik stokları göster';
+                this.input.value = 'Param nerede?';
                 this.analyze();
                 return;
             }
             if (index === -104) {
-                this.input.value = 'Bugün ne oldu?';
+                this.input.value = 'Kritik stokları göster';
                 this.analyze();
                 return;
             }
@@ -1230,6 +1236,75 @@
                         <a href="/urunler" class="rounded-2xl border border-rose-100 bg-white px-3 py-2 text-xs font-black text-rose-700 shadow-sm transition hover:bg-rose-50 dark:border-rose-900/40 dark:bg-slate-900 dark:text-rose-300">Stoka Git</a>
                     </div>
                     <div class="space-y-2">${rows || '<p class="rounded-2xl bg-white/80 px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950/30 dark:text-slate-400">Şu an kritik stok uyarısı yok.</p>'}</div>
+                </div>
+            `;
+        }
+
+        renderReceivablesOverview(result) {
+            if (!result || result.lookupType !== 'receivables_overview' || !result.receivablesOverview) return '';
+            const overview = result.receivablesOverview;
+            const items = Array.isArray(overview.items) ? overview.items : [];
+            const rows = items.map((item) => `
+                <a href="/cari/${encodeURIComponent(item.id)}" class="flex items-center justify-between gap-3 rounded-2xl bg-white/85 px-3 py-2 text-xs transition hover:bg-emerald-50 dark:bg-slate-950/30 dark:hover:bg-emerald-950/20">
+                    <span class="min-w-0">
+                        <span class="block truncate font-black text-slate-900 dark:text-white">${escapeHtml(item.label)}</span>
+                        <span class="mt-0.5 block truncate font-semibold text-slate-500 dark:text-slate-400">${escapeHtml(item.contact || item.phone || 'Müşteri')}</span>
+                    </span>
+                    <span class="shrink-0 font-black text-emerald-700 dark:text-emerald-300">${formatAssistantMoney(item.balance)}</span>
+                </a>
+            `).join('');
+            return `
+                <div class="rounded-3xl border border-emerald-100 bg-gradient-to-br from-white to-emerald-50/70 p-3 dark:border-emerald-900/40 dark:from-slate-950/30 dark:to-emerald-950/10">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">Kimden Alacağım Var?</p>
+                            <p class="mt-1 text-lg font-black text-slate-950 dark:text-white">${formatAssistantMoney(overview.total)}</p>
+                            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">${formatAssistantNumber(overview.customer_count)} açık müşteri hesabı</p>
+                        </div>
+                        <span class="material-symbols-outlined rounded-2xl bg-white p-2 text-emerald-700 shadow-sm dark:bg-slate-900 dark:text-emerald-300">group</span>
+                    </div>
+                    <div class="mt-3 space-y-2">${rows || '<p class="rounded-2xl bg-white/80 px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950/30 dark:text-slate-400">Açık müşteri bakiyesi bulunmuyor.</p>'}</div>
+                </div>
+            `;
+        }
+
+        renderAccountOverview(result) {
+            if (!result || result.lookupType !== 'account_overview' || !result.accountOverview) return '';
+            const overview = result.accountOverview;
+            const accounts = Array.isArray(overview.accounts) ? overview.accounts : [];
+            const iconMap = { cash: 'payments', bank: 'account_balance', pos: 'credit_card' };
+            const rows = accounts.map((account) => `
+                <a href="/onmuhasebe/hesaplar/${encodeURIComponent(account.id)}" class="flex items-center justify-between gap-3 rounded-2xl bg-white/85 px-3 py-2 text-xs transition hover:bg-blue-50 dark:bg-slate-950/30 dark:hover:bg-blue-950/20">
+                    <span class="flex min-w-0 items-center gap-2">
+                        <span class="material-symbols-outlined text-base text-blue-600 dark:text-blue-300">${iconMap[account.type] || 'account_balance_wallet'}</span>
+                        <span class="min-w-0">
+                            <span class="block truncate font-black text-slate-900 dark:text-white">${escapeHtml(account.name)}</span>
+                            <span class="block text-[10px] font-bold uppercase tracking-wide text-slate-400">${escapeHtml(account.type_label)}</span>
+                        </span>
+                    </span>
+                    <span class="shrink-0 font-black text-slate-950 dark:text-white">${formatAssistantMoney(account.balance)}</span>
+                </a>
+            `).join('');
+            return `
+                <div class="rounded-3xl border border-blue-100 bg-gradient-to-br from-white to-blue-50/70 p-3 dark:border-blue-900/40 dark:from-slate-950/30 dark:to-blue-950/10">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-[0.14em] text-blue-700 dark:text-blue-300">Param Nerede?</p>
+                            <p class="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">Kasa ve banka kullanılabilir, POS ise aktarım bekleyen tutardır.</p>
+                        </div>
+                        <span class="material-symbols-outlined rounded-2xl bg-white p-2 text-blue-700 shadow-sm dark:bg-slate-900 dark:text-blue-300">account_balance_wallet</span>
+                    </div>
+                    <div class="mt-3 grid grid-cols-2 gap-2">
+                        <div class="rounded-2xl bg-white/85 px-3 py-2 dark:bg-slate-950/30">
+                            <p class="text-[10px] font-black uppercase tracking-wide text-slate-400">Kullanılabilir</p>
+                            <p class="mt-1 text-sm font-black text-emerald-700 dark:text-emerald-300">${formatAssistantMoney(overview.available_total)}</p>
+                        </div>
+                        <div class="rounded-2xl bg-white/85 px-3 py-2 dark:bg-slate-950/30">
+                            <p class="text-[10px] font-black uppercase tracking-wide text-slate-400">POS Bekleyen</p>
+                            <p class="mt-1 text-sm font-black text-violet-700 dark:text-violet-300">${formatAssistantMoney(overview.pos_total)}</p>
+                        </div>
+                    </div>
+                    <div class="mt-3 space-y-2">${rows || '<p class="rounded-2xl bg-white/80 px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950/30 dark:text-slate-400">Aktif para hesabı bulunmuyor.</p>'}</div>
                 </div>
             `;
         }
