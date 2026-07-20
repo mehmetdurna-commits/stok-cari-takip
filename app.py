@@ -8046,7 +8046,7 @@ def pos_satis():
                 user_id=current_user.id,
                 islem_tipi='satis',
                 tutar=satis.genel_toplam,
-                aciklama=f'POS satış faturas? {fatura_no}',
+                aciklama=f'POS satış faturası {fatura_no}',
                 odeme_turu=odeme_yontemi,
                 referans_id=satis.id,
                 referans_tip='satis'
