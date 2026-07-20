@@ -465,7 +465,9 @@ class Iade(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     cari_id = db.Column(db.Integer, db.ForeignKey('cari.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    satis_id = db.Column(db.Integer, db.ForeignKey('satis.id'), nullable=True)
     iade_turu = db.Column(db.String(50), nullable=False)  # para_iadesi, urun_iadesi, hizmet_iadesi, degisim
+    refund_mode = db.Column(db.String(20), nullable=True)
     iade_sebebi = db.Column(db.Text, nullable=False)
     iade_tutari = db.Column(db.Float, default=0)
     durum = db.Column(db.String(20), default='beklemede')  # bekleyen, tamamlanan, iptal
@@ -475,6 +477,7 @@ class Iade(db.Model):
     user_agent = db.Column(db.String(500))
 
     cari = db.relationship('Cari', backref='iadeler')
+    satis = db.relationship('Satis', backref='iadeler')
     kalemler = db.relationship('IadeKalem', lazy='dynamic', backref='iade_obj')
 
 
@@ -482,6 +485,7 @@ class IadeKalem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     iade_id = db.Column(db.Integer, db.ForeignKey('iade.id'), nullable=False)
     urun_id = db.Column(db.Integer, db.ForeignKey('urun.id'), nullable=False)
+    satis_kalemi_id = db.Column(db.Integer, db.ForeignKey('satis_kalemi.id'), nullable=True)
     urun_adi = db.Column(db.String(200), nullable=False)
     miktar = db.Column(db.Float, nullable=False)
     birim_fiyat = db.Column(db.Float, nullable=False)
@@ -489,6 +493,7 @@ class IadeKalem(db.Model):
     yeni_stok = db.Column(db.Float, default=0)
 
     urun = db.relationship('Urun', backref='iade_kalemleri')
+    satis_kalemi = db.relationship('SatisKalemi', backref='iade_kalemleri')
 
 
 class CariHareket(db.Model):
@@ -3077,13 +3082,19 @@ def run_platform_workflow_test():
         # Iade akisi (alacak olustur on) - stok + iade kaydi + stok hareketi
         db.session.expire_all()
         product_before_return = db.session.get(Urun, product.id)
+        return_sale_line = SatisKalemi.query.filter_by(
+            satis_id=sale.id,
+            urun_id=product.id,
+        ).first() if sale else None
         return_response = run_request_as(sandbox_user, '/iade', method='POST', form_data={
             'cari_id': str(cari.id),
+            'satis_id': str(sale.id if sale else ''),
             'iade_turu': 'urun_iadesi',
             'odeme_turu': 'Nakit',
             'iade_sebebi': 'TEST_ROBOT iade',
             'alacak_olustur': 'on',
             'urun_idler[]': [str(product.id)],
+            'satis_kalemi_idler[]': [str(return_sale_line.id if return_sale_line else '')],
             'urun_adlari[]': [product.urun_adi],
             'iade_miktarlari[]': ['1'],
         })
@@ -9107,6 +9118,87 @@ def raporlar():
 # Cari Ödeme İşlemleri
 
 
+def returned_quantity_for_sale_line(sale_line_id):
+    return float(
+        db.session.query(func.sum(IadeKalem.miktar))
+        .join(Iade, Iade.id == IadeKalem.iade_id)
+        .filter(
+            IadeKalem.satis_kalemi_id == sale_line_id,
+            Iade.durum != 'iptal',
+        )
+        .scalar() or 0.0
+    )
+
+
+def sale_line_refund_unit_price(sale, sale_line):
+    subtotal = float(sale.ara_toplam or 0.0)
+    total = float(sale.genel_toplam or 0.0)
+    if subtotal > 0 and total >= 0:
+        return round(float(sale_line.birim_fiyat or 0.0) * (total / subtotal), 4)
+    return round(float(sale_line.birim_fiyat or 0.0), 4)
+
+
+def remaining_monetary_refund_for_sale(sale):
+    refunded = float(
+        db.session.query(func.sum(Iade.iade_tutari))
+        .filter(
+            Iade.satis_id == sale.id,
+            Iade.durum != 'iptal',
+            Iade.refund_mode.in_(('payment', 'credit')),
+        )
+        .scalar() or 0.0
+    )
+    return max(0.0, round(float(sale.genel_toplam or 0.0) - refunded, 2))
+
+
+def build_returnable_sales(tenant_ids):
+    sales = (
+        Satis.query
+        .filter(
+            Satis.user_id.in_(tenant_ids),
+            Satis.cari_id.isnot(None),
+            Satis.durum == 'tamamlandi',
+        )
+        .order_by(Satis.tarih.desc())
+        .limit(300)
+        .all()
+    )
+    result = []
+    for sale in sales:
+        items = []
+        for sale_line in sale.kalemler:
+            remaining_quantity = max(
+                0.0,
+                round(float(sale_line.miktar or 0.0) - returned_quantity_for_sale_line(sale_line.id), 4),
+            )
+            if remaining_quantity <= 0:
+                continue
+            items.append({
+                'id': sale_line.urun_id,
+                'sale_line_id': sale_line.id,
+                'urun_adi': sale_line.urun_adi,
+                'barkod': sale_line.barkod or '',
+                'kategori': '',
+                'stok_miktari': remaining_quantity,
+                'max_return_quantity': remaining_quantity,
+                'original_unit_price': float(sale_line.birim_fiyat or 0.0),
+                'satis_fiyati': sale_line_refund_unit_price(sale, sale_line),
+                'birim': sale_line.birim or 'Adet',
+            })
+        remaining_amount = remaining_monetary_refund_for_sale(sale)
+        if items or remaining_amount > 0:
+            result.append({
+                'id': sale.id,
+                'cari_id': sale.cari_id,
+                'fatura_no': sale.fatura_no,
+                'tarih': format_tr_datetime(sale.tarih),
+                'genel_toplam': float(sale.genel_toplam or 0.0),
+                'remaining_amount': remaining_amount,
+                'items': items,
+            })
+    return result
+
+
 @app.route('/cari/<int:cari_id>/odeme', methods=['POST'])
 @login_required
 @audit_log('UPDATE', 'Cari')
@@ -9237,7 +9329,9 @@ def iade():
     if request.method == 'POST':
         try:
             cari_id = int(request.form.get('cari_id')) if request.form.get('cari_id') else None
+            satis_id = int(request.form.get('satis_id')) if request.form.get('satis_id') else None
             urun_idler = request.form.getlist('urun_idler[]')
+            satis_kalemi_idler = request.form.getlist('satis_kalemi_idler[]')
             urun_adlari = request.form.getlist('urun_adlari[]')
             iade_miktarlari = request.form.getlist('iade_miktarlari[]')
             iade_turu = request.form.get('iade_turu', 'urun_iadesi')
@@ -9270,17 +9364,6 @@ def iade():
                 flash('Bu iade türü için en az bir ürün seçmelisiniz!', 'error')
                 return redirect(url_for('iade'))
 
-            if not stok_etkili and manuel_iade_tutari <= 0 and urun_idler:
-                for i in range(len(urun_idler)):
-                    try:
-                        urun_id = int(urun_idler[i])
-                        iade_miktari = normalize_amount(iade_miktarlari[i]) if i < len(iade_miktarlari) else 0
-                        urun = db.session.get(Urun, urun_id)
-                        if urun and belongs_to_current_tenant(urun) and iade_miktari > 0:
-                            manuel_iade_tutari += iade_miktari * (urun.satis_fiyati or 0)
-                    except (ValueError, TypeError):
-                        continue
-
             if not stok_etkili and manuel_iade_tutari <= 0:
                 flash('Bu iade türü için geçerli bir iade tutarı giriniz!', 'error')
                 return redirect(url_for('iade'))
@@ -9304,49 +9387,106 @@ def iade():
                 flash('Geçersiz müşteri seçimi!', 'error')
                 return redirect(url_for('iade'))
 
+            satis = (
+                Satis.query.filter_by(id=satis_id).with_for_update().first()
+                if satis_id else None
+            )
+            if (
+                not satis
+                or not belongs_to_current_tenant(satis)
+                or satis.durum != 'tamamlandi'
+                or satis.cari_id != cari.id
+            ):
+                flash('İade için müşteriye ait geçerli bir satış seçmelisiniz.', 'error')
+                return redirect(url_for('iade'))
+
+            if not stok_etkili and manuel_iade_tutari > remaining_monetary_refund_for_sale(satis):
+                flash('İade tutarı satışın kalan iade edilebilir tutarını aşamaz.', 'error')
+                return redirect(url_for('iade'))
+
             iade_kalemleri = []
             toplam_iade_tutari = 0
             if stok_etkili:
+                processed_sale_line_ids = set()
                 for i in range(len(urun_idler)):
                     try:
                         urun_id = int(urun_idler[i])
+                        satis_kalemi_id = int(satis_kalemi_idler[i]) if i < len(satis_kalemi_idler) else 0
                         urun_adi = urun_adlari[i] if i < len(urun_adlari) else ''
                         iade_miktari = normalize_amount(iade_miktarlari[i]) if i < len(iade_miktarlari) else 0
 
-                        urun = db.session.get(Urun, urun_id)
+                        urun = Urun.query.filter_by(id=urun_id).with_for_update().first()
                         if not urun or not belongs_to_current_tenant(urun):
-                            continue
+                            raise ValueError('İade kalemindeki ürün bulunamadı.')
+
+                        satis_kalemi = (
+                            SatisKalemi.query
+                            .filter_by(id=satis_kalemi_id)
+                            .with_for_update()
+                            .first()
+                        )
+                        if (
+                            not satis_kalemi
+                            or satis_kalemi.satis_id != satis.id
+                            or satis_kalemi.urun_id != urun.id
+                        ):
+                            raise ValueError('İade kalemi seçilen satışla eşleşmiyor.')
+
+                        if satis_kalemi.id in processed_sale_line_ids:
+                            raise ValueError('Aynı satış kalemi iadeye birden fazla eklenemez.')
+                        processed_sale_line_ids.add(satis_kalemi.id)
 
                         if iade_miktari <= 0:
                             flash(f'{urun.urun_adi} için geçerli bir iade miktarı giriniz!', 'error')
                             return redirect(url_for('iade'))
 
+                        remaining_quantity = max(
+                            0.0,
+                            float(satis_kalemi.miktar or 0.0)
+                            - returned_quantity_for_sale_line(satis_kalemi.id),
+                        )
+                        if iade_miktari > remaining_quantity + 0.0001:
+                            raise ValueError(
+                                f'{urun.urun_adi} için en fazla {remaining_quantity:g} '
+                                'adet iade alınabilir.'
+                            )
+
+                        refund_unit_price = sale_line_refund_unit_price(satis, satis_kalemi)
                         eski_stok = urun.stok_miktari or 0
                         urun.stok_miktari = eski_stok + iade_miktari
 
                         iade_kalemleri.append({
                             'urun_id': urun.id,
+                            'satis_kalemi_id': satis_kalemi.id,
                             'urun_adi': urun_adi or urun.urun_adi,
                             'miktar': iade_miktari,
-                            'birim_fiyat': urun.satis_fiyati or 0,
+                            'birim_fiyat': refund_unit_price,
                             'eski_stok': eski_stok,
                             'yeni_stok': urun.stok_miktari
                         })
-                        toplam_iade_tutari += iade_miktari * (urun.satis_fiyati or 0)
+                        toplam_iade_tutari += iade_miktari * refund_unit_price
 
-                    except (ValueError, TypeError):
-                        continue
+                    except (ValueError, TypeError) as exc:
+                        raise ValueError(str(exc) or 'İade kalemi geçersiz.') from exc
 
                 if not iade_kalemleri:
                     flash('Geçerli iade kalemi bulunamadı!', 'error')
                     return redirect(url_for('iade'))
+                toplam_iade_tutari = round(toplam_iade_tutari, 2)
+                if (
+                    refund_mode in {'payment', 'credit'}
+                    and toplam_iade_tutari > remaining_monetary_refund_for_sale(satis)
+                ):
+                    raise ValueError('İade tutarı satışın kalan iade edilebilir tutarını aşamaz.')
             else:
                 toplam_iade_tutari = manuel_iade_tutari
 
             iade_kaydi = Iade(
                 cari_id=cari.id,
                 user_id=current_user.id,
+                satis_id=satis.id,
                 iade_turu=iade_turu,
+                refund_mode=refund_mode,
                 iade_sebebi=iade_sebebi,
                 iade_tutari=toplam_iade_tutari,
                 durum='tamamlandi',
@@ -9362,6 +9502,7 @@ def iade():
                 iade_kalem = IadeKalem(
                     iade_id=iade_kaydi.id,
                     urun_id=kalem['urun_id'],
+                    satis_kalemi_id=kalem['satis_kalemi_id'],
                     urun_adi=kalem['urun_adi'],
                     miktar=kalem['miktar'],
                     birim_fiyat=kalem['birim_fiyat'],
@@ -9445,7 +9586,6 @@ def iade():
 
     ensure_default_accounts_for_user(current_user.id)
     cariler = Cari.query.filter(Cari.user_id.in_(tenant_ids)).all()
-    urunler = Urun.query.filter(Urun.user_id.in_(tenant_ids)).all()
     accounts = Account.query.filter(Account.user_id.in_(tenant_ids), Account.active.is_(True)).order_by(Account.type, Account.name).all()
 
     cariler_json = [{
@@ -9455,18 +9595,9 @@ def iade():
         'alacak': c.alacak or 0
     } for c in cariler]
 
-    urunler_json = [{
-        'id': u.id,
-        'urun_adi': u.urun_adi,
-        'barkod': u.barkod or '',
-        'kategori': u.kategori or '',
-        'stok_miktari': u.stok_miktari or 0,
-        'satis_fiyati': u.satis_fiyati or 0
-    } for u in urunler]
-
     return render_template('iade_islemleri_paneli.html',
                            cariler=cariler_json,
-                           urunler=urunler_json,
+                           iade_satislari=build_returnable_sales(tenant_ids),
                            toplam_iade=toplam_iade,
                            bekleyen_iade=bekleyen_iade,
                            tamamlanan_iade=tamamlanan_iade,

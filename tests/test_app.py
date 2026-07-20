@@ -35,6 +35,7 @@ from app import (
     CashTransaction,
     AccountReconciliation,
     Iade,
+    IadeKalem,
     CariHareket,
     Departman,
     Personel,
@@ -72,6 +73,40 @@ def enable_platform_pos_integration_for_users():
             description='Test POS entegrasyon gorunurlugu'
         ))
         db.session.commit()
+
+
+def create_sale_for_return(owner, cari, product, quantity=1, unit_price=100, vat_rate=0, discount=0):
+    subtotal = round(quantity * unit_price, 2)
+    vat_total = round(subtotal * (vat_rate / 100), 2)
+    grand_total = round(subtotal + vat_total - discount, 2)
+    sale = Satis(
+        fatura_no=f'RETURN-TEST-{Satis.query.count() + 1}',
+        cari_id=cari.id,
+        user_id=owner.id,
+        tarih=datetime.now(timezone.utc),
+        depo=product.depo_adi or 'Ana Depo',
+        ara_toplam=subtotal,
+        kdv_orani=vat_rate,
+        kdv_tutar=vat_total,
+        iskonto=discount,
+        genel_toplam=grand_total,
+        durum='tamamlandi',
+    )
+    db.session.add(sale)
+    db.session.flush()
+    sale_line = SatisKalemi(
+        satis_id=sale.id,
+        urun_id=product.id,
+        urun_adi=product.urun_adi,
+        barkod=product.barkod,
+        miktar=quantity,
+        birim=product.birim or 'Adet',
+        birim_fiyat=unit_price,
+        toplam=subtotal,
+    )
+    db.session.add(sale_line)
+    db.session.commit()
+    return sale.id, sale_line.id
 
 
 @pytest.fixture(scope='function')
@@ -3344,11 +3379,13 @@ def test_iade_urun_iadesi_cari_alacak_olustur_does_not_touch_cash(client):
         cari.alacak = 100.0
         cari.borc = 0.0
         stock_before = float(product.stok_miktari or 0)
-        db.session.commit()
+        sale_id, sale_line_id = create_sale_for_return(owner, cari, product)
 
     resp = client.post('/iade', data={
         'cari_id': str(cari_id),
+        'satis_id': str(sale_id),
         'urun_idler[]': [str(product_id)],
+        'satis_kalemi_idler[]': [str(sale_line_id)],
         'urun_adlari[]': ['Test Urun'],
         'iade_miktarlari[]': ['1'],
         'iade_turu': 'urun_iadesi',
@@ -3378,6 +3415,7 @@ def test_iade_credit_return_updates_cari_statement_balance(client):
         cari_id = cari.id
         cari.alacak = 100.0
         cari.borc = 0.0
+        sale_id, sale_line_id = create_sale_for_return(owner, cari, product)
         db.session.add(CariHareket(
             cari_id=cari.id,
             user_id=owner.id,
@@ -3385,14 +3423,16 @@ def test_iade_credit_return_updates_cari_statement_balance(client):
             tutar=100.0,
             aciklama='Veresiye satis test',
             odeme_turu='Alacak',
-            referans_id=501,
+            referans_id=sale_id,
             referans_tip='satis'
         ))
         db.session.commit()
 
     response = client.post('/iade', data={
         'cari_id': str(cari_id),
+        'satis_id': str(sale_id),
         'urun_idler[]': [str(product_id)],
+        'satis_kalemi_idler[]': [str(sale_line_id)],
         'urun_adlari[]': ['Test Urun'],
         'iade_miktarlari[]': ['1'],
         'iade_turu': 'urun_iadesi',
@@ -3426,6 +3466,129 @@ def test_iade_credit_return_updates_cari_statement_balance(client):
     assert 'Ekstre iade testi'.encode('utf-8') in detail_response.data
 
 
+def test_iade_uses_original_sale_net_price_not_current_product_price(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        product = Urun.query.filter_by(user_id=owner.id).first()
+        cari = Cari.query.filter_by(user_id=owner.id).first()
+        product_id = product.id
+        cari_id = cari.id
+        cari.alacak = 218.0
+        sale_id, sale_line_id = create_sale_for_return(
+            owner,
+            cari,
+            product,
+            quantity=2,
+            unit_price=100,
+            vat_rate=18,
+            discount=18,
+        )
+        product.satis_fiyati = 999.0
+        stock_before = float(product.stok_miktari or 0)
+        db.session.commit()
+
+    response = client.post('/iade', data={
+        'cari_id': str(cari_id),
+        'satis_id': str(sale_id),
+        'urun_idler[]': [str(product_id)],
+        'satis_kalemi_idler[]': [str(sale_line_id)],
+        'urun_adlari[]': ['Test Urun'],
+        'iade_miktarlari[]': ['1'],
+        'iade_turu': 'urun_iadesi',
+        'refund_mode': 'credit',
+        'iade_sebebi': 'Orijinal fiyat testi',
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    with app.app_context():
+        product = db.session.get(Urun, product_id)
+        cari = db.session.get(Cari, cari_id)
+        return_record = Iade.query.order_by(Iade.id.desc()).first()
+        return_line = IadeKalem.query.filter_by(iade_id=return_record.id).first()
+        assert float(product.stok_miktari or 0) == stock_before + 1
+        assert return_record.satis_id == sale_id
+        assert return_record.refund_mode == 'credit'
+        assert return_record.iade_tutari == 109.0
+        assert return_line.satis_kalemi_id == sale_line_id
+        assert return_line.birim_fiyat == 109.0
+        assert float(cari.alacak or 0) == 109.0
+
+
+def test_iade_rejects_quantity_above_remaining_sale_quantity(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        product = Urun.query.filter_by(user_id=owner.id).first()
+        cari = Cari.query.filter_by(user_id=owner.id).first()
+        product_id = product.id
+        cari_id = cari.id
+        sale_id, sale_line_id = create_sale_for_return(owner, cari, product, quantity=2)
+        stock_before = float(product.stok_miktari or 0)
+
+    first_response = client.post('/iade', data={
+        'cari_id': str(cari_id),
+        'satis_id': str(sale_id),
+        'urun_idler[]': [str(product_id)],
+        'satis_kalemi_idler[]': [str(sale_line_id)],
+        'urun_adlari[]': ['Test Urun'],
+        'iade_miktarlari[]': ['1'],
+        'iade_turu': 'urun_iadesi',
+        'refund_mode': 'exchange',
+        'iade_sebebi': 'İlk iade',
+    }, follow_redirects=True)
+    assert first_response.status_code == 200
+
+    second_response = client.post('/iade', data={
+        'cari_id': str(cari_id),
+        'satis_id': str(sale_id),
+        'urun_idler[]': [str(product_id)],
+        'satis_kalemi_idler[]': [str(sale_line_id)],
+        'urun_adlari[]': ['Test Urun'],
+        'iade_miktarlari[]': ['2'],
+        'iade_turu': 'urun_iadesi',
+        'refund_mode': 'exchange',
+        'iade_sebebi': 'Fazla iade denemesi',
+    }, follow_redirects=True)
+    assert second_response.status_code == 200
+
+    with app.app_context():
+        product = db.session.get(Urun, product_id)
+        assert Iade.query.count() == 1
+        assert IadeKalem.query.filter_by(satis_kalemi_id=sale_line_id).count() == 1
+        assert float(product.stok_miktari or 0) == stock_before + 1
+
+
+def test_iade_rejects_sale_owned_by_different_customer(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        product = Urun.query.filter_by(user_id=owner.id).first()
+        customer = Cari.query.filter_by(user_id=owner.id).first()
+        other_customer = Cari(unvan='Baska Musteri', user_id=owner.id)
+        db.session.add(other_customer)
+        db.session.flush()
+        sale_id, sale_line_id = create_sale_for_return(owner, customer, product)
+        product_id = product.id
+        other_customer_id = other_customer.id
+        stock_before = float(product.stok_miktari or 0)
+
+    response = client.post('/iade', data={
+        'cari_id': str(other_customer_id),
+        'satis_id': str(sale_id),
+        'urun_idler[]': [str(product_id)],
+        'satis_kalemi_idler[]': [str(sale_line_id)],
+        'urun_adlari[]': ['Test Urun'],
+        'iade_miktarlari[]': ['1'],
+        'iade_turu': 'urun_iadesi',
+        'refund_mode': 'exchange',
+        'iade_sebebi': 'Yanlis musteri',
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    with app.app_context():
+        product = db.session.get(Urun, product_id)
+        assert Iade.query.count() == 0
+        assert float(product.stok_miktari or 0) == stock_before
+
+
 def test_iade_urun_iadesi_without_credit_only_restocks(client):
     with app.app_context():
         owner = User.query.filter_by(email='test@example.com').first()
@@ -3436,11 +3599,13 @@ def test_iade_urun_iadesi_without_credit_only_restocks(client):
         stock_before = float(product.stok_miktari or 0)
         cari.alacak = 25.0
         cari.borc = 0.0
-        db.session.commit()
+        sale_id, sale_line_id = create_sale_for_return(owner, cari, product)
 
     response = client.post('/iade', data={
         'cari_id': str(cari_id),
+        'satis_id': str(sale_id),
         'urun_idler[]': [str(product_id)],
+        'satis_kalemi_idler[]': [str(sale_line_id)],
         'urun_adlari[]': ['Test Urun'],
         'iade_miktarlari[]': ['1'],
         'iade_turu': 'urun_iadesi',
@@ -3476,14 +3641,13 @@ def test_iade_para_iadesi_creates_only_cash_out_on_selected_account(client):
         bank_id = bank.id
         cari.alacak = 100.0
         cari.borc = 0.0
-        db.session.commit()
+        sale_id, sale_line_id = create_sale_for_return(owner, cari, product)
 
     response = client.post('/iade', data={
         'cari_id': str(cari_id),
-        'urun_idler[]': [str(product_id)],
-        'urun_adlari[]': ['Test Urun'],
-        'iade_miktarlari[]': ['1'],
+        'satis_id': str(sale_id),
         'iade_turu': 'para_iadesi',
+        'manuel_iade_tutari': '100',
         'odeme_turu': 'Havale/EFT',
         'account_id': str(bank_id),
         'iade_sebebi': 'Para iadesi test',
