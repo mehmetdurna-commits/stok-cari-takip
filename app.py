@@ -4335,6 +4335,16 @@ def create_cash_transaction(cari, tutar, islem_tipi='giris', odeme_turu='Nakit',
     return transaction
 
 
+def account_current_balance(account):
+    totals = db.session.query(
+        func.sum(case((CashTransaction.islem_tipi == 'giris', CashTransaction.tutar), else_=0.0)),
+        func.sum(case((CashTransaction.islem_tipi == 'cikis', CashTransaction.tutar), else_=0.0)),
+    ).filter(CashTransaction.account_id == account.id).one()
+    total_in = float(totals[0] or 0.0)
+    total_out = float(totals[1] or 0.0)
+    return round(float(account.opening_balance or 0.0) + total_in - total_out, 2)
+
+
 def adjust_cari_account(cari, amount, transaction_type):
     if transaction_type == 'odeme':
         mevcut_borc = cari.borc or 0
@@ -7944,7 +7954,7 @@ def pos_satis():
                 return jsonify({'success': False, 'message': 'Sepette erisilemeyen urun var'})
 
             miktar = normalize_amount(item.get('quantity', 1))
-            birim_fiyat = normalize_amount(item.get('price', 0))
+            birim_fiyat = normalize_amount(urun.satis_fiyati or 0)
             birim = item.get('unit') or urun.birim or 'Adet'
 
             if miktar <= 0 or birim_fiyat < 0:
@@ -8098,11 +8108,14 @@ def nakit_yonetimi():
     tx_query = CashTransaction.query.filter(CashTransaction.user_id.in_(tenant_ids))
     if account_id:
         tx_query = tx_query.filter(CashTransaction.account_id == account_id)
-    transactions = tx_query.order_by(CashTransaction.tarih.desc()).limit(200).all()
-
-    total_giris = sum(t.tutar for t in transactions if t.islem_tipi == 'giris')
-    total_cikis = sum(t.tutar for t in transactions if t.islem_tipi == 'cikis')
+    totals = tx_query.with_entities(
+        func.sum(case((CashTransaction.islem_tipi == 'giris', CashTransaction.tutar), else_=0.0)),
+        func.sum(case((CashTransaction.islem_tipi == 'cikis', CashTransaction.tutar), else_=0.0)),
+    ).one()
+    total_giris = float(totals[0] or 0.0)
+    total_cikis = float(totals[1] or 0.0)
     bakiye = total_giris - total_cikis
+    transactions = tx_query.order_by(CashTransaction.tarih.desc()).limit(200).all()
     return render_template('nakit_yonetimi.html',
                            transactions=transactions,
                            total_giris=total_giris,
@@ -8235,6 +8248,10 @@ def onmuhasebe_hesaplar():
 
                 if account.type == 'pos' and target.type != 'bank':
                     flash('POS valör tahsilatı sadece banka hesabına aktarılabilir.', 'error')
+                    return redirect(url_for('onmuhasebe_hesaplar'))
+
+                if tutar > account_current_balance(account):
+                    flash('Kaynak hesap bakiyesi aktarım için yetersiz.', 'error')
                     return redirect(url_for('onmuhasebe_hesaplar'))
 
                 note = aciklama or ('POS valör tahsilatı' if account.type == 'pos' and target.type == 'bank' else 'Hesaplar arası transfer')
@@ -8443,6 +8460,10 @@ def onmuhasebe_hesap_detay(account_id: int):
 
             if tutar <= 0:
                 flash('Tutar sıfırdan büyük olmalı.', 'error')
+                return redirect(url_for('onmuhasebe_hesap_detay', account_id=account.id))
+
+            if tutar > account_current_balance(account):
+                flash('Kaynak hesap bakiyesi transfer için yetersiz.', 'error')
                 return redirect(url_for('onmuhasebe_hesap_detay', account_id=account.id))
 
             if tarih_raw:

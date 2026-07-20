@@ -119,12 +119,24 @@ def client():
         db.session.add(Warehouse(name='Merkez Depo', user_id=user_id))
         db.session.commit()
         product_id = product.id
+        settings_path = Path(backup_dir_for_user(user)) / 'settings.json'
+        original_settings = settings_path.read_bytes() if settings_path.exists() else None
+        if settings_path.exists():
+            settings_path.unlink()
 
     with app.test_client() as client:
         with client.session_transaction() as sess:
             sess['_user_id'] = str(user_id)
             sess['_fresh'] = True
-        yield client
+        try:
+            yield client
+        finally:
+            if original_settings is None:
+                if settings_path.exists():
+                    settings_path.unlink()
+            else:
+                settings_path.parent.mkdir(parents=True, exist_ok=True)
+                settings_path.write_bytes(original_settings)
 
 
 def test_security_audit(client):
@@ -735,6 +747,7 @@ def test_routed_templates_do_not_embed_duplicate_app_shells():
         'error.html',
         'pos_urun_secimi_ve_sepet.html',
         'satis_fis_yazdir.html',
+        'satis_irsaliye_yazdir.html',
         'cari_ekstre_yazdir.html',
         'personel/personel_bordro.html',
     }
@@ -2795,6 +2808,15 @@ def test_onmuhasebe_hesaplar_allows_pos_valor_transfer(client):
         bank.active = True
         pos_id = pos.id
         bank_id = bank.id
+        db.session.add(CashTransaction(
+            user_id=owner.id,
+            account_id=pos.id,
+            islem_tipi='giris',
+            tutar=575,
+            odeme_turu='Kredi Kartı',
+            aciklama='Bekleyen POS tahsilatı',
+            referans_tip='satis',
+        ))
         db.session.commit()
 
     response = client.post('/onmuhasebe/hesaplar', data={
@@ -2880,6 +2902,44 @@ def test_onmuhasebe_hesaplar_rejects_pos_transfer_to_cash(client):
         assert CashTransaction.query.filter_by(account_id=pos_id, aciklama='Yanlis POS kasa aktarimi').first() is None
 
 
+def test_onmuhasebe_hesaplar_rejects_transfer_above_source_balance(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        ensure_default_accounts_for_user(owner.id)
+        pos = Account.query.filter_by(user_id=owner.id, name='POS').first()
+        bank = Account.query.filter_by(user_id=owner.id, name='Banka Hesabi').first()
+        pos.active = True
+        bank.active = True
+        pos_id = pos.id
+        bank_id = bank.id
+        db.session.add(CashTransaction(
+            user_id=owner.id,
+            account_id=pos.id,
+            islem_tipi='giris',
+            tutar=100,
+            odeme_turu='Kredi Kartı',
+            aciklama='Bekleyen POS tahsilatı',
+            referans_tip='satis',
+        ))
+        db.session.commit()
+
+    response = client.post('/onmuhasebe/hesaplar', data={
+        'action': 'quick_tx',
+        'account_id': str(pos_id),
+        'target_account_id': str(bank_id),
+        'islem_tipi': 'transfer',
+        'tutar': '101',
+        'aciklama': 'Bakiyeyi asan transfer',
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    with app.app_context():
+        assert CashTransaction.query.filter_by(
+            account_id=pos_id,
+            referans_tip='transfer',
+        ).count() == 0
+
+
 def test_card_payment_defaults_to_pos_account(client):
     with app.app_context():
         owner = User.query.filter_by(email='test@example.com').first()
@@ -2928,6 +2988,31 @@ def test_nakit_yonetimi_uses_plain_business_labels(client):
     assert 'Para Çıkışı'.encode('utf-8') in response.data
     assert '+₺150,00'.encode('utf-8') in response.data
     assert '-₺40,00'.encode('utf-8') in response.data
+
+
+def test_nakit_yonetimi_summary_uses_all_transactions_not_only_visible_rows(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        ensure_default_accounts_for_user(owner.id)
+        kasa = Account.query.filter_by(user_id=owner.id, name='Nakit Kasa').first()
+        db.session.add_all([
+            CashTransaction(
+                user_id=owner.id,
+                account_id=kasa.id,
+                islem_tipi='giris',
+                tutar=1,
+                odeme_turu='Nakit',
+                aciklama=f'Test gelir {index}',
+                referans_tip='manual',
+            )
+            for index in range(205)
+        ])
+        db.session.commit()
+
+    response = client.get('/nakit')
+
+    assert response.status_code == 200
+    assert '₺205,00'.encode('utf-8') in response.data
 
 
 def test_onmuhasebe_hesap_detay_allows_manual_tx_and_transfer(client):
@@ -5617,6 +5702,28 @@ def test_pos_sale_successfully_records_sale(client):
         assert db.session.get(Cari, cari.id).alacak == 0
         assert CashTransaction.query.filter_by(referans_tip='satis', referans_id=new_satis.id, islem_tipi='giris').count() == 1
         assert CariHareket.query.filter_by(referans_tip='satis', referans_id=new_satis.id).count() == 0
+
+
+def test_pos_sale_uses_server_product_price_instead_of_client_price(client):
+    with app.app_context():
+        product = Urun.query.filter_by(depo_adi='Ana Depo').first()
+        product_id = product.id
+
+    response = client.post('/pos/satis', json={
+        'items': [{'id': product_id, 'price': 1, 'quantity': 1}],
+        'paymentMethod': 'cash',
+    })
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['success'] is True
+    assert data['receipt']['subtotal'] == 100.0
+    assert data['total'] == 118.0
+
+    with app.app_context():
+        sale = Satis.query.order_by(Satis.id.desc()).first()
+        sale_item = SatisKalemi.query.filter_by(satis_id=sale.id).first()
+        assert sale_item.birim_fiyat == 100.0
 
 
 def test_pos_sale_normalizes_card_payment_method(client):
