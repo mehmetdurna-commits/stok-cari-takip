@@ -9440,6 +9440,14 @@ def iade():
                             flash(f'{urun.urun_adi} için geçerli bir iade miktarı giriniz!', 'error')
                             return redirect(url_for('iade'))
 
+                        if (
+                            (satis_kalemi.birim or 'Adet').strip().casefold() == 'adet'
+                            and abs(float(iade_miktari) - round(float(iade_miktari))) > 0.0001
+                        ):
+                            raise ValueError(
+                                f'{urun.urun_adi} adet ile satıldığı için iade miktarı tam sayı olmalıdır.'
+                            )
+
                         remaining_quantity = max(
                             0.0,
                             float(satis_kalemi.miktar or 0.0)

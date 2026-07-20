@@ -3557,6 +3557,70 @@ def test_iade_rejects_quantity_above_remaining_sale_quantity(client):
         assert float(product.stok_miktari or 0) == stock_before + 1
 
 
+def test_iade_rejects_fractional_quantity_for_piece_unit(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        product = Urun.query.filter_by(user_id=owner.id).first()
+        cari = Cari.query.filter_by(user_id=owner.id).first()
+        product.birim = 'Adet'
+        db.session.commit()
+        product_id = product.id
+        cari_id = cari.id
+        sale_id, sale_line_id = create_sale_for_return(owner, cari, product, quantity=2)
+        stock_before = float(product.stok_miktari or 0)
+
+    response = client.post('/iade', data={
+        'cari_id': str(cari_id),
+        'satis_id': str(sale_id),
+        'urun_idler[]': [str(product_id)],
+        'satis_kalemi_idler[]': [str(sale_line_id)],
+        'urun_adlari[]': ['Test Urun'],
+        'iade_miktarlari[]': ['1.5'],
+        'iade_turu': 'urun_iadesi',
+        'refund_mode': 'exchange',
+        'iade_sebebi': 'Ondalik adet denemesi',
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    with app.app_context():
+        product = db.session.get(Urun, product_id)
+        assert Iade.query.count() == 0
+        assert float(product.stok_miktari or 0) == stock_before
+
+
+def test_iade_allows_fractional_quantity_for_divisible_unit(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        product = Urun.query.filter_by(user_id=owner.id).first()
+        cari = Cari.query.filter_by(user_id=owner.id).first()
+        product.birim = 'Kg'
+        db.session.commit()
+        product_id = product.id
+        cari_id = cari.id
+        sale_id, sale_line_id = create_sale_for_return(owner, cari, product, quantity=2)
+        stock_before = float(product.stok_miktari or 0)
+
+    response = client.post('/iade', data={
+        'cari_id': str(cari_id),
+        'satis_id': str(sale_id),
+        'urun_idler[]': [str(product_id)],
+        'satis_kalemi_idler[]': [str(sale_line_id)],
+        'urun_adlari[]': ['Test Urun'],
+        'iade_miktarlari[]': ['0.5'],
+        'iade_turu': 'urun_iadesi',
+        'refund_mode': 'exchange',
+        'iade_sebebi': 'Bolunebilir birim testi',
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    with app.app_context():
+        product = db.session.get(Urun, product_id)
+        return_record = Iade.query.one()
+        return_line = IadeKalem.query.filter_by(iade_id=return_record.id).one()
+        assert return_line.miktar == 0.5
+        assert float(product.stok_miktari or 0) == stock_before + 0.5
+
+
 def test_iade_rejects_sale_owned_by_different_customer(client):
     with app.app_context():
         owner = User.query.filter_by(email='test@example.com').first()
