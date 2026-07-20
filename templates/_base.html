@@ -1687,24 +1687,101 @@
                             </a>
                         </div>
                     </div>
-                    <button id="theme-toggle" type="button" aria-label="Renk temasını değiştir" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-                        <span class="material-symbols-outlined dark:hidden">dark_mode</span>
-                        <span class="material-symbols-outlined hidden dark:block text-yellow-400">light_mode</span>
-                    </button>
                     <div class="relative">
-                        <button id="profile-menu-toggle" type="button" onclick="toggleProfileMenu()" aria-label="Kullanıcı menüsünü aç" aria-controls="profile-menu-dropdown" aria-expanded="false" class="size-10 rounded-full bg-primary-600 text-white text-sm font-black tracking-wide flex items-center justify-center border border-primary-500 shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 transition-colors">
+                        <button id="profile-menu-toggle" type="button" onclick="toggleProfileMenu()" aria-label="Kullanıcı menüsünü aç" aria-controls="profile-menu-dropdown" aria-expanded="false" class="group relative flex size-10 items-center justify-center rounded-full border border-primary-500 bg-gradient-to-br from-primary-500 to-primary-700 text-sm font-black tracking-wide text-white shadow-md shadow-primary-600/20 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-600/25 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900">
                             {{ user_initials(current_user) }}
+                            <span class="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-white bg-emerald-500 dark:border-slate-900" aria-hidden="true"></span>
                         </button>
-                        <div id="profile-menu-dropdown" class="hidden absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl z-50 overflow-hidden">
-                            <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
-                                <p class="text-sm font-bold text-slate-900 dark:text-white truncate">{{ user_display_name(current_user) }}</p>
-                                <p class="text-xs text-slate-500 dark:text-slate-400 truncate">{{ user_display_subtitle(current_user) }}</p>
+                        <div id="profile-menu-dropdown" class="hidden absolute right-0 z-50 mt-3 max-h-[calc(100vh-5.5rem)] w-[22rem] max-w-[calc(100vw-1.5rem)] origin-top-right overflow-x-hidden overflow-y-auto overscroll-contain rounded-[1.5rem] border border-slate-200/80 bg-white/95 shadow-2xl shadow-slate-900/15 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/95 dark:shadow-black/30">
+                            <div class="border-b border-slate-100 bg-gradient-to-br from-primary-50 via-white to-cyan-50 px-5 py-5 dark:border-slate-800 dark:from-primary-950/40 dark:via-slate-900 dark:to-cyan-950/30">
+                                <div class="flex items-center gap-3">
+                                    <div class="relative flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 text-base font-black text-white shadow-lg shadow-primary-600/20">
+                                        {{ user_initials(current_user) }}
+                                        <span class="absolute -bottom-1 -right-1 size-3.5 rounded-full border-[3px] border-white bg-emerald-500 dark:border-slate-900"></span>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-black text-slate-950 dark:text-white">{{ user_display_name(current_user) }}</p>
+                                        <p class="mt-0.5 truncate text-xs font-medium text-slate-500 dark:text-slate-400">{{ current_user.email }}</p>
+                                    </div>
+                                    <span class="material-symbols-outlined text-slate-300 dark:text-slate-600">verified_user</span>
+                                </div>
+                                <div class="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-white/80 bg-white/75 px-3.5 py-3 shadow-sm dark:border-slate-700/70 dark:bg-slate-800/70">
+                                    <div class="min-w-0">
+                                        <p class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Aktif işletme</p>
+                                        <p class="mt-1 truncate text-sm font-bold text-slate-800 dark:text-slate-100">{{ current_user.firma_adi or 'İşletmeniz' }}</p>
+                                    </div>
+                                    <span class="flex size-8 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                        <span class="material-symbols-outlined text-lg">storefront</span>
+                                    </span>
+                                </div>
                             </div>
+
+                            <nav class="space-y-1 p-3" aria-label="Kullanıcı işlemleri">
+                                <a href="{{ url_for('settings') }}" class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-primary-50 hover:text-primary-700 dark:text-slate-200 dark:hover:bg-primary-950/40 dark:hover:text-primary-200">
+                                    <span class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition-colors group-hover:bg-primary-100 group-hover:text-primary-600 dark:bg-slate-800 dark:text-slate-400 dark:group-hover:bg-primary-900/50 dark:group-hover:text-primary-300">
+                                        <span class="material-symbols-outlined text-xl">manage_accounts</span>
+                                    </span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block">Firma ve Hesap Ayarları</span>
+                                        <span class="mt-0.5 block text-[11px] font-medium text-slate-400">Bilgiler, güvenlik ve tercihler</span>
+                                    </span>
+                                    <span class="material-symbols-outlined text-lg text-slate-300">chevron_right</span>
+                                </a>
+                                <a href="{{ url_for('paket_yukselt') }}" class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-primary-50 hover:text-primary-700 dark:text-slate-200 dark:hover:bg-primary-950/40 dark:hover:text-primary-200">
+                                    <span class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-300">
+                                        <span class="material-symbols-outlined text-xl">workspace_premium</span>
+                                    </span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block">Paket ve Lisans</span>
+                                        <span class="mt-0.5 block text-[11px] font-medium text-slate-400">Planı ve kullanım seçeneklerini gör</span>
+                                    </span>
+                                    <span class="material-symbols-outlined text-lg text-slate-300">chevron_right</span>
+                                </a>
+                                <a href="{{ url_for('support_tickets') }}" class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-primary-50 hover:text-primary-700 dark:text-slate-200 dark:hover:bg-primary-950/40 dark:hover:text-primary-200">
+                                    <span class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300">
+                                        <span class="material-symbols-outlined text-xl">support_agent</span>
+                                    </span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block">Yardım Merkezi</span>
+                                        <span class="mt-0.5 block text-[11px] font-medium text-slate-400">Destek talebi oluştur ve takip et</span>
+                                    </span>
+                                    <span class="material-symbols-outlined text-lg text-slate-300">chevron_right</span>
+                                </a>
+                                <a href="{{ url_for('settings') }}#guide" class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-primary-50 hover:text-primary-700 dark:text-slate-200 dark:hover:bg-primary-950/40 dark:hover:text-primary-200">
+                                    <span class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600 dark:bg-cyan-950/40 dark:text-cyan-300">
+                                        <span class="material-symbols-outlined text-xl">menu_book</span>
+                                    </span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block">Kullanıcı Rehberi</span>
+                                        <span class="mt-0.5 block text-[11px] font-medium text-slate-400">Temel işlemleri adım adım öğren</span>
+                                    </span>
+                                    <span class="material-symbols-outlined text-lg text-slate-300">chevron_right</span>
+                                </a>
+                            </nav>
+
+                            <div class="border-y border-slate-100 bg-slate-50/70 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/35">
+                                <button id="theme-toggle" type="button" role="switch" aria-checked="false" aria-label="Karanlık modu aç veya kapat" class="flex w-full items-center justify-between gap-4 rounded-xl px-2 py-2 text-left transition-colors hover:bg-white dark:hover:bg-slate-800">
+                                    <span class="flex items-center gap-3">
+                                        <span class="flex size-9 items-center justify-center rounded-xl bg-slate-200/70 text-slate-600 dark:bg-slate-800 dark:text-amber-300">
+                                            <span class="material-symbols-outlined text-xl dark:hidden">dark_mode</span>
+                                            <span class="material-symbols-outlined hidden text-xl dark:block">light_mode</span>
+                                        </span>
+                                        <span>
+                                            <span class="block text-sm font-bold text-slate-700 dark:text-slate-200">Karanlık Mod</span>
+                                            <span id="theme-toggle-status" class="mt-0.5 block text-[11px] font-medium text-slate-400">Kapalı</span>
+                                        </span>
+                                    </span>
+                                    <span class="relative h-6 w-11 shrink-0 rounded-full bg-slate-300 transition-colors duration-200 dark:bg-primary-600" aria-hidden="true">
+                                        <span class="absolute left-1 top-1 size-4 rounded-full bg-white shadow-sm transition-transform duration-200 dark:translate-x-5"></span>
+                                    </span>
+                                </button>
+                            </div>
+
                             <form method="POST" action="{{ url_for('cikis') }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="w-full flex items-center gap-2 px-4 py-3 text-sm font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors">
-                                    <span class="material-symbols-outlined text-lg">logout</span>
-                                    Çıkış Yap
+                                <button type="submit" class="flex w-full items-center justify-center gap-2 px-5 py-4 text-sm font-black text-rose-600 transition-colors hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30">
+                                    <span class="material-symbols-outlined text-xl">logout</span>
+                                    Güvenli Çıkış Yap
                                 </button>
                             </form>
                         </div>
@@ -1825,6 +1902,17 @@
 
         // Dark Mode Toggle
         const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeToggleStatus = document.getElementById('theme-toggle-status');
+
+        function syncThemeToggle() {
+            const isDark = document.documentElement.classList.contains('dark');
+            if (themeToggleBtn) {
+                themeToggleBtn.setAttribute('aria-checked', isDark ? 'true' : 'false');
+            }
+            if (themeToggleStatus) {
+                themeToggleStatus.textContent = isDark ? 'Açık' : 'Kapalı';
+            }
+        }
         
         // Initial theme check
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -1832,6 +1920,7 @@
         } else {
             document.documentElement.classList.remove('dark');
         }
+        syncThemeToggle();
 
         if (themeToggleBtn) {
             themeToggleBtn.addEventListener('click', () => {
@@ -1842,13 +1931,15 @@
                     document.documentElement.classList.add('dark');
                     localStorage.theme = 'dark';
                 }
+                syncThemeToggle();
             });
         }
 
         // Notifications Toggle
         function toggleNotifications() {
             const dropdown = document.getElementById('notification-dropdown');
-            const badge = document.getElementById('notification-badge');
+            if (!dropdown) return;
+            toggleProfileMenu(true);
             dropdown.classList.toggle('hidden');
             if (!dropdown.classList.contains('hidden')) {
                 loadNotifications();
@@ -1860,6 +1951,10 @@
             const toggle = document.getElementById('profile-menu-toggle');
             if (!dropdown || !toggle) return;
             const shouldClose = forceClose || !dropdown.classList.contains('hidden');
+            if (!shouldClose) {
+                const notificationDropdown = document.getElementById('notification-dropdown');
+                if (notificationDropdown) notificationDropdown.classList.add('hidden');
+            }
             dropdown.classList.toggle('hidden', shouldClose);
             toggle.setAttribute('aria-expanded', shouldClose ? 'false' : 'true');
         }

@@ -2700,7 +2700,13 @@ document.addEventListener('DOMContentLoaded', function() {
     applyNotificationSettings();
     loadNotificationHistory();
     togglePosIntegrationFields();
-    switchTab('profile');
+    const requestedTab = window.location.hash.replace('#', '');
+    const initialTab = document.getElementById(`${requestedTab}-tab`) ? requestedTab : 'profile';
+    switchTab(initialTab);
+    window.addEventListener('hashchange', () => {
+        const hashTab = window.location.hash.replace('#', '');
+        if (document.getElementById(`${hashTab}-tab`)) switchTab(hashTab);
+    });
     const tabButtons = Array.from(document.querySelectorAll('.settings-tab-btn'));
     tabButtons.forEach((button, index) => {
         button.addEventListener('keydown', event => {
