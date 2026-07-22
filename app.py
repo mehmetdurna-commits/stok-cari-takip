@@ -1,6 +1,7 @@
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    session, flash, jsonify, abort, current_app, g, send_from_directory, make_response
+    session, flash, jsonify, abort, current_app, g, send_from_directory, make_response,
+    has_request_context
 )
 from flask_login import (
     LoginManager, UserMixin, login_user, logout_user, 
@@ -1713,22 +1714,48 @@ def platform_system_controls():
 
 
 def site_config():
-    site_url = platform_setting('site_url', '') or app.config.get('SITE_URL', '')
+    if has_request_context() and hasattr(g, '_site_config'):
+        return g._site_config
+
+    setting_keys = (
+        'site_url', 'platform_name', 'site_name', 'site_description',
+        'site_og_image', 'ga4_code', 'search_console_code',
+        'seo_closed_mode', 'seo_indexing_enabled',
+    )
+    db_keys = [f'platform.{key}' for key in setting_keys]
+    settings = SystemSettings.query.filter(
+        SystemSettings.user_id.is_(None),
+        SystemSettings.key.in_(db_keys),
+    ).all()
+    values = {
+        setting.key.removeprefix('platform.'): setting.value
+        for setting in settings
+    }
+
+    def value(key, default=''):
+        stored = values.get(key)
+        return stored if stored not in (None, '') else default
+
+    def enabled(key, default=False):
+        raw = value(key, 'on' if default else 'off')
+        return str(raw).strip().lower() in {'1', 'true', 'yes', 'on', 'enabled'}
+
+    site_url = value('site_url', app.config.get('SITE_URL', ''))
     site_url = (site_url or '').rstrip('/')
-    platform_name = platform_setting('platform_name', '') or app.config.get('SITE_NAME', 'StokCari')
-    site_name = platform_setting('site_name', '') or app.config.get('SITE_NAME', 'StokCari')
-    site_description = platform_setting('site_description', '') or app.config.get(
+    platform_name = value('platform_name', app.config.get('SITE_NAME', 'StokCari'))
+    site_name = value('site_name', app.config.get('SITE_NAME', 'StokCari'))
+    site_description = value('site_description', app.config.get(
         'SITE_DESCRIPTION',
         'Stok, cari, POS ve teklif yönetimi için web tabanlı işletme uygulaması.',
-    )
-    site_og_image = platform_setting('site_og_image', '') or app.config.get('SITE_OG_IMAGE', '')
+    ))
+    site_og_image = value('site_og_image', app.config.get('SITE_OG_IMAGE', ''))
     site_og_image = (site_og_image or '').strip()
-    ga4_code = platform_setting('ga4_code', '') or ''
-    search_console_code = platform_setting('search_console_code', '') or ''
-    seo_closed_mode = platform_setting_bool('seo_closed_mode', False)
-    seo_indexing_enabled = platform_setting_bool('seo_indexing_enabled', True)
+    ga4_code = value('ga4_code', '')
+    search_console_code = value('search_console_code', '')
+    seo_closed_mode = enabled('seo_closed_mode', False)
+    seo_indexing_enabled = enabled('seo_indexing_enabled', True)
     seo_public_mode = seo_indexing_enabled and not seo_closed_mode
-    return {
+    config = {
         'url': site_url,
         'platform_name': platform_name,
         'name': site_name,
@@ -1740,6 +1767,9 @@ def site_config():
         'seo_indexing_enabled': seo_indexing_enabled,
         'seo_public_mode': seo_public_mode,
     }
+    if has_request_context():
+        g._site_config = config
+    return config
 
 
 def turnstile_config(include_secret=False):

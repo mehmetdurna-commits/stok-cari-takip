@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="tr" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% set _site = site_config() %}
+    {% set site_name = _site.get('name', 'Esstok') %}
+    {% set platform_name = _site.get('platform_name', site_name) %}
+    {% set site_description = _site.get('description', '') %}
+    {% set canonical_base = (_site.get('url') or request.host_url.rstrip('/')) %}
+    {% set canonical_url = canonical_base ~ request.path %}
+    {% set og_image = (_site.get('og_image') or (canonical_base ~ '/static/og.svg')) %}
+    <meta name="robots" content="{{ 'index, follow' if _site.get('seo_public_mode') else 'noindex, nofollow' }}">
+    <meta name="description" content="{{ site_description }}">
+    <link rel="canonical" href="{{ canonical_url }}">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+    <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+    <meta property="og:site_name" content="{{ site_name }}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ canonical_url }}">
+    <meta property="og:title" content="{% block og_title %}{{ self.title()|striptags }}{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}{{ site_description }}{% endblock %}">
+    <meta property="og:image" content="{{ og_image }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ self.title()|striptags }}">
+    <meta name="twitter:description" content="{{ site_description }}">
+    <meta name="twitter:image" content="{{ og_image }}">
+    {% if _site.get('search_console_code') %}{{ _site.get('search_console_code') | safe }}{% endif %}
+    {% if _site.get('ga4_code') %}{{ _site.get('ga4_code') | safe }}{% endif %}
+    <title>{% block title %}{{ platform_name }}{% endblock %}</title>
+    <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd',
+                            400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8',
+                            800: '#1e40af', 900: '#1e3a8a', 950: '#172554'
+                        }
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        };
+    </script>
+    <style>
+        html { scroll-behavior: smooth; }
+        body { margin: 0; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body data-endpoint="{{ request.endpoint or '' }}" class="bg-white font-sans text-slate-950 antialiased">
+    {% block content %}{% endblock %}
+    {% block scripts %}{% endblock %}
+</body>
+</html>
