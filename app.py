@@ -206,6 +206,7 @@ def inject_template_helpers():
         'platform_setting': platform_setting,
         'platform_setting_bool': platform_setting_bool,
         'app_page_url': app_page_url,
+        'sidebar_open_support_count': sidebar_open_support_count,
     }
 
 
@@ -590,6 +591,15 @@ class SupportTicketMessage(db.Model):
     created_at = db.Column(db.DateTime, default=utc_now)
 
     user = db.relationship('User', foreign_keys=[user_id], backref='support_ticket_messages')
+
+
+def sidebar_open_support_count():
+    if not current_user.is_authenticated or not current_user.organization_id:
+        return 0
+    return SupportTicket.query.filter(
+        SupportTicket.organization_id == current_user.organization_id,
+        SupportTicket.status.notin_(('resolved', 'closed')),
+    ).count()
 
 
 class ActionItem(db.Model):

@@ -797,16 +797,16 @@ def test_routed_templates_do_not_embed_duplicate_app_shells():
 
 def test_collapsed_sidebar_toggle_does_not_overlap_header():
     html = Path('templates', '_base.html').read_text(encoding='utf-8')
-    collapsed_logo_rule_start = html.index('.sidebar-collapsed .sidebar-logo-container')
 
-    assert 'class="sidebar-header h-16 flex items-center justify-between' in html
-    assert 'class="sidebar-nav flex-1 overflow-y-auto overflow-x-hidden' in html
-    assert '.sidebar-collapsed .sidebar-header' in html
-    assert '.sidebar-collapsed .sidebar-nav' in html
-    assert 'padding-left: 0.75rem;' in html
-    assert 'padding-right: 0.75rem;' in html
-    assert 'overflow-x: hidden;' in html
-    assert 'display: none;' in html[collapsed_logo_rule_start:]
+    assert 'class="sidebar-shell"' in html
+    assert 'class="sidebar-rail"' in html
+    assert 'class="sidebar-panel"' in html
+    assert '.sidebar-collapsed .sidebar-panel' in html
+    assert 'width: 5rem !important;' in html
+    assert "mainContent.classList.remove('lg:ml-72')" in html
+    assert "mainContent.classList.add('lg:ml-20')" in html
+    assert "toggleIcon.textContent = 'keyboard_double_arrow_right'" in html
+    assert "window.matchMedia('(min-width: 1024px)').matches" in html
 
 
 def test_user_profile_menu_is_in_header_not_sidebar(client):

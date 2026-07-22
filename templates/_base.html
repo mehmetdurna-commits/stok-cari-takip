@@ -71,41 +71,14 @@
             vertical-align: middle;
         }
         .active-nav {
-            background-color: #eff6ff;
+            background: #eff6ff;
             color: #2563eb;
-            border-right: 4px solid #2563eb !important;
             position: relative;
-            font-weight: 600 !important;
-            box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.1);
+            font-weight: 700 !important;
         }
         .dark .active-nav {
-            background-color: rgba(30, 58, 138, 0.2);
-            color: #60a5fa;
-            border-right: 4px solid #2563eb !important;
-            font-weight: 600 !important;
-            box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.2);
-        }
-        /* Ensure active nav is visible in collapsed sidebar */
-        .sidebar-collapsed .active-nav {
-            background-color: #eff6ff !important;
-            color: #2563eb !important;
-            border-right: 4px solid #2563eb !important;
-            font-weight: 600 !important;
-            box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.1) !important;
-        }
-        .dark .sidebar-collapsed .active-nav {
-            background-color: rgba(30, 58, 138, 0.2) !important;
-            color: #60a5fa !important;
-            border-right: 4px solid #2563eb !important;
-            font-weight: 600 !important;
-            box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.2) !important;
-        }
-        /* Additional enhancement for better visibility */
-        .nav-item.active-nav:hover {
-            background-color: #dbeafe !important;
-        }
-        .dark .nav-item.active-nav:hover {
-            background-color: rgba(30, 58, 138, 0.3) !important;
+            background: rgba(37, 99, 235, 0.16);
+            color: #93c5fd;
         }
         /* Teklif Formu Baz Alınarak Optimize Font Standardizasyonu */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -1019,51 +992,226 @@
             transition-duration: 180ms;
         }
 
-        /* Collapsible Sidebar Styles */
+        /* Two-layer application sidebar */
+        #sidebar {
+            width: 18rem;
+            border-right: 0;
+            background: transparent;
+            box-shadow: 10px 0 30px rgba(15, 23, 42, 0.08);
+        }
+        .sidebar-shell {
+            display: flex;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            background: #ffffff;
+        }
+        .sidebar-rail {
+            display: flex;
+            width: 4.75rem;
+            flex: 0 0 4.75rem;
+            flex-direction: column;
+            align-items: center;
+            background: linear-gradient(180deg, #071631 0%, #081a3a 54%, #071631 100%);
+            color: #bfdbfe;
+            box-shadow: 5px 0 18px rgba(15, 23, 42, 0.13);
+            position: relative;
+            z-index: 2;
+        }
+        .sidebar-rail-logo {
+            display: flex;
+            width: 2.75rem;
+            height: 2.75rem;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.9rem;
+            background: linear-gradient(145deg, #2563eb, #0ea5e9);
+            color: #ffffff;
+            box-shadow: 0 10px 24px rgba(37, 99, 235, 0.32);
+        }
+        .sidebar-rail-nav {
+            display: flex;
+            width: 100%;
+            flex: 1;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.55rem;
+            padding: 1rem 0.75rem;
+        }
+        .sidebar-rail-link {
+            position: relative;
+            display: flex;
+            width: 2.75rem;
+            height: 2.75rem;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.9rem;
+            color: #8da9d1;
+            transition: background-color 180ms ease, color 180ms ease, transform 180ms ease;
+        }
+        .sidebar-rail-link:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+            transform: translateY(-1px);
+        }
+        .sidebar-rail-link.is-active {
+            background: linear-gradient(145deg, #2563eb, #1687f8);
+            color: #ffffff;
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+        }
+        .sidebar-rail-link::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: calc(100% + 0.75rem);
+            top: 50%;
+            transform: translateY(-50%) translateX(-0.2rem);
+            padding: 0.45rem 0.65rem;
+            border-radius: 0.55rem;
+            background: #0f172a;
+            color: #ffffff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 150ms ease, transform 150ms ease, visibility 150ms ease;
+            z-index: 80;
+        }
+        .sidebar-collapsed .sidebar-rail-link:hover::after {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(-50%) translateX(0);
+        }
+        .sidebar-panel {
+            display: flex;
+            min-width: 0;
+            flex: 1;
+            flex-direction: column;
+            background: #ffffff;
+            color: #0f172a;
+            transition: opacity 220ms ease, width 260ms ease;
+        }
+        .dark .sidebar-panel,
+        .dark .sidebar-shell {
+            background: #0f172a;
+            color: #f8fafc;
+        }
+        .sidebar-header {
+            display: flex;
+            min-height: 5.75rem;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1.1rem 1rem;
+        }
+        .dark .sidebar-header {
+            border-bottom-color: #1e293b;
+        }
+        .sidebar-logo-text,
+        .sidebar-text {
+            transition: opacity 180ms ease, visibility 180ms ease;
+        }
+        .sidebar-nav {
+            scrollbar-width: none;
+        }
+        .sidebar-nav::-webkit-scrollbar {
+            display: none;
+        }
+        .sidebar-section-label {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin: 0.75rem 0 0.35rem;
+            color: #94a3b8;
+            font-size: 0.65rem;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+        .sidebar-section-label::after {
+            content: '';
+            height: 1px;
+            flex: 1;
+            background: #e2e8f0;
+        }
+        .dark .sidebar-section-label::after {
+            background: #273449;
+        }
+        .nav-item {
+            position: relative;
+            display: flex;
+            min-height: 2.25rem;
+            align-items: center;
+            gap: 0.65rem;
+            border-radius: 0.8rem;
+            padding: 0.48rem 0.65rem;
+            color: #334155;
+            font-size: 0.78rem;
+            font-weight: 650;
+            transition: background-color 180ms ease, color 180ms ease, transform 180ms ease;
+        }
+        .nav-item:hover {
+            background: #f1f5f9;
+            color: #0f172a;
+            transform: translateX(2px);
+        }
+        .dark .nav-item {
+            color: #cbd5e1;
+        }
+        .dark .nav-item:hover {
+            background: #172033;
+            color: #ffffff;
+        }
+        .sidebar-panel .nav-item.active-nav {
+            min-height: 3.15rem;
+            background: linear-gradient(90deg, #eaf2ff 0%, #f4f8ff 100%);
+            color: #1d4ed8;
+            box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.05);
+            transform: none;
+        }
+        .sidebar-panel .nav-item.active-nav::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.45rem;
+            bottom: 0.45rem;
+            width: 0.18rem;
+            border-radius: 0 999px 999px 0;
+            background: #2563eb;
+        }
+        .dark .sidebar-panel .nav-item.active-nav {
+            background: linear-gradient(90deg, rgba(37, 99, 235, 0.24), rgba(37, 99, 235, 0.08));
+            color: #bfdbfe;
+        }
+        .sidebar-nav-description {
+            display: block;
+            margin-top: 0.1rem;
+            color: #64748b;
+            font-size: 0.64rem;
+            font-weight: 500;
+            line-height: 1.2;
+        }
+        .dark .sidebar-nav-description {
+            color: #94a3b8;
+        }
+        .sidebar-status {
+            border-top: 1px solid #e2e8f0;
+            padding: 0.8rem 0.9rem;
+        }
+        .dark .sidebar-status {
+            border-top-color: #1e293b;
+        }
         .sidebar-collapsed {
             width: 5rem !important;
-            overflow-x: hidden;
+            overflow: visible !important;
         }
-        .sidebar-collapsed .sidebar-text {
-            opacity: 0;
-            visibility: hidden;
+        .sidebar-collapsed .sidebar-rail {
+            width: 5rem;
+            flex-basis: 5rem;
         }
-        .sidebar-collapsed .sidebar-logo-text {
-            opacity: 0;
-            visibility: hidden;
+        .sidebar-collapsed .sidebar-panel {
             display: none;
-        }
-        .sidebar-collapsed .nav-item {
-            justify-content: center;
-        }
-        .sidebar-collapsed .sidebar-nav {
-            overflow-x: hidden;
-        }
-        .sidebar-collapsed .nav-item span:not(.material-symbols-outlined) {
-            display: none;
-        }
-        .sidebar-collapsed .user-info {
-            display: none;
-        }
-        .sidebar-collapsed .sidebar-toggle {
-            justify-content: center;
-        }
-        .sidebar-collapsed .sidebar-header {
-            justify-content: center;
-            padding-left: 0.75rem;
-            padding-right: 0.75rem;
-        }
-        .sidebar-collapsed .sidebar-logo-container {
-            display: none;
-        }
-        
-        /* Smooth transitions for sidebar text */
-        .sidebar-text, .sidebar-logo-text {
-            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
-        }
-        
-        .nav-item {
-            transition: all 0.3s ease-in-out;
         }
         
         /* Loading States */
@@ -1522,87 +1670,161 @@
     <div class="flex h-dvh min-h-screen overflow-hidden">
         {% if is_auth %}
         <!-- Sidebar -->
-        <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 overflow-x-hidden bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
-            <div class="flex flex-col h-full">
-                <!-- Logo -->
-                <div class="sidebar-header h-16 flex items-center justify-between px-6 border-b border-slate-100 dark:border-slate-800 shrink-0">
-                    <div class="sidebar-logo-container flex items-center gap-3">
-                        <div class="size-9 bg-primary-600 rounded-lg flex items-center justify-center shadow-lg shadow-primary-500/30">
-                            <span class="material-symbols-outlined text-white text-xl">inventory_2</span>
-                        </div>
-                        <span class="sidebar-logo-text text-xl font-bold tracking-tight text-slate-900 dark:text-white">{{ platform_name }}</span>
+        {% set nav_map = {
+            'dashboard': ['dashboard'],
+            'urunler': ['urunler','urun_ekle','urun_duzenle','urun_detay','stok_giris','stok_cikis','toplu_fiyat_guncelleme','urun_sil'],
+            'cariler': ['cariler','cari_detay','cari_ekle','cari_duzenle','cari_sil','cari_ekstre'],
+            'pos': ['pos','pos_odeme','pos_satis'],
+            'nakit_yonetimi': ['nakit_yonetimi', 'nakit'],
+            'onmuhasebe_hesaplar': ['onmuhasebe_hesaplar', 'onmuhasebe_hesap_detay', 'onmuhasebe_mutabakat', 'onmuhasebe_raporlar'],
+            'teklif_yonetimi': ['teklif_yonetimi','teklifler','teklif_ekle','teklif_duzenle','teklif_detay','teklif_sil'],
+            'personel_yonetimi': ['personel_yonetimi','personel_ekle','personel_duzenle','personel_detay','personel_bordro','toplu_maas_bordrosu','toplu_maas_odeme','toplu_maas_banka_listesi_csv','maas_bordro_kayitlari','personel_sil','departmanlar','departman_ekle','departman_duzenle','departman_sil','izinler','izin_ekle','izin_onayla','avanslar','avans_ekle','avans_ode','primler','prim_ekle','prim_ode','api_personel_detay'],
+            'iade': ['iade'],
+            'gunluk_satislar': ['gunluk_satislar', 'gunluk-satislar'],
+            'raporlar': ['raporlar'],
+            'support_tickets': ['support_tickets','support_ticket_detail','support_ticket_create'],
+            'settings': ['settings','ayarlar'],
+            'super_admin_dashboard': ['super_admin_dashboard','super_admin_update_organization','super_admin_organization_detail','super_admin_add_subscription_payment','super_admin_create_platform_team_member','super_admin_update_platform_team_member','super_admin_update_user','super_admin_maintenance','super_admin_update_system_controls','super_admin_run_self_test','super_admin_run_workflow_test','super_admin_upload_release','super_admin_update_settings','super_admin_logs','super_admin_backups','super_admin_download_backup','super_admin_run_auto_backups','super_admin_support_tickets','super_admin_support_ticket_detail','super_admin_actions','super_admin_update_action','super_admin_refresh_action_ai','super_admin_impersonate']
+        } %}
+        {% set operation_items = [
+            ('urunler', 'inventory_2', 'Ürünler (Stok)'),
+            ('cariler', 'group', 'Cariler'),
+            ('pos', 'point_of_sale', 'Hızlı Satış (POS)'),
+            ('nakit_yonetimi', 'account_balance_wallet', 'Nakit Yönetimi'),
+            ('onmuhasebe_hesaplar', 'account_balance', 'Ön Muhasebe')
+        ] %}
+        {% set workflow_items = [
+            ('teklif_yonetimi', 'description', 'Teklifler'),
+            ('personel_yonetimi', 'person', 'Personel Yönetimi'),
+            ('iade', 'assignment_return', 'İade İşlemleri'),
+            ('gunluk_satislar', 'calendar_month', 'Günlük Satışlar'),
+            ('raporlar', 'bar_chart', 'Raporlar')
+        ] %}
+        {% set system_items = [
+            ('support_tickets', 'support_agent', 'Destek Talepleri'),
+            ('settings', 'settings', 'Ayarlar')
+        ] %}
+        {% if current_user.is_platform_admin %}
+            {% set system_items = system_items + [('super_admin_dashboard', 'shield', 'Süper Admin')] %}
+        {% endif %}
+        {% set nav_descriptions = {
+            'dashboard': 'İşletmenin bugünkü özeti',
+            'urunler': 'Stok ve ürün hareketleri',
+            'cariler': 'Müşteri ve tedarikçi hesapları',
+            'pos': 'Tek ekranda hızlı satış',
+            'nakit_yonetimi': 'Tüm para hareketleri',
+            'onmuhasebe_hesaplar': 'Kasa, banka ve POS hesapları',
+            'teklif_yonetimi': 'Teklif hazırlama ve takip',
+            'personel_yonetimi': 'Personel ve bordro işlemleri',
+            'iade': 'Satışa bağlı iade işlemleri',
+            'gunluk_satislar': 'Günlük satış kayıtları',
+            'raporlar': 'İşletme performans raporları',
+            'support_tickets': 'Destek talepleri',
+            'settings': 'Firma ve uygulama ayarları',
+            'super_admin_dashboard': 'Platform yönetimi'
+        } %}
+        {% set rail_items = [
+            ('dashboard', 'dashboard', 'Ana Panel'),
+            ('pos', 'point_of_sale', 'Hızlı Satış'),
+            ('urunler', 'inventory_2', 'Ürünler'),
+            ('cariler', 'group', 'Cariler'),
+            ('nakit_yonetimi', 'account_balance_wallet', 'Para Hareketleri'),
+            ('raporlar', 'bar_chart', 'Raporlar')
+        ] %}
+        {% set open_support_count = sidebar_open_support_count() %}
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 transform -translate-x-full overflow-visible lg:translate-x-0 transition-all duration-300 ease-in-out">
+            <div class="sidebar-shell">
+                <div class="sidebar-rail" aria-label="Hızlı erişim">
+                    <div class="flex h-[5.75rem] shrink-0 items-center justify-center">
+                        <a href="{{ url_for('dashboard') }}" class="sidebar-rail-logo" aria-label="{{ platform_name }} ana panel">
+                            <img src="{{ url_for('static', filename='favicon.svg') }}" alt="" class="size-9">
+                        </a>
                     </div>
-                    <!-- Toggle Button -->
-                    <button id="sidebarToggle" type="button" aria-label="Kenar menüyü daralt veya genişlet" aria-controls="sidebar" class="sidebar-toggle p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                        <span class="material-symbols-outlined text-slate-600 dark:text-slate-400">menu_open</span>
-                    </button>
+                    <div class="sidebar-rail-nav">
+                        {% for endpoint, icon, label in rail_items %}
+                        {% set rail_active = request.endpoint in nav_map.get(endpoint, [endpoint]) %}
+                        <a href="{{ url_for(endpoint) }}"
+                           class="sidebar-rail-link pjax-link {{ 'is-active' if rail_active else '' }}"
+                           data-tooltip="{{ label }}"
+                           aria-label="{{ label }}"
+                           aria-current="{{ 'page' if rail_active else 'false' }}">
+                            <span class="material-symbols-outlined text-[21px]">{{ icon }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    <div class="flex w-full flex-col items-center gap-3 pb-4">
+                        <span class="size-2 rounded-full bg-emerald-400 ring-4 ring-emerald-400/10" title="Operasyon durumu aktif"></span>
+                        <button id="sidebarToggle" type="button" aria-label="Kenar menüyü daralt veya genişlet" aria-controls="sidebar" class="sidebar-toggle hidden size-11 items-center justify-center rounded-xl text-blue-200 transition hover:bg-white/10 hover:text-white lg:flex">
+                            <span class="material-symbols-outlined">keyboard_double_arrow_left</span>
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Navigation -->
-                <nav class="sidebar-nav flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 space-y-1">
-                    {% set nav_items = [
-                        ('dashboard', 'dashboard', 'Ana Panel'),
-                        ('urunler', 'inventory_2', 'Ürünler (Stok)'),
-                        ('cariler', 'group', 'Cariler'),
-                        ('pos', 'point_of_sale', 'Hızlı Satış (POS)'),
-                        ('nakit_yonetimi', 'payments', 'Nakit Yönetimi'),
-                        ('onmuhasebe_hesaplar', 'account_balance', 'Ön Muhasebe'),
-                        ('teklif_yonetimi', 'description', 'Teklifler'),
-                        ('personel_yonetimi', 'people', 'Personel Yönetimi'),
-                        ('iade', 'assignment_return', 'İade İşlemleri'),
-                        ('gunluk_satislar', 'receipt_long', 'Günlük Satışlar'),
-                        ('raporlar', 'bar_chart', 'Raporlar'),
-                        ('support_tickets', 'support_agent', 'Destek Talepleri'),
-                        ('settings', 'settings', 'Ayarlar')
-                    ] %}
-                    
-                    {% if false and current_user.paket_tipi == 'profesyonel' %}
-                        {% set nav_items = nav_items + [
-                            ('admin_panel', 'admin_panel_settings', 'Sistem Yönetimi'),
-                            ('audit_logs', 'history', 'Audit Logları'),
-                            ('backup_management', 'backup', 'Yedekleme'),
-                            ('system_settings', 'tune', 'Sistem Ayarları')
-                        ] %}
-                    {% endif %}
-                    {% if current_user.is_platform_admin %}
-                        {% set nav_items = nav_items + [
-                            ('super_admin_dashboard', 'shield_person', 'Süper Admin')
-                        ] %}
-                    {% endif %}
-                    
-                    {# Map endpoints to related endpoints so active state works on detail/edit pages too #}
-                    {% set nav_map = {
-                        'dashboard': ['dashboard'],
-                        'urunler': ['urunler','urun_ekle','urun_duzenle','urun_detay','stok_giris','stok_cikis','toplu_fiyat_guncelleme','urun_sil'],
-                        'cariler': ['cariler','cari_detay','cari_ekle','cari_duzenle','cari_sil'],
-                        'pos': ['pos','pos_odeme','pos_satis'],
-                        'nakit_yonetimi': ['nakit_yonetimi', 'nakit'],
-                        'onmuhasebe_hesaplar': ['onmuhasebe_hesaplar', 'onmuhasebe_hesap_detay', 'onmuhasebe_mutabakat', 'onmuhasebe_raporlar'],
-                        'teklif_yonetimi': ['teklif_yonetimi','teklifler','teklif_ekle','teklif_duzenle','teklif_detay','teklif_sil'],
-                        'personel_yonetimi': ['personel_yonetimi','personel_ekle','personel_duzenle','personel_detay','personel_bordro','toplu_maas_bordrosu','toplu_maas_odeme','toplu_maas_banka_listesi_csv','maas_bordro_kayitlari','personel_sil','departmanlar','departman_ekle','departman_duzenle','departman_sil','izinler','izin_ekle','izin_onayla','avanslar','avans_ekle','avans_ode','primler','prim_ekle','prim_ode','api_personel_detay'],
-                        'iade': ['iade'],
-                        'gunluk_satislar': ['gunluk_satislar', 'gunluk-satislar'],
-                        'raporlar': ['raporlar'],
-                        'support_tickets': ['support_tickets','support_ticket_detail','support_ticket_create'],
-                        'settings': ['settings','ayarlar'],
-                        'admin_panel': ['admin_panel','audit_logs','backup_management','system_settings'],
-                        'super_admin_dashboard': ['super_admin_dashboard','super_admin_update_organization','super_admin_organization_detail','super_admin_add_subscription_payment','super_admin_create_platform_team_member','super_admin_update_platform_team_member','super_admin_update_user','super_admin_maintenance','super_admin_update_system_controls','super_admin_run_self_test','super_admin_run_workflow_test','super_admin_upload_release','super_admin_update_settings','super_admin_logs','super_admin_backups','super_admin_download_backup','super_admin_run_auto_backups','super_admin_support_tickets','super_admin_support_ticket_detail','super_admin_actions','super_admin_update_action','super_admin_refresh_action_ai','super_admin_impersonate']
-                    } %}
+                <div class="sidebar-panel">
+                    <div class="sidebar-header shrink-0">
+                        <div class="min-w-0">
+                            <p class="sidebar-logo-text truncate text-lg font-black tracking-tight text-slate-950 dark:text-white">{{ platform_name }}</p>
+                            <p class="sidebar-logo-text mt-0.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">İşletme merkezi</p>
+                        </div>
+                        <button type="button" class="flex size-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white lg:hidden" onclick="toggleSidebar()" aria-label="Menüyü kapat">
+                            <span class="material-symbols-outlined text-xl">close</span>
+                        </button>
+                    </div>
 
-                    {% for endpoint, icon, label in nav_items %}
-                    {% set related = nav_map.get(endpoint, [endpoint]) %}
-                    {% set is_active = request.endpoint in related %}
-                    <a href="{{ url_for(endpoint) }}" 
-                       data-nav-key="{{ endpoint }}"
-                       data-tooltip="{{ label }}"
-                       aria-current="{{ 'page' if is_active else 'false' }}"
-                       class="nav-item pjax-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all {{ 'active-nav' if is_active else 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800' }}">
-                        <span class="material-symbols-outlined text-[22px]">{{ icon }}</span>
-                        <span class="sidebar-text">{{ label }}</span>
-                    </a>
-                    {% endfor %}
-                </nav>
+                    <nav class="sidebar-nav flex-1 overflow-y-auto overflow-x-hidden px-3 py-3" aria-label="Ana menü">
+                        {% set dashboard_active = request.endpoint in nav_map.get('dashboard', ['dashboard']) %}
+                        <a href="{{ url_for('dashboard') }}"
+                           data-nav-key="dashboard"
+                           data-tooltip="Ana Panel"
+                           aria-current="{{ 'page' if dashboard_active else 'false' }}"
+                           class="nav-item pjax-link {{ 'active-nav' if dashboard_active else '' }}">
+                            <span class="material-symbols-outlined text-[19px]">home</span>
+                            <span class="sidebar-text min-w-0">
+                                <span class="block truncate">Ana Panel</span>
+                                {% if dashboard_active %}<span class="sidebar-nav-description">{{ nav_descriptions.dashboard }}</span>{% endif %}
+                            </span>
+                        </a>
 
+                        {% for section_label, items in [('OPERASYON', operation_items), ('İŞ AKIŞLARI', workflow_items), ('SİSTEM', system_items)] %}
+                        <div class="sidebar-section-label sidebar-text"><span>{{ section_label }}</span></div>
+                            {% for endpoint, icon, label in items %}
+                            {% set related = nav_map.get(endpoint, [endpoint]) %}
+                            {% set is_active = request.endpoint in related %}
+                            <a href="{{ url_for(endpoint) }}"
+                               data-nav-key="{{ endpoint }}"
+                               data-tooltip="{{ label }}"
+                               aria-current="{{ 'page' if is_active else 'false' }}"
+                               class="nav-item pjax-link {{ 'active-nav' if is_active else '' }}">
+                                <span class="material-symbols-outlined shrink-0 text-[19px]">{{ icon }}</span>
+                                <span class="sidebar-text min-w-0 flex-1">
+                                    <span class="block truncate">{{ label }}</span>
+                                    {% if is_active %}<span class="sidebar-nav-description">{{ nav_descriptions.get(endpoint, '') }}</span>{% endif %}
+                                </span>
+                                {% if endpoint == 'pos' %}
+                                <span class="sidebar-text rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-black text-slate-500 dark:bg-slate-800 dark:text-slate-300">F2</span>
+                                {% elif endpoint == 'support_tickets' and open_support_count %}
+                                <span class="sidebar-text flex min-w-5 items-center justify-center rounded-full bg-orange-500 px-1.5 py-0.5 text-[9px] font-black text-white shadow-sm">{{ open_support_count if open_support_count < 10 else '9+' }}</span>
+                                {% endif %}
+                            </a>
+                            {% endfor %}
+                        {% endfor %}
+                    </nav>
+
+                    <div class="sidebar-status shrink-0">
+                        <div class="flex items-center gap-2.5">
+                            <span class="flex size-8 shrink-0 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                <span class="material-symbols-outlined text-[17px]">verified_user</span>
+                            </span>
+                            <div class="sidebar-text min-w-0 flex-1">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="truncate text-[11px] font-black text-slate-800 dark:text-slate-100">Operasyon Durumu</span>
+                                    <span class="rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[8px] font-black tracking-wide text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">AKTİF</span>
+                                </div>
+                                <p class="mt-0.5 truncate text-[9px] font-medium text-slate-500 dark:text-slate-400">Tüm servisler normal çalışıyor</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </aside>
 
@@ -1611,7 +1833,7 @@
         {% endif %}
 
         <!-- Main Content Area -->
-        <main id="mainContent" class="flex-1 flex flex-col min-w-0 {{ 'lg:ml-64' if is_auth else '' }} relative transition-all duration-300 ease-in-out">
+        <main id="mainContent" class="flex-1 flex flex-col min-w-0 {{ 'lg:ml-72' if is_auth else '' }} relative transition-all duration-300 ease-in-out">
             {% if is_auth %}
             {% if session.get('platform_admin_id') %}
             <div class="bg-amber-500 text-white px-4 lg:px-8 py-2 text-sm font-semibold flex items-center justify-between gap-4">
@@ -2101,16 +2323,16 @@
             
             if (isCollapsed) {
                 sidebar.classList.add('sidebar-collapsed');
-                mainContent.classList.remove('lg:ml-64');
+                mainContent.classList.remove('lg:ml-72');
                 mainContent.classList.add('lg:ml-20');
-                toggleIcon.textContent = 'menu';
+                toggleIcon.textContent = 'keyboard_double_arrow_right';
                 // Save state to localStorage
                 localStorage.setItem('sidebarCollapsed', 'true');
             } else {
                 sidebar.classList.remove('sidebar-collapsed');
                 mainContent.classList.remove('lg:ml-20');
-                mainContent.classList.add('lg:ml-64');
-                toggleIcon.textContent = 'menu_open';
+                mainContent.classList.add('lg:ml-72');
+                toggleIcon.textContent = 'keyboard_double_arrow_left';
                 // Save state to localStorage
                 localStorage.setItem('sidebarCollapsed', 'false');
             }
@@ -2119,12 +2341,15 @@
         // Restore sidebar state from localStorage on page load
         document.addEventListener('DOMContentLoaded', () => {
             const savedState = localStorage.getItem('sidebarCollapsed');
-            if (savedState === 'true' && sidebar && mainContent && toggleIcon) {
+            const isDesktopSidebar = window.matchMedia('(min-width: 1024px)').matches;
+            if (savedState === 'true' && isDesktopSidebar && sidebar && mainContent && toggleIcon) {
                 sidebar.classList.add('sidebar-collapsed');
-                mainContent.classList.remove('lg:ml-64');
+                mainContent.classList.remove('lg:ml-72');
                 mainContent.classList.add('lg:ml-20');
-                toggleIcon.textContent = 'menu';
+                toggleIcon.textContent = 'keyboard_double_arrow_right';
                 isCollapsed = true;
+            } else if (!isDesktopSidebar && sidebar) {
+                sidebar.classList.remove('sidebar-collapsed');
             }
             loadNotifications();
             setInterval(loadNotifications, 60000);
@@ -2791,7 +3016,6 @@
                 // Remove active class from all items
                 navItems.forEach(item => {
                     item.classList.remove('active-nav');
-                    item.classList.add('text-slate-600', 'dark:text-slate-400', 'hover:bg-slate-50', 'dark:hover:bg-slate-800');
                 });
                 
                 // Define URL patterns for each navigation item
@@ -2830,7 +3054,6 @@
                         const navKey = item.getAttribute('data-nav-key');
                         if (navKey === matchingEndpoint) {
                             item.classList.add('active-nav');
-                            item.classList.remove('text-slate-600', 'dark:text-slate-400', 'hover:bg-slate-50', 'dark:hover:bg-slate-800');
                             break; // Stop after finding match
                         }
                     }
