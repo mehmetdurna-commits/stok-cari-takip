@@ -2691,6 +2691,10 @@ def test_dashboard_renders_without_name_errors(client):
     assert 'Kurulumunuzu birkaç adımda tamamlayın'.encode('utf-8') in response.data
     assert 'İlk ürün, ilk satış ve ilk tahsilat'.encode('utf-8') in response.data
     assert '1/3 adım tamamlandı'.encode('utf-8') in response.data
+    assert 'Bugünkü Satış'.encode('utf-8') in response.data
+    assert 'Satış Trendi'.encode('utf-8') in response.data
+    assert 'Bugün Ne Oldu?'.encode('utf-8') in response.data
+    assert 'Para Nerede?'.encode('utf-8') in response.data
 
 
 def test_product_filters_render_without_reload_errors(client):

@@ -7143,18 +7143,20 @@ def dashboard():
     kritik_stok = len([u for u in urunler if u.stok_miktari <= u.kritik_stok])
 
     # Bugünkü ve bu haftaki satışları hesapla
-    bugun = date.today()
+    bugun = local_today()
     bu_hafta_basi = bugun - timedelta(days=bugun.weekday())
+    bugun_baslangic, yarin_baslangic = local_day_bounds(bugun)
+    hafta_baslangic, _ = local_day_bounds(bu_hafta_basi)
 
     bugunku_satislar = Satis.query.filter(
         Satis.user_id.in_(tenant_ids),
-        Satis.tarih >= bugun,
-        Satis.tarih < bugun + timedelta(days=1)
+        Satis.tarih >= bugun_baslangic,
+        Satis.tarih < yarin_baslangic
     ).all()
 
     haftalik_satislar = Satis.query.filter(
         Satis.user_id.in_(tenant_ids),
-        Satis.tarih >= bu_hafta_basi
+        Satis.tarih >= hafta_baslangic
     ).all()
 
     bugunku_satis = sum(s.genel_toplam or 0 for s in bugunku_satislar if s.durum != 'iptal')
@@ -7239,6 +7241,117 @@ def dashboard():
     stok_verimlilik['hareketli_urunler'] = len(son_30_gun_satis_urunleri)
     stok_verimlilik['yavas_urunler'] = toplam_urun - stok_verimlilik['hareketli_urunler']
 
+    gun_adlari = ('Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz')
+    gunluk_satis_trendi = []
+    for offset in range(6, -1, -1):
+        trend_gunu = bugun - timedelta(days=offset)
+        trend_tutari = sum(
+            float(satis.genel_toplam or 0)
+            for satis in aktif_satislar
+            if satis.tarih and to_local_datetime(satis.tarih).date() == trend_gunu
+        )
+        gunluk_satis_trendi.append({
+            'label': gun_adlari[trend_gunu.weekday()],
+            'date': trend_gunu.strftime('%d.%m'),
+            'amount': trend_tutari,
+        })
+    en_yuksek_gunluk_satis = max((item['amount'] for item in gunluk_satis_trendi), default=0)
+    for index, item in enumerate(gunluk_satis_trendi):
+        item['percent'] = (item['amount'] / en_yuksek_gunluk_satis * 100) if en_yuksek_gunluk_satis else 0
+        item['x'] = round(6 + (index * 14.66), 2)
+        item['y'] = round(84 - (item['percent'] * 0.66), 2)
+
+    hesap_bakiyeleri = {'cash': 0.0, 'bank': 0.0, 'pos': 0.0}
+    aktif_hesaplar = Account.query.filter(
+        Account.user_id.in_(tenant_ids),
+        Account.active.is_(True),
+    ).all()
+    for hesap in aktif_hesaplar:
+        if hesap.type in hesap_bakiyeleri:
+            hesap_bakiyeleri[hesap.type] += account_current_balance(hesap)
+    toplam_para = sum(hesap_bakiyeleri.values())
+    kasa_banka_toplami = hesap_bakiyeleri['cash'] + hesap_bakiyeleri['bank']
+    hesap_dagilimi = []
+    for hesap_turu, etiket, renk in (
+        ('cash', 'Nakit', 'emerald'),
+        ('bank', 'Banka', 'primary'),
+        ('pos', 'POS', 'amber'),
+    ):
+        tutar = hesap_bakiyeleri[hesap_turu]
+        hesap_dagilimi.append({
+            'type': hesap_turu,
+            'label': etiket,
+            'color': renk,
+            'amount': tutar,
+            'percent': (tutar / toplam_para * 100) if toplam_para else 0,
+        })
+
+    son_hareketler = []
+    for satis in sorted(aktif_satislar, key=lambda item: item.tarih or datetime.min, reverse=True)[:4]:
+        son_hareketler.append({
+            'timestamp': satis.tarih,
+            'title': 'Satış tamamlandı',
+            'description': f'{satis.fatura_no} numaralı satış kaydedildi.',
+            'amount': float(satis.genel_toplam or 0),
+            'icon': 'shopping_cart',
+            'tone': 'emerald',
+            'url': url_for('gunluk_satislar'),
+        })
+    cari_hareketleri = CariHareket.query.filter(
+        CariHareket.user_id.in_(tenant_ids),
+        CariHareket.islem_tipi.in_(['tahsilat', 'odeme']),
+    ).order_by(CariHareket.tarih.desc()).limit(4).all()
+    for hareket in cari_hareketleri:
+        son_hareketler.append({
+            'timestamp': hareket.tarih,
+            'title': 'Tahsilat alındı' if hareket.islem_tipi == 'tahsilat' else 'Ödeme yapıldı',
+            'description': hareket.aciklama or (hareket.cari.unvan if hareket.cari else 'Cari hareketi kaydedildi.'),
+            'amount': float(hareket.tutar or 0),
+            'icon': 'person',
+            'tone': 'primary',
+            'url': url_for('cariler'),
+        })
+    son_stok_hareketleri = StokHareket.query.filter(
+        StokHareket.user_id.in_(tenant_ids),
+    ).order_by(StokHareket.tarih.desc()).limit(3).all()
+    for hareket in son_stok_hareketleri:
+        son_hareketler.append({
+            'timestamp': hareket.tarih,
+            'title': 'Stok hareketi kaydedildi',
+            'description': f'{hareket.urun.urun_adi if hareket.urun else "Ürün"}: {hareket.miktar:g} {hareket.islem_tipi}.',
+            'amount': None,
+            'icon': 'inventory_2',
+            'tone': 'amber',
+            'url': url_for('urunler'),
+        })
+    for teklif in sorted(teklifler, key=lambda item: item.tarih or datetime.min, reverse=True)[:3]:
+        son_hareketler.append({
+            'timestamp': teklif.tarih,
+            'title': 'Teklif oluşturuldu',
+            'description': f'{teklif.teklif_no} numaralı teklif hazırlandı.',
+            'amount': float(teklif.genel_toplam or 0),
+            'icon': 'description',
+            'tone': 'violet',
+            'url': url_for('teklif_detay', id=teklif.id),
+        })
+    son_hareketler = sorted(
+        son_hareketler,
+        key=lambda item: item['timestamp'] or datetime.min,
+        reverse=True,
+    )[:4]
+
+    kritik_urunler = sorted(
+        [urun for urun in urunler if (urun.stok_miktari or 0) <= (urun.kritik_stok or 0)],
+        key=lambda urun: (urun.stok_miktari or 0, urun.urun_adi or ''),
+    )[:3]
+    panel_zamani = local_now()
+    if panel_zamani.hour < 12:
+        karsilama = 'Günaydın'
+    elif panel_zamani.hour < 18:
+        karsilama = 'İyi günler'
+    else:
+        karsilama = 'İyi akşamlar'
+
     return render_template('dashboard_stok_ve_cari_takip.html',
                            toplam_urun=toplam_urun,
                            toplam_cari=toplam_cari,
@@ -7257,7 +7370,17 @@ def dashboard():
                            # Analitik özet verileri
                            aylik_trend=aylik_trend,
                            cari_risk_analizi=cari_risk_analizi,
-                           stok_verimlilik=stok_verimlilik)
+                           stok_verimlilik=stok_verimlilik,
+                           gunluk_satis_trendi=gunluk_satis_trendi,
+                           en_yuksek_gunluk_satis=en_yuksek_gunluk_satis,
+                           hesap_bakiyeleri=hesap_bakiyeleri,
+                           hesap_dagilimi=hesap_dagilimi,
+                           toplam_para=toplam_para,
+                           kasa_banka_toplami=kasa_banka_toplami,
+                           son_hareketler=son_hareketler,
+                           kritik_urunler=kritik_urunler,
+                           panel_zamani=panel_zamani,
+                           karsilama=karsilama)
 
 # Ürün Y?netimi
 
