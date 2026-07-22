@@ -23,10 +23,18 @@
     }
 
     function extractAmount(text) {
-        const match = String(text || '').match(/(\d+(?:[.,]\d+)?)\s*(tl|lira|₺|adet|tane)?/i);
+        const match = String(text || '').match(/(\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?)\s*(tl|lira|₺|adet|tane)?/i);
         if (!match) return null;
+        let rawValue = String(match[1]);
+        if (rawValue.includes('.') && rawValue.includes(',')) {
+            rawValue = rawValue.replace(/\./g, '').replace(',', '.');
+        } else if (/^\d{1,3}(?:\.\d{3})+$/.test(rawValue)) {
+            rawValue = rawValue.replace(/\./g, '');
+        } else {
+            rawValue = rawValue.replace(',', '.');
+        }
         return {
-            value: Number(String(match[1]).replace(',', '.')),
+            value: Number(rawValue),
             unit: match[2] || ''
         };
     }
@@ -270,6 +278,107 @@
         });
     }
 
+    function extendedAnalysis(text, amount) {
+        const hasAny = (...phrases) => phrases.some((phrase) => text.includes(phrase));
+        const draft = (intent, title, summary, fields, routeHint, note) => createAnalysisResult({
+            intent,
+            title,
+            confidence: 'Yüksek',
+            summary,
+            fields: [...fields, ['Durum', 'Onay Bekliyor']],
+            routeHint,
+            note: note || 'Bu işlem yalnızca taslak olarak hazırlanır; kullanıcı onayı olmadan kayıt değiştirilmez.'
+        });
+        const specialEntity = (words) => {
+            let value = text;
+            [...words].sort((left, right) => right.length - left.length).forEach((word) => {
+                value = value.replace(new RegExp(`\\b${word}\\b`, 'gi'), ' ');
+            });
+            return value
+                .replace(/\d{1,3}(?:\.\d{3})*(?:,\d+)?|\d+(?:[.,]\d+)?/g, ' ')
+                .replace(/\b(tl|try|lira|adet|tane|için|icin)\b/gi, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        };
+
+        if (hasAny('fişini tekrar yazdır', 'fisini tekrar yazdir', 'fişi yeniden yazdır', 'fisi yeniden yazdir')) {
+            return draft('receipt_reprint', 'Fişi tekrar yazdır', 'Son satış fişi yeniden yazdırılmak üzere hazırlandı.', [['İşlem Türü', 'Fiş Yazdırma'], ['Satış', 'Son Satış']], '/gunluk-satislar');
+        }
+        if (text.includes('irsaliye') && hasAny('hazırla', 'hazirla', 'oluştur', 'olustur', 'yazdır', 'yazdir')) {
+            return draft('dispatch_note', 'İrsaliye hazırlama taslağı', 'İlgili satış için irsaliye hazırlama adımı açılacak.', [['İşlem Türü', 'İrsaliye Hazırla'], ['Satış', text.includes('son') ? 'Son Satış' : 'Seçilecek Satış']], '/gunluk-satislar');
+        }
+        if (text.includes('teklif') && hasAny('satışa çevir', 'satisa cevir', 'satış yap', 'satis yap')) {
+            const cari = specialEntity(['son', 'teklifini', 'teklifi', 'satışa', 'satisa', 'çevir', 'cevir']);
+            return draft('quote_to_sale', 'Teklifi satışa çevir', `${cari || 'Seçilecek cari'} için teklif satışa dönüştürülmek üzere hazırlandı.`, [['İşlem Türü', 'Teklifi Satışa Çevir'], ['Cari', cari || 'Eksik'], ['Teklif', 'Son Teklif']], '/teklifler');
+        }
+        if (hasAny('aktar', 'transfer') && hasAny('pos', 'kasa', 'banka')) {
+            const source = /pos\s*(tan|dan)/.test(text) ? 'POS' : (/banka\s*(dan|tan)/.test(text) ? 'Banka' : (/kasa\s*(dan|tan)/.test(text) ? 'Kasa' : 'Eksik'));
+            const target = /banka\s*(ya|ye|a|e)/.test(text) ? 'Banka' : (/kasa\s*(ya|ye|a|e)/.test(text) ? 'Kasa' : (/pos\s*(a|e)/.test(text) ? 'POS' : 'Eksik'));
+            return draft('account_transfer', 'Hesaplar arası aktarım taslağı', `${source} hesabından ${target} hesabına ${formatAmount(amount, 'TL')} aktarım hazırlanıyor.`, [['İşlem Türü', 'Hesaplar Arası Aktarım'], ['Kaynak Hesap', source], ['Hedef Hesap', target], ['Tutar', formatAmount(amount, 'TL')]], '/onmuhasebe/hesaplar');
+        }
+        if (hasAny('depodan', 'depo') && hasAny('mağazaya', 'magazaya', 'depoya') && hasAny('aktar', 'transfer')) {
+            const product = specialEntity(['ana', 'depodan', 'depo', 'mağazaya', 'magazaya', 'depoya', 'aktar', 'transfer']);
+            return draft('warehouse_transfer', 'Depolar arası stok aktarımı', `${product || 'Seçilecek ürün'} için depolar arası aktarım taslağı hazırlandı.`, [['İşlem Türü', 'Depolar Arası Aktarım'], ['Ürün', product || 'Eksik'], ['Miktar', formatAmount(amount, 'adet')]], '/stok/cikis');
+        }
+        if (hasAny('satışı iptal', 'satisi iptal', 'satış iptal', 'satis iptal', 'satışı iade', 'satisi iade')) {
+            return draft('sale_cancel_return', 'Satış iptal/iade taslağı', 'Satışın stok, cari ve ödeme etkileri kontrol edilerek iptal/iade akışı hazırlanacak.', [['İşlem Türü', 'Satış İptali / İade'], ['Satış', text.includes('son') ? 'Son Satış' : 'Seçilecek Satış']], '/iade');
+        }
+        if (hasAny('yeni ürün', 'yeni urun') && hasAny('oluştur', 'olustur', 'ekle', 'aç', 'ac')) {
+            const product = specialEntity(['adında', 'adinda', 'yeni', 'ürün', 'urun', 'oluştur', 'olustur', 'ekle', 'aç', 'ac']);
+            return draft('product_create', 'Yeni ürün kartı taslağı', `${product || 'Yeni ürün'} için ürün kartı hazırlanıyor.`, [['İşlem Türü', 'Ürün Oluştur'], ['Ürün', product || 'Eksik']], '/urun-ekle');
+        }
+        if (text.includes('fiyat') && hasAny('yap', 'güncelle', 'guncelle', 'değiştir', 'degistir')) {
+            const priceType = hasAny('alış', 'alis') ? 'Alış Fiyatı' : 'Satış Fiyatı';
+            const product = specialEntity(['alış', 'alis', 'satış', 'satis', 'fiyatını', 'fiyatini', 'fiyatı', 'fiyati', 'fiyat', 'yap', 'güncelle', 'guncelle', 'değiştir', 'degistir']);
+            return draft('price_update', 'Ürün fiyatı güncelleme taslağı', `${product || 'Seçilecek ürün'} için ${priceType.toLocaleLowerCase('tr-TR')} güncellemesi hazırlanıyor.`, [['İşlem Türü', 'Fiyat Güncelle'], ['Ürün', product || 'Eksik'], ['Fiyat Türü', priceType], ['Yeni Fiyat', formatAmount(amount, 'TL')]], '/urunler');
+        }
+        if (hasAny('avans', 'prim', 'izin') && hasAny('yaz', 'ekle', 'gir', 'oluştur', 'olustur')) {
+            const operation = text.includes('avans') ? 'Avans' : (text.includes('prim') ? 'Prim' : 'İzin');
+            const employee = specialEntity(['avans', 'prim', 'izin', 'yaz', 'ekle', 'gir', 'oluştur', 'olustur']);
+            const fields = [['İşlem Türü', `Personel ${operation} Kaydı`], ['Personel', employee || 'Eksik']];
+            if (operation !== 'İzin') fields.push(['Tutar', formatAmount(amount, 'TL')]);
+            return draft('personnel_action', `Personel ${operation.toLocaleLowerCase('tr-TR')} taslağı`, `${employee || 'Seçilecek personel'} için ${operation.toLocaleLowerCase('tr-TR')} kaydı hazırlanıyor.`, fields, '/personel');
+        }
+        if (text.includes('ekstre') && hasAny('göster', 'goster', 'hazırla', 'hazirla', 'yazdır', 'yazdir')) {
+            const cari = specialEntity(['son', 'üç', 'uc', 'aylık', 'aylik', 'ekstresini', 'ekstreyi', 'ekstre', 'göster', 'goster', 'hazırla', 'hazirla', 'yazdır', 'yazdir']);
+            const period = hasAny('üç aylık', 'uc aylik', '3 aylık', '3 aylik') ? 'Son 3 Ay' : 'Tümü';
+            return draft('cari_statement', 'Cari ekstre sorgusu', `${cari || 'Seçilecek cari'} için cari hesap dökümü hazırlanıyor.`, [['İşlem Türü', 'Cari Ekstre'], ['Cari', cari || 'Eksik'], ['Dönem', period]], '/cariler');
+        }
+        if (hasAny('stok hareket', 'ürün hareket', 'urun hareket')) {
+            const product = specialEntity(['stok', 'ürün', 'urun', 'hareketlerini', 'hareketleri', 'hareket', 'göster', 'goster', 'listele']);
+            return draft('product_movements', 'Ürün hareketleri sorgusu', `${product || 'Seçilecek ürün'} için stok hareketleri listelenecek.`, [['İşlem Türü', 'Stok Hareketleri'], ['Ürün', product || 'Eksik']], '/urunler');
+        }
+        if (hasAny('kırık', 'kirik', 'bozuk', 'fire', 'zayi', 'hasarlı', 'hasarli') && hasAny('stoktan düş', 'stoktan dus', 'çıkış', 'cikis')) {
+            const product = specialEntity(['kırık', 'kirik', 'bozuk', 'fire', 'zayi', 'hasarlı', 'hasarli', 'stoktan', 'stok', 'düş', 'dus', 'çıkış', 'cikis']);
+            return draft('stock_waste', 'Fire/hasar stok çıkışı', `${product || 'Seçilecek ürün'} için fire stok çıkışı hazırlanıyor.`, [['İşlem Türü', 'Fire / Hasar Çıkışı'], ['Ürün', product || 'Eksik'], ['Miktar', formatAmount(amount, 'adet')]], '/stok/cikis');
+        }
+        if (hasAny('ödemesi geciken', 'odemesi geciken', 'gecikmiş alacak', 'gecikmis alacak', 'vadesi geçen', 'vadesi gecen')) {
+            return draft('overdue_receivables', 'Geciken müşteri alacakları', 'Vadesi geçmiş müşteri bakiyeleri listelenecek.', [['İşlem Türü', 'Geciken Alacak Sorgusu'], ['Filtre', 'Vadesi Geçenler']], '/cariler', 'Bu sorgu yalnızca bilgi verir; hiçbir cari kayıt değiştirilmez.');
+        }
+        if (hasAny('bitmek üzere', 'bitmek uzere', 'tükenmek üzere', 'tukenmek uzere') && hasAny('ürün', 'urun', 'stok')) {
+            return draft('critical_stock', 'Kritik stok sorgusu', 'Bitmek üzere olan ürünler kritik stok listesinde gösterilecek.', [['İşlem Türü', 'Bilgi Sorgusu'], ['Filtre', 'Kritik Stok']], '/urunler', 'Bu sorgu yalnızca mevcut stok durumunu gösterir; hiçbir kayıt değiştirilmez.');
+        }
+        if (hasAny('tedarikçilere borc', 'tedarikcilere borc', 'tedarikçi borç', 'tedarikci borc', 'kime borcumuz', 'kimlere borcumuz')) {
+            return draft('supplier_debts', 'Tedarikçi borçları', 'Açık borcu bulunan tedarikçiler listelenecek.', [['İşlem Türü', 'Tedarikçi Borç Sorgusu'], ['Filtre', 'Açık Borçlar']], '/cariler', 'Bu sorgu yalnızca bilgi verir; hiçbir ödeme kaydı oluşturulmaz.');
+        }
+        if (hasAny('en çok sattığım', 'en cok sattigim', 'en çok satılan', 'en cok satilan', 'satış raporu', 'satis raporu')) {
+            const period = hasAny('bu ay', 'aylık', 'aylik') ? 'Bu Ay' : 'Seçilecek Dönem';
+            return draft('report_query', 'Satış raporu sorgusu', `${period.toLocaleLowerCase('tr-TR')} için satış performansı hazırlanıyor.`, [['İşlem Türü', 'Rapor Sorgusu'], ['Dönem', period], ['Rapor', 'En Çok Satan Ürünler']], '/raporlar', 'Bu sorgu yalnızca rapor üretir; hiçbir kayıt değiştirilmez.');
+        }
+        if (hasAny('kasa durumunu kontrol', 'kasa mutabakat', 'gün sonu', 'gun sonu')) {
+            return draft('cash_reconciliation', 'Kasa kontrolü', 'Günün kasa giriş, çıkış ve kalan para özeti hazırlanacak.', [['İşlem Türü', 'Kasa Mutabakatı'], ['Dönem', 'Bugün']], '/onmuhasebe/hesaplar', 'Bu kontrol yalnızca mevcut para hareketlerini karşılaştırır; otomatik kayıt oluşturmaz.');
+        }
+        if (hasAny('yapılan satışları göster', 'yapilan satislari goster', 'satışlarını göster', 'satislarini goster')) {
+            const cari = specialEntity(['bugün', 'bugun', 'yapılan', 'yapilan', 'satışları', 'satislari', 'satışlarını', 'satislarini', 'göster', 'goster']);
+            return draft('daily_sales_search', 'Satışlarda cari araması', `${cari || 'Seçilecek cari'} için günlük satış kayıtları aranacak.`, [['İşlem Türü', 'Satış Arama'], ['Cari', cari || 'Eksik'], ['Dönem', 'Bugün']], '/gunluk-satislar', 'Bu sorgu yalnızca satış kayıtlarını filtreler; işlem yapmaz.');
+        }
+        if (hasAny('ödeme', 'odeme', 'öde', 'ode', 'tedarikçi', 'tedarikci') && hasAny('bankadan', 'kasadan', 'tedarikçi', 'tedarikci', 'ticaret')) {
+            const supplier = specialEntity(['bankadan', 'kasadan', 'banka', 'kasa', 'öde', 'ode', 'ödeme', 'odeme', 'yap', 'tedarikçiye', 'tedarikciye']);
+            return draft('supplier_payment', 'Tedarikçiye ödeme taslağı', `${supplier || 'Seçilecek tedarikçi'} için ödeme taslağı hazırlandı.`, [['İşlem Türü', 'Tedarikçiye Ödeme'], ['Cari', supplier || 'Eksik'], ['Tutar', formatAmount(amount, 'TL')]], '/cariler');
+        }
+        return null;
+    }
+
     function analyzeCommand(command) {
         const raw = String(command || '').trim();
         const text = normalizeCommand(raw);
@@ -284,6 +393,9 @@
                 ]
             });
         }
+
+        const extendedResult = extendedAnalysis(text, amount);
+        if (extendedResult) return extendedResult;
 
         if ((text.includes('kasa') || text.includes('kasadan') || text.includes('kasaya') || text.includes('banka') || text.includes('bankadan') || text.includes('bankaya'))
             && (text.includes('giriş') || text.includes('giris') || text.includes('çıkış') || text.includes('cikis') || text.includes('çıkar') || text.includes('cikar') || text.includes('masraf') || text.includes('gider') || text.includes('harcama') || text.includes('ödeme') || text.includes('odeme') || text.includes('öde') || text.includes('ode'))) {

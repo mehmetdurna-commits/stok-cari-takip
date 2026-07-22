@@ -36,6 +36,10 @@ class AssistantCommandAnalyzer:
                 ],
             )
 
+        extended_result = self._extended_intent_result(text, amount)
+        if extended_result:
+            return extended_result
+
         if self._is_cash_movement(text):
             return self._cash_movement_result(text, amount)
 
@@ -287,6 +291,122 @@ class AssistantCommandAnalyzer:
             )
 
         return self._result(**self._fallback_answer(text))
+
+    def _extended_intent_result(self, text, amount):
+        """Recognize specific high-value workflows before broad legacy rules."""
+        amount_label = self._format_amount(amount, 'TL')
+        quantity_label = self._format_amount(amount, 'adet')
+        safe_note = 'Bu işlem yalnızca taslak olarak hazırlanır; kullanıcı onayı olmadan kayıt değiştirilmez.'
+
+        def draft(intent, title, summary, fields, route_hint, confidence='Yüksek', note=safe_note):
+            return self._result(
+                intent=intent,
+                title=title,
+                confidence=confidence,
+                summary=summary,
+                fields=[*fields, ('Durum', 'Onay Bekliyor')],
+                route_hint=route_hint,
+                note=note,
+            )
+
+        if self._contains_any(text, ('fişini tekrar yazdır', 'fisini tekrar yazdir', 'fişi yeniden yazdır', 'fisi yeniden yazdir')):
+            return draft('receipt_reprint', 'Fişi tekrar yazdır', 'Son satış fişi yeniden yazdırılmak üzere hazırlandı.', [('İşlem Türü', 'Fiş Yazdırma'), ('Satış', 'Son Satış')], '/gunluk-satislar')
+
+        if 'irsaliye' in text and self._contains_any(text, ('hazırla', 'hazirla', 'oluştur', 'olustur', 'yazdır', 'yazdir')):
+            return draft('dispatch_note', 'İrsaliye hazırlama taslağı', 'İlgili satış için irsaliye hazırlama adımı açılacak.', [('İşlem Türü', 'İrsaliye Hazırla'), ('Satış', 'Son Satış' if 'son' in text else 'Seçilecek Satış')], '/gunluk-satislar')
+
+        if 'teklif' in text and self._contains_any(text, ('satışa çevir', 'satisa cevir', 'satış yap', 'satis yap')):
+            cari = self._clean_special_entity(text, ('son', 'teklifini', 'teklifi', 'satışa', 'satisa', 'çevir', 'cevir'))
+            return draft('quote_to_sale', 'Teklifi satışa çevir', f'{cari or "Seçilecek cari"} için teklif satışa dönüştürülmek üzere hazırlandı.', [('İşlem Türü', 'Teklifi Satışa Çevir'), ('Cari', cari or 'Eksik'), ('Teklif', 'Son Teklif')], '/teklifler')
+
+        if self._contains_any(text, ('aktar', 'transfer')) and self._contains_any(text, ('pos', 'kasa', 'banka')):
+            source = self._account_name(text, source=True)
+            target = self._account_name(text, source=False)
+            return draft('account_transfer', 'Hesaplar arası aktarım taslağı', f'{source or "Kaynak hesap"} hesabından {target or "hedef hesaba"} {amount_label} aktarım hazırlanıyor.', [('İşlem Türü', 'Hesaplar Arası Aktarım'), ('Kaynak Hesap', source or 'Eksik'), ('Hedef Hesap', target or 'Eksik'), ('Tutar', amount_label)], '/onmuhasebe/hesaplar')
+
+        if self._contains_any(text, ('depodan', 'depo')) and self._contains_any(text, ('mağazaya', 'magazaya', 'depoya')) and self._contains_any(text, ('aktar', 'transfer')):
+            product = self._clean_special_entity(text, ('ana', 'depodan', 'depo', 'mağazaya', 'magazaya', 'depoya', 'aktar', 'transfer'))
+            return draft('warehouse_transfer', 'Depolar arası stok aktarımı', f'{product or "Seçilecek ürün"} için depolar arası aktarım taslağı hazırlandı.', [('İşlem Türü', 'Depolar Arası Aktarım'), ('Ürün', product or 'Eksik'), ('Miktar', quantity_label)], '/stok/cikis')
+
+        if self._contains_any(text, ('satışı iptal', 'satisi iptal', 'satış iptal', 'satis iptal', 'satışı iade', 'satisi iade')):
+            return draft('sale_cancel_return', 'Satış iptal/iade taslağı', 'Satışın stok, cari ve ödeme etkileri kontrol edilerek iptal/iade akışı hazırlanacak.', [('İşlem Türü', 'Satış İptali / İade'), ('Satış', 'Son Satış' if 'son' in text else 'Seçilecek Satış')], '/iade')
+
+        if self._contains_any(text, ('yeni ürün', 'yeni urun')) and self._contains_any(text, ('oluştur', 'olustur', 'ekle', 'aç', 'ac')):
+            product = self._clean_special_entity(text, ('adında', 'adinda', 'yeni', 'ürün', 'urun', 'oluştur', 'olustur', 'ekle', 'aç', 'ac'))
+            return draft('product_create', 'Yeni ürün kartı taslağı', f'{product or "Yeni ürün"} için ürün kartı hazırlanıyor.', [('İşlem Türü', 'Ürün Oluştur'), ('Ürün', product or 'Eksik')], '/urun-ekle')
+
+        if 'fiyat' in text and self._contains_any(text, ('yap', 'güncelle', 'guncelle', 'değiştir', 'degistir')):
+            price_type = 'Alış Fiyatı' if self._contains_any(text, ('alış', 'alis')) else 'Satış Fiyatı'
+            product = self._clean_special_entity(text, ('alış', 'alis', 'satış', 'satis', 'fiyatını', 'fiyatini', 'fiyatı', 'fiyati', 'fiyat', 'yap', 'güncelle', 'guncelle', 'değiştir', 'degistir'))
+            return draft('price_update', 'Ürün fiyatı güncelleme taslağı', f'{product or "Seçilecek ürün"} için {price_type.lower()} güncellemesi hazırlanıyor.', [('İşlem Türü', 'Fiyat Güncelle'), ('Ürün', product or 'Eksik'), ('Fiyat Türü', price_type), ('Yeni Fiyat', amount_label)], '/urunler')
+
+        if self._contains_any(text, ('avans', 'prim', 'izin')) and self._contains_any(text, ('yaz', 'ekle', 'gir', 'oluştur', 'olustur')):
+            operation = 'Avans' if 'avans' in text else ('Prim' if 'prim' in text else 'İzin')
+            employee = self._clean_special_entity(text, ('avans', 'prim', 'izin', 'yaz', 'ekle', 'gir', 'oluştur', 'olustur'))
+            fields = [('İşlem Türü', f'Personel {operation} Kaydı'), ('Personel', employee or 'Eksik')]
+            if operation != 'İzin':
+                fields.append(('Tutar', amount_label))
+            return draft('personnel_action', f'Personel {operation.lower()} taslağı', f'{employee or "Seçilecek personel"} için {operation.lower()} kaydı hazırlanıyor.', fields, '/personel')
+
+        if 'ekstre' in text and self._contains_any(text, ('göster', 'goster', 'hazırla', 'hazirla', 'yazdır', 'yazdir')):
+            cari = self._clean_special_entity(text, ('son', 'üç', 'uc', 'aylık', 'aylik', 'ekstresini', 'ekstreyi', 'ekstre', 'göster', 'goster', 'hazırla', 'hazirla', 'yazdır', 'yazdir'))
+            return draft('cari_statement', 'Cari ekstre sorgusu', f'{cari or "Seçilecek cari"} için cari hesap dökümü hazırlanıyor.', [('İşlem Türü', 'Cari Ekstre'), ('Cari', cari or 'Eksik'), ('Dönem', 'Son 3 Ay' if self._contains_any(text, ('üç aylık', 'uc aylik', '3 aylık', '3 aylik')) else 'Tümü')], '/cariler')
+
+        if self._contains_any(text, ('stok hareket', 'ürün hareket', 'urun hareket')):
+            product = self._clean_special_entity(text, ('stok', 'ürün', 'urun', 'hareketlerini', 'hareketleri', 'hareket', 'göster', 'goster', 'listele'))
+            return draft('product_movements', 'Ürün hareketleri sorgusu', f'{product or "Seçilecek ürün"} için stok hareketleri listelenecek.', [('İşlem Türü', 'Stok Hareketleri'), ('Ürün', product or 'Eksik')], '/urunler')
+
+        if self._contains_any(text, ('kırık', 'kirik', 'bozuk', 'fire', 'zayi', 'hasarlı', 'hasarli')) and self._contains_any(text, ('stoktan düş', 'stoktan dus', 'çıkış', 'cikis')):
+            product = self._clean_special_entity(text, ('kırık', 'kirik', 'bozuk', 'fire', 'zayi', 'hasarlı', 'hasarli', 'stoktan', 'stok', 'düş', 'dus', 'çıkış', 'cikis'))
+            return draft('stock_waste', 'Fire/hasar stok çıkışı', f'{product or "Seçilecek ürün"} için fire stok çıkışı hazırlanıyor.', [('İşlem Türü', 'Fire / Hasar Çıkışı'), ('Ürün', product or 'Eksik'), ('Miktar', quantity_label)], '/stok/cikis')
+
+        if self._contains_any(text, ('ödemesi geciken', 'odemesi geciken', 'gecikmiş alacak', 'gecikmis alacak', 'vadesi geçen', 'vadesi gecen')):
+            return draft('overdue_receivables', 'Geciken müşteri alacakları', 'Vadesi geçmiş müşteri bakiyeleri listelenecek.', [('İşlem Türü', 'Geciken Alacak Sorgusu'), ('Filtre', 'Vadesi Geçenler')], '/cariler', note='Bu sorgu yalnızca bilgi verir; hiçbir cari kayıt değiştirilmez.')
+
+        if self._contains_any(text, ('bitmek üzere', 'bitmek uzere', 'tükenmek üzere', 'tukenmek uzere')) and self._contains_any(text, ('ürün', 'urun', 'stok')):
+            return draft('critical_stock', 'Kritik stok sorgusu', 'Bitmek üzere olan ürünler kritik stok listesinde gösterilecek.', [('İşlem Türü', 'Bilgi Sorgusu'), ('Filtre', 'Kritik Stok')], '/urunler', note='Bu sorgu yalnızca mevcut stok durumunu gösterir; hiçbir kayıt değiştirilmez.')
+
+        if self._contains_any(text, ('tedarikçilere borc', 'tedarikcilere borc', 'tedarikçi borç', 'tedarikci borc', 'kime borcumuz', 'kimlere borcumuz')):
+            return draft('supplier_debts', 'Tedarikçi borçları', 'Açık borcu bulunan tedarikçiler listelenecek.', [('İşlem Türü', 'Tedarikçi Borç Sorgusu'), ('Filtre', 'Açık Borçlar')], '/cariler', note='Bu sorgu yalnızca bilgi verir; hiçbir ödeme kaydı oluşturulmaz.')
+
+        if self._contains_any(text, ('en çok sattığım', 'en cok sattigim', 'en çok satılan', 'en cok satilan', 'satış raporu', 'satis raporu')):
+            period = 'Bu Ay' if self._contains_any(text, ('bu ay', 'aylık', 'aylik')) else 'Seçilecek Dönem'
+            return draft('report_query', 'Satış raporu sorgusu', f'{period.lower()} için satış performansı hazırlanıyor.', [('İşlem Türü', 'Rapor Sorgusu'), ('Dönem', period), ('Rapor', 'En Çok Satan Ürünler')], '/raporlar', note='Bu sorgu yalnızca rapor üretir; hiçbir kayıt değiştirilmez.')
+
+        if self._contains_any(text, ('kasa durumunu kontrol', 'kasa mutabakat', 'gün sonu', 'gun sonu')):
+            return draft('cash_reconciliation', 'Kasa kontrolü', 'Günün kasa giriş, çıkış ve kalan para özeti hazırlanacak.', [('İşlem Türü', 'Kasa Mutabakatı'), ('Dönem', 'Bugün')], '/onmuhasebe/hesaplar', note='Bu kontrol yalnızca mevcut para hareketlerini karşılaştırır; otomatik kayıt oluşturmaz.')
+
+        if self._contains_any(text, ('yapılan satışları göster', 'yapilan satislari goster', 'satışlarını göster', 'satislarini goster')):
+            cari = self._clean_special_entity(text, ('bugün', 'bugun', 'yapılan', 'yapilan', 'satışları', 'satislari', 'satışlarını', 'satislarini', 'göster', 'goster'))
+            return draft('daily_sales_search', 'Satışlarda cari araması', f'{cari or "Seçilecek cari"} için günlük satış kayıtları aranacak.', [('İşlem Türü', 'Satış Arama'), ('Cari', cari or 'Eksik'), ('Dönem', 'Bugün')], '/gunluk-satislar', note='Bu sorgu yalnızca satış kayıtlarını filtreler; işlem yapmaz.')
+
+        if self._is_supplier_payment(text) and self._contains_any(text, ('bankadan', 'kasadan', 'tedarikçi', 'tedarikci', 'ticaret')):
+            supplier = self._clean_special_entity(text, ('bankadan', 'kasadan', 'banka', 'kasa', 'öde', 'ode', 'ödeme', 'odeme', 'yap', 'tedarikçiye', 'tedarikciye'))
+            return draft('supplier_payment', 'Tedarikçiye ödeme taslağı', f'{supplier or "Seçilecek tedarikçi"} için ödeme taslağı hazırlandı.', [('İşlem Türü', 'Tedarikçiye Ödeme'), ('Cari', supplier or 'Eksik'), ('Tutar', amount_label)], '/cariler')
+
+        return None
+
+    @staticmethod
+    def _contains_any(text, phrases):
+        return any(phrase in text for phrase in phrases)
+
+    @staticmethod
+    def _account_name(text, source=False):
+        suffixes = ('tan', 'dan') if source else ('ya', 'ye', 'a', 'e')
+        accounts = (('POS', 'pos'), ('Banka', 'banka'), ('Kasa', 'kasa'))
+        for label, word in accounts:
+            if any(re.search(rf'\b{word}\s*{suffix}\b', text) for suffix in suffixes):
+                return label
+        return ''
+
+    @staticmethod
+    def _clean_special_entity(text, words):
+        cleaned = text or ''
+        for word in sorted(words, key=len, reverse=True):
+            cleaned = re.sub(rf'\b{re.escape(word)}\b', ' ', cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r'\d{1,3}(?:\.\d{3})*(?:,\d+)?|\d+(?:[.,]\d+)?', ' ', cleaned)
+        cleaned = re.sub(r'\b(tl|try|lira|adet|tane|için|icin)\b', ' ', cleaned, flags=re.IGNORECASE)
+        return re.sub(r'\s+', ' ', cleaned).strip(' -')
 
     def _result(self, **overrides):
         result = dict(self.DEFAULT_RESULT)
@@ -584,11 +704,18 @@ class AssistantCommandAnalyzer:
 
     @staticmethod
     def _extract_amount(text):
-        match = re.search(r'(\d+(?:[.,]\d+)?)\s*(tl|lira|₺|adet|tane)?', text or '', re.IGNORECASE)
+        match = re.search(r'(\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?)\s*(tl|lira|₺|adet|tane)?', text or '', re.IGNORECASE)
         if not match:
             return None
+        raw_value = match.group(1)
+        if '.' in raw_value and ',' in raw_value:
+            raw_value = raw_value.replace('.', '').replace(',', '.')
+        elif raw_value.count('.') >= 1 and all(len(part) == 3 for part in raw_value.split('.')[1:]):
+            raw_value = raw_value.replace('.', '')
+        else:
+            raw_value = raw_value.replace(',', '.')
         return {
-            'value': float(match.group(1).replace(',', '.')),
+            'value': float(raw_value),
             'unit': match.group(2) or '',
         }
 
@@ -628,7 +755,7 @@ class AssistantCommandAnalyzer:
 
     @staticmethod
     def _is_supplier_payment(text):
-        return any(word in text for word in ('ödeme', 'odeme', 'tedarikçi', 'tedarikci'))
+        return any(word in text for word in ('ödeme', 'odeme', 'öde', 'ode', 'tedarikçi', 'tedarikci'))
 
     @staticmethod
     def _is_cash_movement(text):

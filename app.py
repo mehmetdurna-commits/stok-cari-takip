@@ -5215,11 +5215,17 @@ def enrich_assistant_analysis(result):
     intent = result.get('intent')
     candidates = []
     requires_match = False
-    if intent in {'stock_in', 'stock_out', 'pos_sale', 'product_lookup'}:
+    if intent in {
+        'stock_in', 'stock_out', 'stock_waste', 'pos_sale', 'product_lookup',
+        'price_update', 'product_movements', 'warehouse_transfer'
+    }:
         candidates = assistant_product_candidates(assistant_field_value(result, 'Ürün'))
         result['candidate_type'] = 'product'
         requires_match = True
-    elif intent in {'collection', 'supplier_payment', 'customer_balance', 'quote'}:
+    elif intent in {
+        'collection', 'supplier_payment', 'customer_balance', 'quote',
+        'cari_statement', 'daily_sales_search', 'quote_to_sale'
+    }:
         candidates = assistant_cari_candidates(assistant_field_value(result, 'Cari'))
         result['candidate_type'] = 'cari'
         requires_match = True
