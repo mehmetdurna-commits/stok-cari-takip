@@ -9799,12 +9799,12 @@ def reset_organization_operational_data(organization):
     ticket_ids = [row[0] for row in db.session.query(SupportTicket.id).filter_by(organization_id=organization.id).all()]
     account_ids = [row[0] for row in db.session.query(Account.id).filter(Account.user_id.in_(user_ids)).all()]
 
+    if iade_ids:
+        delete_records('iade_kalemleri', IadeKalem.query.filter(IadeKalem.iade_id.in_(iade_ids)))
     if satis_ids:
         delete_records('satis_kalemleri', SatisKalemi.query.filter(SatisKalemi.satis_id.in_(satis_ids)))
     if teklif_ids:
         delete_records('teklif_kalemleri', TeklifKalemi.query.filter(TeklifKalemi.teklif_id.in_(teklif_ids)))
-    if iade_ids:
-        delete_records('iade_kalemleri', IadeKalem.query.filter(IadeKalem.iade_id.in_(iade_ids)))
     if personel_ids:
         delete_records('personel_performans', PersonelPerformans.query.filter(PersonelPerformans.personel_id.in_(personel_ids)))
         delete_records('egitim_kayitlari', EgitimKaydi.query.filter(EgitimKaydi.personel_id.in_(personel_ids)))

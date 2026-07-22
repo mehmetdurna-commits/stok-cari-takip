@@ -1371,8 +1371,37 @@ def test_super_admin_reset_organization_clears_operational_data(client):
         )
         db.session.add(sale)
         db.session.flush()
+        sale_line = SatisKalemi(
+            satis_id=sale.id,
+            urun_id=product.id,
+            urun_adi=product.urun_adi,
+            miktar=1,
+            birim_fiyat=100,
+            toplam=100,
+        )
+        db.session.add(sale_line)
+        db.session.flush()
+        return_record = Iade(
+            cari_id=customer.id,
+            user_id=owner.id,
+            satis_id=sale.id,
+            iade_turu='urun_iadesi',
+            iade_sebebi='Reset testi',
+            iade_tutari=100,
+            durum='tamamlandi',
+            urun_adet=1,
+        )
+        db.session.add(return_record)
+        db.session.flush()
         db.session.add_all([
-            SatisKalemi(satis_id=sale.id, urun_id=product.id, urun_adi=product.urun_adi, miktar=1, birim_fiyat=100, toplam=100),
+            IadeKalem(
+                iade_id=return_record.id,
+                urun_id=product.id,
+                satis_kalemi_id=sale_line.id,
+                urun_adi=product.urun_adi,
+                miktar=1,
+                birim_fiyat=100,
+            ),
             CashTransaction(user_id=owner.id, account_id=account.id, cari_id=customer.id, islem_tipi='giris', tutar=100),
             CariHareket(user_id=owner.id, cari_id=customer.id, islem_tipi='satis', tutar=100),
             StokHareket(user_id=owner.id, urun_id=product.id, islem_tipi='cikis', miktar=1),
@@ -1401,6 +1430,7 @@ def test_super_admin_reset_organization_clears_operational_data(client):
         assert Urun.query.filter_by(user_id=owner.id).count() == 0
         assert Cari.query.filter_by(user_id=owner.id).count() == 0
         assert Satis.query.filter_by(user_id=owner.id).count() == 0
+        assert Iade.query.filter_by(user_id=owner.id).count() == 0
         assert CashTransaction.query.filter_by(user_id=owner.id).count() == 0
         assert SupportTicket.query.filter_by(organization_id=organization_id).count() == 0
         assert ActionItem.query.filter_by(organization_id=organization_id).count() == 0
