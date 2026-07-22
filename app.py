@@ -9817,9 +9817,9 @@ def reset_organization_operational_data(organization):
     if ticket_ids:
         delete_records('destek_mesajlari', SupportTicketMessage.query.filter(SupportTicketMessage.ticket_id.in_(ticket_ids)))
 
+    delete_records('iadeler', Iade.query.filter(Iade.user_id.in_(user_ids)))
     delete_records('satislar', Satis.query.filter(Satis.user_id.in_(user_ids)))
     delete_records('teklifler', Teklif.query.filter(Teklif.user_id.in_(user_ids)))
-    delete_records('iadeler', Iade.query.filter(Iade.user_id.in_(user_ids)))
     delete_records('cari_hareketleri', CariHareket.query.filter(CariHareket.user_id.in_(user_ids)))
     delete_records('stok_hareketleri', StokHareket.query.filter(StokHareket.user_id.in_(user_ids)))
     delete_records('nakit_hareketleri', CashTransaction.query.filter(CashTransaction.user_id.in_(user_ids)))
