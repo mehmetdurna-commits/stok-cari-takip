@@ -9748,7 +9748,10 @@ def organization_user_ids(organization):
 
 
 def is_customer_organization(organization):
-    return any(user.role != 'platform_staff' for user in organization.users)
+    return any(
+        user.role != 'platform_staff' or is_platform_owner_user(user)
+        for user in organization.users
+    )
 
 
 def organization_usage(organization):

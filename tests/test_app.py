@@ -1351,6 +1351,7 @@ def test_super_admin_reset_organization_clears_operational_data(client):
         organization = ensure_user_organization(owner)
         owner.is_platform_admin = True
         owner.platform_role = 'owner'
+        owner.role = 'platform_staff'
         owner_email = owner.email
         organization_name = organization.name
         organization_id = organization.id
