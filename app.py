@@ -10,8 +10,10 @@ from flask_login import (
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
+from flask.json.provider import DefaultJSONProvider
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from datetime import datetime, timezone, timedelta, date
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from zoneinfo import ZoneInfo
 from sqlalchemy import text, inspect, or_, func, case
 from sqlalchemy.exc import IntegrityError
@@ -47,7 +49,17 @@ from config import AppConfig, validate_runtime_config
 from assistant_intent import AssistantCommandAnalyzer
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+
+class DecimalJSONProvider(DefaultJSONProvider):
+    def default(self, value):
+        if isinstance(value, Decimal):
+            return float(value)
+        return super().default(value)
+
+
 app = Flask(__name__)
+app.json_provider_class = DecimalJSONProvider
+app.json = app.json_provider_class(app)
 app.config.from_object(AppConfig)
 app.json.ensure_ascii = False
 app.config.setdefault('UPLOAD_FOLDER', os.path.join(app.static_folder, 'uploads'))
@@ -268,9 +280,9 @@ def audit_resource_label(resource_type):
 
 def format_tr_number(value, decimals=2):
     try:
-        number = float(value or 0)
-    except (TypeError, ValueError):
-        number = 0.0
+        number = decimal_value(value)
+    except (InvalidOperation, TypeError, ValueError):
+        number = Decimal('0')
 
     formatted = f'{number:,.{int(decimals)}f}'
     return formatted.replace(',', 'X').replace('.', ',').replace('X', '.')
@@ -349,6 +361,51 @@ app.add_template_filter(format_money, 'money')
 
 # Veritaban? Modelleri
 
+MONEY_SCALE = Decimal('0.01')
+QUANTITY_SCALE = Decimal('0.0001')
+RATE_SCALE = Decimal('0.0001')
+
+
+def decimal_value(value, default='0'):
+    if value is None or value == '':
+        value = default
+    if isinstance(value, Decimal):
+        return value
+    if isinstance(value, float):
+        value = str(value)
+    if isinstance(value, str):
+        value = value.strip().replace(' ', '')
+        if ',' in value and '.' in value:
+            if value.rfind(',') > value.rfind('.'):
+                value = value.replace('.', '').replace(',', '.')
+            else:
+                value = value.replace(',', '')
+        elif ',' in value:
+            value = value.replace(',', '.')
+    return Decimal(str(value))
+
+
+def quantize_decimal(value, scale, default='0'):
+    return decimal_value(value, default).quantize(scale, rounding=ROUND_HALF_UP)
+
+
+def money_value(value, default='0'):
+    return quantize_decimal(value, MONEY_SCALE, default)
+
+
+def quantity_value(value, default='0'):
+    return quantize_decimal(value, QUANTITY_SCALE, default)
+
+
+def rate_value(value, default='0'):
+    return quantize_decimal(value, RATE_SCALE, default)
+
+
+def json_default(value):
+    if isinstance(value, Decimal):
+        return float(value)
+    raise TypeError(f'{type(value).__name__} JSON formatına dönüştürülemiyor')
+
 
 class Organization(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -404,10 +461,10 @@ class Urun(db.Model):
     urun_adi = db.Column(db.String(200), nullable=False)
     kategori = db.Column(db.String(100))
     birim = db.Column(db.String(20), default='Adet')
-    alis_fiyati = db.Column(db.Float, default=0)
-    satis_fiyati = db.Column(db.Float, default=0)
-    stok_miktari = db.Column(db.Float, default=0)
-    kritik_stok = db.Column(db.Float, default=10)
+    alis_fiyati = db.Column(db.Numeric(18, 2), default=0)
+    satis_fiyati = db.Column(db.Numeric(18, 2), default=0)
+    stok_miktari = db.Column(db.Numeric(18, 4), default=0)
+    kritik_stok = db.Column(db.Numeric(18, 4), default=10)
     depo_adi = db.Column(db.String(100), default='Ana Depo')
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     eklenme_tarihi = db.Column(db.DateTime, default=utc_now)
@@ -423,8 +480,8 @@ class Cari(db.Model):
     vergi_numarasi = db.Column(db.String(100))
     adres = db.Column(db.Text)
     tipi = db.Column(db.String(20), default='Müşteri')  # Müşteri veya Tedarikçi
-    borc = db.Column(db.Float, default=0)
-    alacak = db.Column(db.Float, default=0)
+    borc = db.Column(db.Numeric(18, 2), default=0)
+    alacak = db.Column(db.Numeric(18, 2), default=0)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     kayit_tarihi = db.Column(db.DateTime, default=utc_now)
     teklifler = db.relationship('Teklif', backref='cari', lazy=True)
@@ -441,9 +498,9 @@ class Teklif(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     tarih = db.Column(db.DateTime, default=utc_now)
     gecerlilik_tarihi = db.Column(db.DateTime)
-    toplam_tutar = db.Column(db.Float, default=0)
-    kdv_orani = db.Column(db.Float, default=18)
-    genel_toplam = db.Column(db.Float, default=0)
+    toplam_tutar = db.Column(db.Numeric(18, 2), default=0)
+    kdv_orani = db.Column(db.Numeric(7, 4), default=18)
+    genel_toplam = db.Column(db.Numeric(18, 2), default=0)
     durum = db.Column(db.String(20), default='taslak')  # taslak, gonderildi, onaylandi, reddedildi
     notlar = db.Column(db.Text)
 
@@ -455,11 +512,11 @@ class TeklifKalemi(db.Model):
     teklif_id = db.Column(db.Integer, db.ForeignKey('teklif.id'), nullable=False)
     urun_id = db.Column(db.Integer, db.ForeignKey('urun.id'), nullable=False)
     urun_adi = db.Column(db.String(200), nullable=False)
-    miktar = db.Column(db.Float, default=1)
+    miktar = db.Column(db.Numeric(18, 4), default=1)
     birim = db.Column(db.String(20), default='Adet')
-    birim_fiyat = db.Column(db.Float, default=0)
-    kdv_orani = db.Column(db.Float, default=18)
-    toplam = db.Column(db.Float, default=0)
+    birim_fiyat = db.Column(db.Numeric(18, 2), default=0)
+    kdv_orani = db.Column(db.Numeric(7, 4), default=18)
+    toplam = db.Column(db.Numeric(18, 2), default=0)
     aciklama = db.Column(db.Text)
 
 
@@ -471,7 +528,7 @@ class Iade(db.Model):
     iade_turu = db.Column(db.String(50), nullable=False)  # para_iadesi, urun_iadesi, hizmet_iadesi, degisim
     refund_mode = db.Column(db.String(20), nullable=True)
     iade_sebebi = db.Column(db.Text, nullable=False)
-    iade_tutari = db.Column(db.Float, default=0)
+    iade_tutari = db.Column(db.Numeric(18, 2), default=0)
     durum = db.Column(db.String(20), default='beklemede')  # bekleyen, tamamlanan, iptal
     urun_adet = db.Column(db.Integer, default=0)
     tarih = db.Column(db.DateTime, default=utc_now)
@@ -489,10 +546,10 @@ class IadeKalem(db.Model):
     urun_id = db.Column(db.Integer, db.ForeignKey('urun.id'), nullable=False)
     satis_kalemi_id = db.Column(db.Integer, db.ForeignKey('satis_kalemi.id'), nullable=True)
     urun_adi = db.Column(db.String(200), nullable=False)
-    miktar = db.Column(db.Float, nullable=False)
-    birim_fiyat = db.Column(db.Float, nullable=False)
-    eski_stok = db.Column(db.Float, default=0)
-    yeni_stok = db.Column(db.Float, default=0)
+    miktar = db.Column(db.Numeric(18, 4), nullable=False)
+    birim_fiyat = db.Column(db.Numeric(18, 2), nullable=False)
+    eski_stok = db.Column(db.Numeric(18, 4), default=0)
+    yeni_stok = db.Column(db.Numeric(18, 4), default=0)
 
     urun = db.relationship('Urun', backref='iade_kalemleri')
     satis_kalemi = db.relationship('SatisKalemi', backref='iade_kalemleri')
@@ -504,7 +561,7 @@ class CariHareket(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     tarih = db.Column(db.DateTime, default=utc_now)
     islem_tipi = db.Column(db.String(20), nullable=False)  # odeme, tahsilat, satis, iade
-    tutar = db.Column(db.Float, nullable=False)
+    tutar = db.Column(db.Numeric(18, 2), nullable=False)
     aciklama = db.Column(db.Text)
     odeme_turu = db.Column(db.String(50))  # Nakit, Havale/EFT, Kredi Kartı, ?ek
     referans_id = db.Column(db.Integer)  # Satis veya teklif ID'si
@@ -519,11 +576,11 @@ class StokHareket(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     tarih = db.Column(db.DateTime, default=utc_now)
     islem_tipi = db.Column(db.String(20), nullable=False)  # giris, cikis
-    miktar = db.Column(db.Float, nullable=False)
+    miktar = db.Column(db.Numeric(18, 4), nullable=False)
     aciklama = db.Column(db.Text)
     depo = db.Column(db.String(100), default='Ana Merkez Depo')
-    eski_stok = db.Column(db.Float, default=0)
-    yeni_stok = db.Column(db.Float, default=0)
+    eski_stok = db.Column(db.Numeric(18, 4), default=0)
+    yeni_stok = db.Column(db.Numeric(18, 4), default=0)
     cari_id = db.Column(db.Integer, db.ForeignKey('cari.id'), nullable=True)  # Stok çıkışında müşteri
     ip_adresi = db.Column(db.String(45))
     user_agent = db.Column(db.String(500))
@@ -641,7 +698,7 @@ class SubscriptionPayment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
     plan = db.Column(db.String(20), default='standart')
-    amount = db.Column(db.Float, default=0)
+    amount = db.Column(db.Numeric(18, 2), default=0)
     currency = db.Column(db.String(8), default='TRY')
     period_start = db.Column(db.Date)
     period_end = db.Column(db.Date)
@@ -660,7 +717,7 @@ class CashTransaction(db.Model):
     cari_id = db.Column(db.Integer, db.ForeignKey('cari.id'), nullable=True)
     tarih = db.Column(db.DateTime, default=utc_now)
     islem_tipi = db.Column(db.String(20), nullable=False)  # giris, cikis
-    tutar = db.Column(db.Float, nullable=False)
+    tutar = db.Column(db.Numeric(18, 2), nullable=False)
     odeme_turu = db.Column(db.String(50), default='Nakit')
     aciklama = db.Column(db.Text)
     referans_id = db.Column(db.Integer)
@@ -679,7 +736,7 @@ class Account(db.Model):
     type = db.Column(db.String(20), nullable=False, default='cash')  # cash, bank, pos
     name = db.Column(db.String(120), nullable=False)
     currency = db.Column(db.String(8), default='TRY')
-    opening_balance = db.Column(db.Float, default=0)
+    opening_balance = db.Column(db.Numeric(18, 2), default=0)
     active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=utc_now)
     updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
@@ -700,9 +757,9 @@ class AccountReconciliation(db.Model):
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
     recon_date = db.Column(db.Date, nullable=False)
 
-    expected_balance = db.Column(db.Float, default=0)
-    counted_balance = db.Column(db.Float, default=0)
-    difference = db.Column(db.Float, default=0)
+    expected_balance = db.Column(db.Numeric(18, 2), default=0)
+    counted_balance = db.Column(db.Numeric(18, 2), default=0)
+    difference = db.Column(db.Numeric(18, 2), default=0)
 
     note = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=utc_now)
@@ -790,7 +847,7 @@ class Personel(db.Model):
     calisma_durumu = db.Column(db.String(20), default='Aktif')
     departman_id = db.Column(db.Integer, db.ForeignKey('departman.id'))
     pozisyon = db.Column(db.String(100))
-    maas = db.Column(db.Float, default=0)
+    maas = db.Column(db.Numeric(18, 2), default=0)
     sgk_no = db.Column(db.String(50))
     vergi_no = db.Column(db.String(50))
     iban = db.Column(db.String(50))
@@ -824,7 +881,7 @@ class Izin(db.Model):
 class Avans(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     personel_id = db.Column(db.Integer, db.ForeignKey('personel.id'), nullable=False)
-    tutar = db.Column(db.Float, nullable=False)
+    tutar = db.Column(db.Numeric(18, 2), nullable=False)
     aciklama = db.Column(db.Text)
     kesinti_turu = db.Column(db.String(50), default='Maaştan')
     taksit_sayisi = db.Column(db.Integer, default=1)
@@ -840,7 +897,7 @@ class Prim(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     personel_id = db.Column(db.Integer, db.ForeignKey('personel.id'), nullable=False)
     prim_tipi = db.Column(db.String(50), nullable=False)
-    tutar = db.Column(db.Float, nullable=False)
+    tutar = db.Column(db.Numeric(18, 2), nullable=False)
     aciklama = db.Column(db.Text)
     donem = db.Column(db.String(20))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -855,12 +912,12 @@ class MaasKaydi(db.Model):
     personel_id = db.Column(db.Integer, db.ForeignKey('personel.id'), nullable=False)
     ay = db.Column(db.String(20), nullable=False)
     yil = db.Column(db.Integer, nullable=False)
-    brut_ucret = db.Column(db.Float, nullable=False)
-    net_ucret = db.Column(db.Float, nullable=False)
-    sgk_kesinti = db.Column(db.Float, default=0)
-    gelir_vergisi = db.Column(db.Float, default=0)
-    damga_vergisi = db.Column(db.Float, default=0)
-    diger_kesintiler = db.Column(db.Float, default=0)
+    brut_ucret = db.Column(db.Numeric(18, 2), nullable=False)
+    net_ucret = db.Column(db.Numeric(18, 2), nullable=False)
+    sgk_kesinti = db.Column(db.Numeric(18, 2), default=0)
+    gelir_vergisi = db.Column(db.Numeric(18, 2), default=0)
+    damga_vergisi = db.Column(db.Numeric(18, 2), default=0)
+    diger_kesintiler = db.Column(db.Numeric(18, 2), default=0)
     odeme_durumu = db.Column(db.String(20), default='Ödenmedi')
     odeme_tarihi = db.Column(db.DateTime)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -880,7 +937,7 @@ class EgitimKaydi(db.Model):
     sure = db.Column(db.Integer)
     kurum = db.Column(db.String(200))
     sertifa_no = db.Column(db.String(100))
-    ucret = db.Column(db.Float)
+    ucret = db.Column(db.Numeric(18, 2))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=utc_now)
     
@@ -1457,7 +1514,7 @@ def generate_action_ai_recommendation(action):
             model=os.environ.get('ACTION_AI_MODEL', 'gpt-5'),
             reasoning={'effort': 'low'},
             instructions=instructions,
-            input=json.dumps(payload, ensure_ascii=False),
+            input=json.dumps(payload, ensure_ascii=False, default=json_default),
             max_output_tokens=220,
         )
         data = json.loads(response.output_text)
@@ -1911,7 +1968,7 @@ def write_updater_request(payload):
     path = os.path.join(requests_dir, f'{ts}_{request_id}.json')
     tmp = path + '.tmp'
     with open(tmp, 'w', encoding='utf-8') as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
+        json.dump(payload, f, ensure_ascii=False, indent=2, default=json_default)
     os.replace(tmp, path)
     return path
 
@@ -2100,7 +2157,7 @@ def write_tenant_backup_file(user, payload, backup_type='manual', filename_prefi
     filename = f'{filename_prefix}_{timestamp}.json'
     backup_path = os.path.join(backup_dir, filename)
     with open(backup_path, 'w', encoding='utf-8') as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
+        json.dump(payload, f, ensure_ascii=False, indent=2, default=json_default)
     file_size = os.path.getsize(backup_path)
     db.session.add(BackupLog(
         filename=filename,
@@ -3768,11 +3825,11 @@ class Satis(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     tarih = db.Column(db.DateTime, default=utc_now)
     depo = db.Column(db.String(100), default='Ana Merkez Depo')
-    ara_toplam = db.Column(db.Float, default=0)
-    kdv_orani = db.Column(db.Float, default=20)
-    kdv_tutar = db.Column(db.Float, default=0)
-    iskonto = db.Column(db.Float, default=0)
-    genel_toplam = db.Column(db.Float, default=0)
+    ara_toplam = db.Column(db.Numeric(18, 2), default=0)
+    kdv_orani = db.Column(db.Numeric(7, 4), default=20)
+    kdv_tutar = db.Column(db.Numeric(18, 2), default=0)
+    iskonto = db.Column(db.Numeric(18, 2), default=0)
+    genel_toplam = db.Column(db.Numeric(18, 2), default=0)
     notlar = db.Column(db.Text)
     durum = db.Column(db.String(20), default='tamamlandi')  # tamamlandi, iptal
 
@@ -3786,10 +3843,10 @@ class SatisKalemi(db.Model):
     urun_id = db.Column(db.Integer, db.ForeignKey('urun.id'), nullable=False)
     urun_adi = db.Column(db.String(200), nullable=False)
     barkod = db.Column(db.String(50))
-    miktar = db.Column(db.Float, default=1)
+    miktar = db.Column(db.Numeric(18, 4), default=1)
     birim = db.Column(db.String(20), default='Adet')
-    birim_fiyat = db.Column(db.Float, default=0)
-    toplam = db.Column(db.Float, default=0)
+    birim_fiyat = db.Column(db.Numeric(18, 2), default=0)
+    toplam = db.Column(db.Numeric(18, 2), default=0)
 
 
 @login_manager.user_loader
@@ -4096,10 +4153,10 @@ ALLOWED_IADE_TURLERI = {'urun_iadesi', 'para_iadesi', 'hizmet_iadesi', 'degisim'
 
 def parse_teklif_kdv_orani(raw_value):
     if raw_value in (None, ''):
-        return 18.0
+        return rate_value(18)
     try:
-        kdv_orani = float(raw_value)
-    except (TypeError, ValueError):
+        kdv_orani = rate_value(raw_value)
+    except (InvalidOperation, TypeError, ValueError):
         return None
     if kdv_orani < 0 or kdv_orani > 100:
         return None
@@ -4108,10 +4165,10 @@ def parse_teklif_kdv_orani(raw_value):
 
 def calculate_sale_totals(subtotal, kdv_orani, iskonto):
     try:
-        subtotal = float(subtotal or 0)
-        kdv_orani = float(kdv_orani)
-        iskonto = float(iskonto or 0)
-    except (TypeError, ValueError):
+        subtotal = money_value(subtotal)
+        kdv_orani = rate_value(kdv_orani)
+        iskonto = money_value(iskonto)
+    except (InvalidOperation, TypeError, ValueError):
         return None, 'Geçersiz KDV ya da iskonto değeri'
     if subtotal <= 0:
         return None, 'Satış için en az bir geçerli Ürün seçiniz'
@@ -4119,15 +4176,15 @@ def calculate_sale_totals(subtotal, kdv_orani, iskonto):
         return None, 'KDV oranı 0 ile 100 arasında olmalı'
     if iskonto < 0:
         return None, 'İskonto negatif olamaz'
-    kdv_tutar = round(subtotal * (kdv_orani / 100), 2)
-    genel_toplam = round(subtotal + kdv_tutar - iskonto, 2)
+    kdv_tutar = money_value(subtotal * (kdv_orani / Decimal('100')))
+    genel_toplam = money_value(subtotal + kdv_tutar - iskonto)
     if genel_toplam <= 0:
         return None, 'Satış toplam? sıfırdan büyük olmalı'
     return {
-        'ara_toplam': round(subtotal, 2),
-        'kdv_orani': round(kdv_orani, 2),
+        'ara_toplam': subtotal,
+        'kdv_orani': kdv_orani,
         'kdv_tutar': kdv_tutar,
-        'iskonto': round(iskonto, 2),
+        'iskonto': iskonto,
         'genel_toplam': genel_toplam,
     }, None
 
@@ -4139,7 +4196,7 @@ def parse_teklif_kalemleri_from_form():
     fiyatlar = request.form.getlist('fiyatlar[]')
 
     kalemler = []
-    toplam_tutar = 0
+    toplam_tutar = money_value(0)
     for i, urun_id in enumerate(urunler):
         if not urun_id:
             continue
@@ -4150,14 +4207,14 @@ def parse_teklif_kalemleri_from_form():
         if not belongs_to_current_tenant(urun):
             return None, 0, 'Teklifte gecersiz urun secimi var!'
         try:
-            miktar = float(miktarlar[i]) if i < len(miktarlar) and miktarlar[i] else 1
-            birim_fiyat = float(fiyatlar[i]) if i < len(fiyatlar) and fiyatlar[i] else 0
-        except (TypeError, ValueError):
+            miktar = quantity_value(miktarlar[i]) if i < len(miktarlar) and miktarlar[i] else quantity_value(1)
+            birim_fiyat = money_value(fiyatlar[i]) if i < len(fiyatlar) and fiyatlar[i] else money_value(0)
+        except (InvalidOperation, TypeError, ValueError):
             return None, 0, 'Teklifte gecersiz miktar veya fiyat var!'
         if miktar <= 0 or birim_fiyat < 0:
             continue
-        toplam = miktar * birim_fiyat
-        toplam_tutar += toplam
+        toplam = money_value(miktar * birim_fiyat)
+        toplam_tutar = money_value(toplam_tutar + toplam)
         kalemler.append({
             'urun_id': int(urun_id),
             'urun_adi': urun.urun_adi if urun else '',
@@ -4172,11 +4229,18 @@ def parse_teklif_kalemleri_from_form():
     return kalemler, toplam_tutar, None
 
 
-def normalize_amount(value, default=0.0):
+def normalize_amount(value, default=Decimal('0.00')):
     try:
-        return round(float(value), 2)
-    except (TypeError, ValueError):
-        return default
+        return money_value(value)
+    except (InvalidOperation, TypeError, ValueError):
+        return money_value(default)
+
+
+def normalize_quantity(value, default=Decimal('0.0000')):
+    try:
+        return quantity_value(value)
+    except (InvalidOperation, TypeError, ValueError):
+        return quantity_value(default)
 
 
 def parse_iso_datetime(value):
@@ -4318,6 +4382,9 @@ def get_or_create_product_in_warehouse(source_product, warehouse_name):
 
 def record_stock_movement(urun, movement_type, quantity, warehouse_name, old_stock,
                           new_stock, description='', cari_id=None):
+    quantity = quantity_value(quantity)
+    old_stock = quantity_value(old_stock)
+    new_stock = quantity_value(new_stock)
     movement = StokHareket(
         urun_id=urun.id,
         user_id=current_user.id,
@@ -4336,10 +4403,11 @@ def record_stock_movement(urun, movement_type, quantity, warehouse_name, old_sto
 
 
 def add_stock_to_warehouse(source_product, quantity, warehouse_name, description=''):
+    quantity = quantity_value(quantity)
     warehouse_name = normalize_warehouse_name(warehouse_name)
     ensure_warehouse(warehouse_name)
     target_product = get_or_create_product_in_warehouse(source_product, warehouse_name)
-    old_stock = target_product.stok_miktari or 0
+    old_stock = quantity_value(target_product.stok_miktari)
     target_product.stok_miktari = old_stock + quantity
     record_stock_movement(
         target_product,
@@ -4363,6 +4431,7 @@ def resolve_product_for_stock_out(source_product, warehouse_name):
 
 def create_cash_transaction(cari, tutar, islem_tipi='giris', odeme_turu='Nakit',
                              aciklama='', referans_id=None, referans_tip=None, account_id=None):
+    tutar = money_value(tutar)
     if tutar <= 0:
         return None
     if not account_id and current_user.is_authenticated:
@@ -4388,26 +4457,27 @@ def create_cash_transaction(cari, tutar, islem_tipi='giris', odeme_turu='Nakit',
 
 def account_current_balance(account):
     totals = db.session.query(
-        func.sum(case((CashTransaction.islem_tipi == 'giris', CashTransaction.tutar), else_=0.0)),
-        func.sum(case((CashTransaction.islem_tipi == 'cikis', CashTransaction.tutar), else_=0.0)),
+        func.sum(case((CashTransaction.islem_tipi == 'giris', CashTransaction.tutar), else_=0)),
+        func.sum(case((CashTransaction.islem_tipi == 'cikis', CashTransaction.tutar), else_=0)),
     ).filter(CashTransaction.account_id == account.id).one()
-    total_in = float(totals[0] or 0.0)
-    total_out = float(totals[1] or 0.0)
-    return round(float(account.opening_balance or 0.0) + total_in - total_out, 2)
+    total_in = money_value(totals[0])
+    total_out = money_value(totals[1])
+    return money_value(account.opening_balance) + total_in - total_out
 
 
 def adjust_cari_account(cari, amount, transaction_type):
+    amount = money_value(amount)
     if transaction_type == 'odeme':
-        mevcut_borc = cari.borc or 0
-        mevcut_alacak = cari.alacak or 0
+        mevcut_borc = money_value(cari.borc)
+        mevcut_alacak = money_value(cari.alacak)
         if amount <= mevcut_borc:
             cari.borc = mevcut_borc - amount
         else:
             cari.borc = 0
             cari.alacak = mevcut_alacak + (amount - mevcut_borc)
     elif transaction_type == 'tahsilat':
-        mevcut_alacak = cari.alacak or 0
-        mevcut_borc = cari.borc or 0
+        mevcut_alacak = money_value(cari.alacak)
+        mevcut_borc = money_value(cari.borc)
         if amount <= mevcut_alacak:
             cari.alacak = mevcut_alacak - amount
         else:
@@ -7271,7 +7341,11 @@ def dashboard():
         item['x'] = round(6 + (index * 14.66), 2)
         item['y'] = round(84 - (item['percent'] * 0.66), 2)
 
-    hesap_bakiyeleri = {'cash': 0.0, 'bank': 0.0, 'pos': 0.0}
+    hesap_bakiyeleri = {
+        'cash': money_value(0),
+        'bank': money_value(0),
+        'pos': money_value(0),
+    }
     aktif_hesaplar = Account.query.filter(
         Account.user_id.in_(tenant_ids),
         Account.active.is_(True),
@@ -7465,10 +7539,10 @@ def urun_ekle():
             urun_adi=request.form.get('urun_adi'),
             kategori=request.form.get('kategori'),
             birim=request.form.get('birim'),
-            alis_fiyati=float(request.form.get('alis_fiyati', 0)),
-            satis_fiyati=float(request.form.get('satis_fiyati', 0)),
-            stok_miktari=float(request.form.get('stok_miktari', 0)),
-            kritik_stok=float(request.form.get('kritik_stok', 10)),
+            alis_fiyati=money_value(request.form.get('alis_fiyati', 0)),
+            satis_fiyati=money_value(request.form.get('satis_fiyati', 0)),
+            stok_miktari=quantity_value(request.form.get('stok_miktari', 0)),
+            kritik_stok=quantity_value(request.form.get('kritik_stok', 10)),
             depo_adi=depo_adi,
             user_id=current_user.id
         )
@@ -8070,9 +8144,9 @@ def pos_satis():
             return jsonify({'success': False, 'message': 'Sepet boş!'})
 
         try:
-            kdv_orani = float(data.get('kdvRate', 18))
-            iskonto = float(data.get('discount', 0))
-        except (TypeError, ValueError):
+            kdv_orani = rate_value(data.get('kdvRate', 18))
+            iskonto = money_value(data.get('discount', 0))
+        except (InvalidOperation, TypeError, ValueError):
             return jsonify({'success': False, 'message': 'Geçersiz KDV ya da iskonto değeri'})
 
         if kdv_orani < 0 or kdv_orani > 100:
@@ -8121,7 +8195,7 @@ def pos_satis():
         db.session.add(satis)
         db.session.flush()
 
-        genel_toplam = 0.0
+        genel_toplam = money_value(0)
         for item in items:
             product_id = item.get('id')
             if not product_id:
@@ -8133,7 +8207,7 @@ def pos_satis():
                 db.session.rollback()
                 return jsonify({'success': False, 'message': 'Sepette erisilemeyen urun var'})
 
-            miktar = normalize_amount(item.get('quantity', 1))
+            miktar = normalize_quantity(item.get('quantity', 1))
             birim_fiyat = normalize_amount(urun.satis_fiyati or 0)
             birim = item.get('unit') or urun.birim or 'Adet'
 
@@ -8144,7 +8218,7 @@ def pos_satis():
                 db.session.rollback()
                 return jsonify({'success': False, 'message': f'{urun.urun_adi} için yetersiz stok!'})
 
-            toplam = miktar * birim_fiyat
+            toplam = money_value(miktar * birim_fiyat)
             satis_kalemi = SatisKalemi(
                 satis_id=satis.id,
                 urun_id=urun.id,
@@ -8157,7 +8231,7 @@ def pos_satis():
             )
             db.session.add(satis_kalemi)
 
-            eski_stok = urun.stok_miktari or 0
+            eski_stok = quantity_value(urun.stok_miktari)
             urun.stok_miktari = eski_stok - miktar
             record_stock_movement(
                 urun,
@@ -8169,7 +8243,7 @@ def pos_satis():
                 f'POS satış? - {fatura_no}',
                 cari_id=cari.id if cari else None
             )
-            genel_toplam += toplam
+            genel_toplam = money_value(genel_toplam + toplam)
 
         totals, total_error = calculate_sale_totals(genel_toplam, kdv_orani, iskonto)
         if total_error:
@@ -9288,36 +9362,36 @@ def raporlar():
 
 
 def returned_quantity_for_sale_line(sale_line_id):
-    return float(
+    return quantity_value(
         db.session.query(func.sum(IadeKalem.miktar))
         .join(Iade, Iade.id == IadeKalem.iade_id)
         .filter(
             IadeKalem.satis_kalemi_id == sale_line_id,
             Iade.durum != 'iptal',
         )
-        .scalar() or 0.0
+        .scalar()
     )
 
 
 def sale_line_refund_unit_price(sale, sale_line):
-    subtotal = float(sale.ara_toplam or 0.0)
-    total = float(sale.genel_toplam or 0.0)
+    subtotal = money_value(sale.ara_toplam)
+    total = money_value(sale.genel_toplam)
     if subtotal > 0 and total >= 0:
-        return round(float(sale_line.birim_fiyat or 0.0) * (total / subtotal), 4)
-    return round(float(sale_line.birim_fiyat or 0.0), 4)
+        return money_value(money_value(sale_line.birim_fiyat) * (total / subtotal))
+    return money_value(sale_line.birim_fiyat)
 
 
 def remaining_monetary_refund_for_sale(sale):
-    refunded = float(
+    refunded = money_value(
         db.session.query(func.sum(Iade.iade_tutari))
         .filter(
             Iade.satis_id == sale.id,
             Iade.durum != 'iptal',
             Iade.refund_mode.in_(('payment', 'credit')),
         )
-        .scalar() or 0.0
+        .scalar()
     )
-    return max(0.0, round(float(sale.genel_toplam or 0.0) - refunded, 2))
+    return max(money_value(0), money_value(sale.genel_toplam) - refunded)
 
 
 def build_returnable_sales(tenant_ids):
@@ -9337,8 +9411,8 @@ def build_returnable_sales(tenant_ids):
         items = []
         for sale_line in sale.kalemler:
             remaining_quantity = max(
-                0.0,
-                round(float(sale_line.miktar or 0.0) - returned_quantity_for_sale_line(sale_line.id), 4),
+                quantity_value(0),
+                quantity_value(sale_line.miktar) - returned_quantity_for_sale_line(sale_line.id),
             )
             if remaining_quantity <= 0:
                 continue
@@ -9582,7 +9656,7 @@ def iade():
                         urun_id = int(urun_idler[i])
                         satis_kalemi_id = int(satis_kalemi_idler[i]) if i < len(satis_kalemi_idler) else 0
                         urun_adi = urun_adlari[i] if i < len(urun_adlari) else ''
-                        iade_miktari = normalize_amount(iade_miktarlari[i]) if i < len(iade_miktarlari) else 0
+                        iade_miktari = normalize_quantity(iade_miktarlari[i]) if i < len(iade_miktarlari) else quantity_value(0)
 
                         urun = Urun.query.filter_by(id=urun_id).with_for_update().first()
                         if not urun or not belongs_to_current_tenant(urun):
@@ -9618,18 +9692,18 @@ def iade():
                             )
 
                         remaining_quantity = max(
-                            0.0,
-                            float(satis_kalemi.miktar or 0.0)
+                            quantity_value(0),
+                            quantity_value(satis_kalemi.miktar)
                             - returned_quantity_for_sale_line(satis_kalemi.id),
                         )
-                        if iade_miktari > remaining_quantity + 0.0001:
+                        if iade_miktari > remaining_quantity:
                             raise ValueError(
                                 f'{urun.urun_adi} için en fazla {remaining_quantity:g} '
                                 'adet iade alınabilir.'
                             )
 
                         refund_unit_price = sale_line_refund_unit_price(satis, satis_kalemi)
-                        eski_stok = urun.stok_miktari or 0
+                        eski_stok = quantity_value(urun.stok_miktari)
                         urun.stok_miktari = eski_stok + iade_miktari
 
                         iade_kalemleri.append({
@@ -9641,7 +9715,9 @@ def iade():
                             'eski_stok': eski_stok,
                             'yeni_stok': urun.stok_miktari
                         })
-                        toplam_iade_tutari += iade_miktari * refund_unit_price
+                        toplam_iade_tutari = money_value(
+                            toplam_iade_tutari + (iade_miktari * refund_unit_price)
+                        )
 
                     except (ValueError, TypeError) as exc:
                         raise ValueError(str(exc) or 'İade kalemi geçersiz.') from exc
@@ -9649,7 +9725,7 @@ def iade():
                 if not iade_kalemleri:
                     flash('Geçerli iade kalemi bulunamadı!', 'error')
                     return redirect(url_for('iade'))
-                toplam_iade_tutari = round(toplam_iade_tutari, 2)
+                toplam_iade_tutari = money_value(toplam_iade_tutari)
                 if (
                     refund_mode in {'payment', 'credit'}
                     and toplam_iade_tutari > remaining_monetary_refund_for_sale(satis)
@@ -11610,7 +11686,7 @@ def create_backup():
         }
 
         with open(backup_path, 'w', encoding='utf-8') as f:
-            json.dump(backup_data, f, ensure_ascii=False, indent=2)
+            json.dump(backup_data, f, ensure_ascii=False, indent=2, default=json_default)
 
         file_size = os.path.getsize(backup_path)
 
@@ -11800,7 +11876,7 @@ def save_user_settings(user_id, data):
     current_settings = get_user_settings(user_id)
     current_settings.update(data)
     with open(settings_path, 'w', encoding='utf-8') as f:
-        json.dump(current_settings, f, ensure_ascii=False, indent=2)
+        json.dump(current_settings, f, ensure_ascii=False, indent=2, default=json_default)
     return current_settings
 
 
@@ -12057,7 +12133,7 @@ def execute_pos_payment_adapter(pos_settings, sale_context):
 
     if connection_type == 'api' and service_url:
         payload = build_pos_payment_payload(pos_settings, sale_context)
-        request_body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+        request_body = json.dumps(payload, ensure_ascii=False, default=json_default).encode('utf-8')
         headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
         api_key = (pos_settings.get('api_key') or '').strip()
         if api_key:
@@ -12512,7 +12588,7 @@ def transfer_products():
         from_warehouse = normalize_warehouse_name(from_warehouse_raw)
         to_warehouse = normalize_warehouse_name(to_warehouse_raw)
         product_ids = data.get('product_ids', [])
-        quantity = normalize_amount(data.get('quantity', 0))
+        quantity = normalize_quantity(data.get('quantity', 0))
 
         if not (from_warehouse_raw or '').strip() or not (to_warehouse_raw or '').strip():
             return jsonify({'success': False, 'message': 'Kaynak ve hedef depo seiniz'})
@@ -12538,7 +12614,7 @@ def transfer_products():
             if not urun:
                 errors.append(f'Ürün bulunamadı: ID {product_id}')
                 continue
-            old_source_stock = float(urun.stok_miktari or 0)
+            old_source_stock = quantity_value(urun.stok_miktari)
             if old_source_stock < quantity:
                 errors.append(f'{urun.urun_adi}: Yetersiz stok (mevcut: {urun.stok_miktari})')
                 continue
@@ -12554,7 +12630,7 @@ def transfer_products():
         ensure_warehouse(to_warehouse)
         for urun, old_source_stock in source_products:
             target_product = get_or_create_product_in_warehouse(urun, to_warehouse)
-            old_target_stock = float(target_product.stok_miktari or 0)
+            old_target_stock = quantity_value(target_product.stok_miktari)
             urun.stok_miktari = old_source_stock - quantity
             target_product.stok_miktari = old_target_stock + quantity
 
@@ -12698,7 +12774,7 @@ def settings_backup():
 
         # JSON dosyasına yaz
         with open(backup_file, 'w', encoding='utf-8') as f:
-            json.dump(backup_data, f, ensure_ascii=False, indent=2)
+            json.dump(backup_data, f, ensure_ascii=False, indent=2, default=json_default)
 
         file_size = os.path.getsize(backup_file)
         db.session.add(BackupLog(
@@ -13123,8 +13199,8 @@ def api_pos_create_product():
 
         sale_price = normalize_amount(data.get('satis_fiyati', data.get('price', 0)))
         purchase_price = normalize_amount(data.get('alis_fiyati', data.get('purchase_price', 0)))
-        stock_quantity = normalize_amount(data.get('stok_miktari', data.get('stock', 0)))
-        critical_stock = normalize_amount(data.get('kritik_stok', data.get('critical_stock', 10)))
+        stock_quantity = normalize_quantity(data.get('stok_miktari', data.get('stock', 0)))
+        critical_stock = normalize_quantity(data.get('kritik_stok', data.get('critical_stock', 10)))
 
         if not product_name:
             return jsonify({'success': False, 'message': 'Ürün adı zorunludur.'})
@@ -13246,7 +13322,7 @@ def _create_product_from_import_row(row):
     depo = normalize_warehouse_name(_match_stock_import_value(row, *STOCK_IMPORT_WAREHOUSE_KEYS) or DEFAULT_WAREHOUSE)
     alis_fiyati = normalize_amount(_match_stock_import_value(row, *STOCK_IMPORT_PURCHASE_PRICE_KEYS), 0.0)
     satis_fiyati = normalize_amount(_match_stock_import_value(row, *STOCK_IMPORT_SALE_PRICE_KEYS), 0.0)
-    kritik_stok = normalize_amount(_match_stock_import_value(row, 'Kritik Stok', 'kritik_stok', 'kritik stok'), 10.0)
+    kritik_stok = normalize_quantity(_match_stock_import_value(row, 'Kritik Stok', 'kritik_stok', 'kritik stok'), 10)
 
     if not urun_adi:
         raise ValueError('Ürün adı boş bırakılamaz.')
@@ -13291,7 +13367,7 @@ def _update_product_from_import_row(product, row):
     if satis_raw:
         product.satis_fiyati = normalize_amount(satis_raw, product.satis_fiyati or 0.0)
     if kritik_raw:
-        product.kritik_stok = normalize_amount(kritik_raw, product.kritik_stok or 10.0)
+        product.kritik_stok = normalize_quantity(kritik_raw, product.kritik_stok or 10)
 
     db.session.flush()
     return product
@@ -13317,7 +13393,7 @@ def save_stock_import_preview(file_name, rows):
         'rows': rows,
     }
     _stock_import_preview_path(preview_id).write_text(
-        json.dumps(payload, ensure_ascii=False),
+        json.dumps(payload, ensure_ascii=False, default=json_default),
         encoding='utf-8'
     )
     session['pending_stock_import_preview_id'] = preview_id
@@ -13361,7 +13437,7 @@ def persist_stock_import_preview(payload):
     if not preview_id:
         return
     _stock_import_preview_path(preview_id).write_text(
-        json.dumps(payload, ensure_ascii=False),
+        json.dumps(payload, ensure_ascii=False, default=json_default),
         encoding='utf-8'
     )
 
@@ -13376,10 +13452,10 @@ def _build_stock_import_preview_rows(rows, tenant_ids):
         urun_adi = _match_stock_import_value(row, *STOCK_IMPORT_PRODUCT_NAME_KEYS)
         kategori = _match_stock_import_value(row, 'Kategori', 'kategori')
         birim = _match_stock_import_value(row, 'Birim', 'birim') or 'Adet'
-        miktar = normalize_amount(_match_stock_import_value(row, 'Miktar', 'miktar', 'quantity'), 0.0)
+        miktar = normalize_quantity(_match_stock_import_value(row, 'Miktar', 'miktar', 'quantity'), 0)
         alis_fiyati = normalize_amount(_match_stock_import_value(row, *STOCK_IMPORT_PURCHASE_PRICE_KEYS), 0.0)
         satis_fiyati = normalize_amount(_match_stock_import_value(row, *STOCK_IMPORT_SALE_PRICE_KEYS), 0.0)
-        kritik_stok = normalize_amount(_match_stock_import_value(row, 'Kritik Stok', 'kritik_stok', 'kritik stok'), 10.0)
+        kritik_stok = normalize_quantity(_match_stock_import_value(row, 'Kritik Stok', 'kritik_stok', 'kritik stok'), 10)
         depo = normalize_warehouse_name(_match_stock_import_value(row, *STOCK_IMPORT_WAREHOUSE_KEYS) or DEFAULT_WAREHOUSE)
         aciklama = _match_stock_import_value(row, *STOCK_IMPORT_DESCRIPTION_KEYS)
 
@@ -13510,7 +13586,7 @@ def api_stock_import():
             if not any(str(value or '').strip() for value in row.values()):
                 continue
 
-            miktar = normalize_amount(_match_stock_import_value(row, 'Miktar', 'miktar', 'quantity'), 0.0)
+            miktar = normalize_quantity(_match_stock_import_value(row, 'Miktar', 'miktar', 'quantity'), 0)
             if miktar <= 0:
                 errors.append(f"Satır {index}: miktar 0'dan büyük olmalı.")
                 continue
@@ -13636,7 +13712,7 @@ def api_stock_import_commit():
             depo = normalize_warehouse_name(row.get('depo') or DEFAULT_WAREHOUSE)
             add_stock_to_warehouse(
                 product,
-                normalize_amount(row.get('miktar'), 0.0),
+                normalize_quantity(row.get('miktar'), 0),
                 depo,
                 (row.get('aciklama') or '').strip() or f'{depo} depo toplu içe aktarma',
             )
@@ -13679,7 +13755,7 @@ def api_stock_add():
     try:
         data = request.get_json() or {}
         product_id = data.get('product_id')
-        quantity = normalize_amount(data.get('quantity', 0))
+        quantity = normalize_quantity(data.get('quantity', 0))
         depot = normalize_warehouse_name(data.get('depot'))
         description = (data.get('description') or '').strip()
 
@@ -13714,7 +13790,7 @@ def api_stock_batch_add():
     try:
         data = request.get_json() or {}
         product_ids = data.get('product_ids', [])
-        quantity = normalize_amount(data.get('quantity', 0))
+        quantity = normalize_quantity(data.get('quantity', 0))
         depot = normalize_warehouse_name(data.get('depot'))
         description = (data.get('description') or '').strip()
 
@@ -13794,7 +13870,7 @@ def stok_giris():
     if request.method == 'POST':
         try:
             urun_id = request.form.get('urun_id')
-            miktar = float(request.form.get('miktar', 0))
+            miktar = quantity_value(request.form.get('miktar', 0))
             depo = normalize_warehouse_name(request.form.get('depo'))
             aciklama = request.form.get('aciklama', '')
 
@@ -13911,8 +13987,8 @@ def stok_cikis():
             depo = normalize_warehouse_name(request.form.get('depo'))
             tarih_str = request.form.get('tarih')
             notlar = request.form.get('notlar', '')
-            kdv_orani = float(request.form.get('kdv_orani', 20))
-            iskonto = float(request.form.get('iskonto', 0))
+            kdv_orani = rate_value(request.form.get('kdv_orani', 20))
+            iskonto = money_value(request.form.get('iskonto', 0))
 
             # Fatura no oluştur
             fatura_no = generate_fatura_no(prefix='FTR')
@@ -13952,8 +14028,8 @@ def stok_cikis():
                     raise ValueError(f'{urun.urun_adi} iin {depo} deposunda stok kayd yok')
                 urun = stok_urun
 
-                miktar = float(miktarlar[i]) if i < len(miktarlar) and miktarlar[i] else 1
-                birim_fiyat = float(fiyatlar[i]) if i < len(fiyatlar) and fiyatlar[i] else urun.satis_fiyati
+                miktar = quantity_value(miktarlar[i]) if i < len(miktarlar) and miktarlar[i] else quantity_value(1)
+                birim_fiyat = money_value(fiyatlar[i]) if i < len(fiyatlar) and fiyatlar[i] else money_value(urun.satis_fiyati)
                 birim = birimler[i] if i < len(birimler) and birimler[i] else urun.birim
                 if miktar <= 0 or birim_fiyat < 0:
                     raise ValueError('Miktar veya fiyat geersiz!')
@@ -13962,7 +14038,7 @@ def stok_cikis():
                     raise ValueError(
                         f'{urun.urun_adi} iin yetersiz stok! Mevcut: {urun.stok_miktari}, stenen: {miktar}')
 
-                toplam = miktar * birim_fiyat
+                toplam = money_value(miktar * birim_fiyat)
                 satis_kalemi = SatisKalemi(
                     satis_id=satis.id,
                     urun_id=urun.id,
@@ -13975,7 +14051,7 @@ def stok_cikis():
                 )
                 db.session.add(satis_kalemi)
 
-                eski_stok = urun.stok_miktari or 0
+                eski_stok = quantity_value(urun.stok_miktari)
                 urun.stok_miktari = eski_stok - miktar
                 record_stock_movement(
                     urun,
@@ -14440,10 +14516,10 @@ def urun_duzenle(id):
         urun.urun_adi = request.form.get('urun_adi')
         urun.kategori = request.form.get('kategori')
         urun.birim = request.form.get('birim')
-        urun.alis_fiyati = float(request.form.get('alis_fiyati', 0))
-        urun.satis_fiyati = float(request.form.get('satis_fiyati', 0))
-        urun.stok_miktari = float(request.form.get('stok_miktari', 0))
-        urun.kritik_stok = float(request.form.get('kritik_stok', 10))
+        urun.alis_fiyati = money_value(request.form.get('alis_fiyati', 0))
+        urun.satis_fiyati = money_value(request.form.get('satis_fiyati', 0))
+        urun.stok_miktari = quantity_value(request.form.get('stok_miktari', 0))
+        urun.kritik_stok = quantity_value(request.form.get('kritik_stok', 10))
 
         db.session.commit()
         flash('Ürün başarıyla güncellendi!', 'success')

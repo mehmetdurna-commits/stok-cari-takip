@@ -5,6 +5,7 @@ import os
 import re
 from io import BytesIO
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -54,8 +55,11 @@ from app import (
     normalize_payment_method,
     backup_dir_for_user,
     build_cari_ekstre_context,
+    calculate_sale_totals,
     format_tr_datetime,
+    money_value,
     parse_iso_datetime,
+    quantity_value,
 )
 
 
@@ -185,6 +189,26 @@ def test_security_audit(client):
 def test_turkish_money_filters_use_thousand_separator(client):
     assert app.jinja_env.filters['tr_number'](22580) == '22.580,00'
     assert app.jinja_env.filters['money'](22580) == '₺22.580,00'
+
+
+def test_decimal_helpers_preserve_financial_precision():
+    assert money_value('0,10') + money_value('0,20') == Decimal('0.30')
+    assert quantity_value('3,98765') == Decimal('3.9877')
+
+    totals, error = calculate_sale_totals(
+        money_value('100.10'),
+        Decimal('20'),
+        money_value('0.03'),
+    )
+
+    assert error is None
+    assert totals == {
+        'ara_toplam': Decimal('100.10'),
+        'kdv_orani': Decimal('20.0000'),
+        'kdv_tutar': Decimal('20.02'),
+        'iskonto': Decimal('0.03'),
+        'genel_toplam': Decimal('120.09'),
+    }
 
 
 def test_iso_datetime_is_displayed_in_turkey_time(client):
@@ -2697,6 +2721,28 @@ def test_dashboard_renders_without_name_errors(client):
     assert 'Para Nerede?'.encode('utf-8') in response.data
 
 
+def test_dashboard_renders_with_decimal_account_balances(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        accounts = ensure_default_accounts_for_user(owner.id)
+        cash_account = next(account for account in accounts if account.type == 'cash')
+        cash_account.opening_balance = Decimal('100.10')
+        db.session.add(CashTransaction(
+            user_id=owner.id,
+            account_id=cash_account.id,
+            islem_tipi='giris',
+            tutar=Decimal('0.20'),
+            odeme_turu='Nakit',
+            aciklama='Decimal dashboard testi',
+        ))
+        db.session.commit()
+
+    response = client.get('/dashboard')
+
+    assert response.status_code == 200
+    assert '₺100,30'.encode('utf-8') in response.data
+
+
 def test_product_filters_render_without_reload_errors(client):
     response = client.get('/urunler?search=Test&category=Elektronik&stock_status=available')
 
@@ -3117,7 +3163,7 @@ def test_onmuhasebe_hesap_detay_allows_manual_tx_and_transfer(client):
         owner = User.query.filter_by(email='test@example.com').first()
         tx = CashTransaction.query.filter_by(user_id=owner.id, account_id=kasa_id, referans_tip='manual').first()
         assert tx is not None
-        assert abs(tx.tutar - 125.50) < 0.001
+        assert tx.tutar == Decimal('125.50')
 
     # Transfer to bank
     resp = client.post(f'/onmuhasebe/hesaplar/{kasa_id}', data={
@@ -3140,8 +3186,8 @@ def test_onmuhasebe_hesap_detay_allows_manual_tx_and_transfer(client):
         in_tx = CashTransaction.query.filter_by(user_id=owner.id, account_id=banka_id, referans_tip='transfer', islem_tipi='giris').first()
         assert out_tx is not None
         assert in_tx is not None
-        assert abs(out_tx.tutar - 25.0) < 0.001
-        assert abs(in_tx.tutar - 25.0) < 0.001
+        assert out_tx.tutar == Decimal('25.00')
+        assert in_tx.tutar == Decimal('25.00')
 
 
 def test_cari_tahsilat_can_target_specific_account(client):
@@ -3254,9 +3300,9 @@ def test_onmuhasebe_mutabakat_creates_adjustment_tx(client):
         owner = User.query.filter_by(email='test@example.com').first()
         rec = AccountReconciliation.query.filter_by(user_id=owner.id, account_id=kasa_id).order_by(AccountReconciliation.id.desc()).first()
         assert rec is not None
-        assert abs((rec.expected_balance or 0) - 100.0) < 0.001
-        assert abs((rec.counted_balance or 0) - 90.0) < 0.001
-        assert abs((rec.difference or 0) - (-10.0)) < 0.001
+        assert rec.expected_balance == Decimal('100.00')
+        assert rec.counted_balance == Decimal('90.00')
+        assert rec.difference == Decimal('-10.00')
 
         tx = CashTransaction.query.filter_by(user_id=owner.id, account_id=kasa_id, referans_tip='reconciliation', referans_id=rec.id).first()
         assert tx is not None
@@ -3264,7 +3310,7 @@ def test_onmuhasebe_mutabakat_creates_adjustment_tx(client):
         assert tx.odeme_turu == 'Kasa Sayım Farkı'
         assert 'Sisteme göre: 100,00'.encode('utf-8').decode('utf-8') in tx.aciklama
         assert 'Saydığım: 90,00'.encode('utf-8').decode('utf-8') in tx.aciklama
-        assert abs(tx.tutar - 10.0) < 0.001
+        assert tx.tutar == Decimal('10.00')
 
 
 def test_full_regression_hirdavat_core_workflow(client):
