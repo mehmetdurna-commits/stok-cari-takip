@@ -2712,6 +2712,7 @@ def test_dashboard_renders_without_name_errors(client):
     response = client.get('/dashboard')
 
     assert response.status_code == 200
+    assert b'>F2<' not in response.data
     assert 'Başlangıç rehberi'.encode('utf-8') in response.data
     assert 'Kurulumunuzu birkaç adımda tamamlayın'.encode('utf-8') in response.data
     assert 'İlk ürün, ilk satış ve ilk tahsilat'.encode('utf-8') in response.data

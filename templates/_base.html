@@ -1800,9 +1800,7 @@
                                     <span class="block truncate">{{ label }}</span>
                                     {% if is_active %}<span class="sidebar-nav-description">{{ nav_descriptions.get(endpoint, '') }}</span>{% endif %}
                                 </span>
-                                {% if endpoint == 'pos' %}
-                                <span class="sidebar-text rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-black text-slate-500 dark:bg-slate-800 dark:text-slate-300">F2</span>
-                                {% elif endpoint == 'support_tickets' and open_support_count %}
+                                {% if endpoint == 'support_tickets' and open_support_count %}
                                 <span class="sidebar-text flex min-w-5 items-center justify-center rounded-full bg-orange-500 px-1.5 py-0.5 text-[9px] font-black text-white shadow-sm">{{ open_support_count if open_support_count < 10 else '9+' }}</span>
                                 {% endif %}
                             </a>
