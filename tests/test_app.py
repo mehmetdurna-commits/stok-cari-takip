@@ -56,6 +56,7 @@ from app import (
     backup_dir_for_user,
     build_cari_ekstre_context,
     calculate_sale_totals,
+    format_quantity,
     format_tr_datetime,
     money_value,
     parse_iso_datetime,
@@ -2719,6 +2720,12 @@ def test_dashboard_renders_without_name_errors(client):
     assert 'Satış Trendi'.encode('utf-8') in response.data
     assert 'Bugün Ne Oldu?'.encode('utf-8') in response.data
     assert 'Para Nerede?'.encode('utf-8') in response.data
+
+
+def test_format_quantity_removes_decimal_padding():
+    assert format_quantity(Decimal('1.0000')) == '1'
+    assert format_quantity(Decimal('3.9200')) == '3,92'
+    assert format_quantity(Decimal('0.1250')) == '0,125'
 
 
 def test_dashboard_renders_with_decimal_account_balances(client):

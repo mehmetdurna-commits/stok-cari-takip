@@ -288,6 +288,16 @@ def format_tr_number(value, decimals=2):
     return formatted.replace(',', 'X').replace('.', ',').replace('X', '.')
 
 
+def format_quantity(value):
+    try:
+        number = decimal_value(value)
+    except (InvalidOperation, TypeError, ValueError):
+        number = Decimal('0')
+
+    formatted = format(number.normalize(), 'f')
+    return formatted.replace('.', ',')
+
+
 def format_money(value, symbol='₺', decimals=2):
     return f'{symbol}{format_tr_number(value, decimals)}'
 
@@ -5006,7 +5016,7 @@ def assistant_product_candidates(term, limit=5):
     return [{
         'id': product.id,
         'label': product.urun_adi,
-        'subtitle': f"{product.stok_miktari or 0:g} {product.birim or 'Adet'} stok · {product.depo_adi or 'Ana Depo'}",
+        'subtitle': f"{format_quantity(product.stok_miktari)} {product.birim or 'Adet'} stok · {product.depo_adi or 'Ana Depo'}",
         'meta': product.barkod or '',
         'price': float(product.satis_fiyati or 0),
         'purchase_price': float(product.alis_fiyati or 0),
@@ -5519,14 +5529,14 @@ def execute_assistant_stock_in(command, selected_product_id=None):
     db.session.flush()
     platform_audit(
         'ASSISTANT_STOCK_IN',
-        f"Esstok Konuş ile {target_product.urun_adi} ürününe {quantity:g} {target_product.birim or 'Adet'} stok girişi kaydedildi.",
+        f"Esstok Konuş ile {target_product.urun_adi} ürününe {format_quantity(quantity)} {target_product.birim or 'Adet'} stok girişi kaydedildi.",
         'Urun',
         target_product.id,
     )
     db.session.commit()
     return {
         'success': True,
-        'message': f"{target_product.urun_adi} stoğuna {quantity:g} {target_product.birim or 'Adet'} eklendi. Yeni stok: {target_product.stok_miktari:g}",
+        'message': f"{target_product.urun_adi} stoğuna {format_quantity(quantity)} {target_product.birim or 'Adet'} eklendi. Yeni stok: {format_quantity(target_product.stok_miktari)}",
         'transaction_id': target_product.id,
         'redirect_url': url_for('stok_giris'),
     }, None
@@ -7402,7 +7412,7 @@ def dashboard():
         son_hareketler.append({
             'timestamp': hareket.tarih,
             'title': 'Stok hareketi kaydedildi',
-            'description': f'{hareket.urun.urun_adi if hareket.urun else "Ürün"}: {hareket.miktar:g} {hareket.islem_tipi}.',
+            'description': f'{hareket.urun.urun_adi if hareket.urun else "Ürün"}: {format_quantity(hareket.miktar)} {hareket.islem_tipi}.',
             'amount': None,
             'icon': 'inventory_2',
             'tone': 'amber',
@@ -9698,7 +9708,7 @@ def iade():
                         )
                         if iade_miktari > remaining_quantity:
                             raise ValueError(
-                                f'{urun.urun_adi} için en fazla {remaining_quantity:g} '
+                                f'{urun.urun_adi} için en fazla {format_quantity(remaining_quantity)} '
                                 'adet iade alınabilir.'
                             )
 
