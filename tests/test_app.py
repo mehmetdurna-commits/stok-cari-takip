@@ -2855,6 +2855,123 @@ def test_stock_movement_receives_product_organization(client):
         assert movement.organization_id == owner.organization_id
 
 
+def test_commercial_records_are_owned_by_organization_and_survive_inactive_creator(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        teammate = User.query.filter_by(email='other@example.com').first()
+        organization = ensure_user_organization(owner)
+        teammate.organization_id = organization.id
+        teammate.aktif = False
+
+        shared_cari = Cari(
+            unvan='Inactive Creator Customer',
+            user_id=teammate.id,
+            organization_id=organization.id,
+        )
+        db.session.add(shared_cari)
+        db.session.flush()
+        shared_sale = Satis(
+            fatura_no='ORG-SHARED-SALE-001',
+            cari_id=shared_cari.id,
+            user_id=teammate.id,
+            organization_id=organization.id,
+            genel_toplam=100,
+        )
+        shared_quote = Teklif(
+            teklif_no='ORG-SHARED-QUOTE-001',
+            cari_id=shared_cari.id,
+            user_id=teammate.id,
+            organization_id=organization.id,
+            genel_toplam=100,
+        )
+        db.session.add_all([shared_sale, shared_quote])
+
+        foreign_owner = User(
+            email='foreign-commercial@example.com',
+            password=generate_password_hash('password123'),
+            firma_adi='Foreign Commercial Company',
+        )
+        db.session.add(foreign_owner)
+        db.session.flush()
+        foreign_organization = ensure_user_organization(foreign_owner)
+        foreign_cari = Cari(
+            unvan='Foreign Organization Customer',
+            user_id=foreign_owner.id,
+            organization_id=foreign_organization.id,
+        )
+        db.session.add(foreign_cari)
+        db.session.commit()
+        foreign_cari_id = foreign_cari.id
+
+    customers_response = client.get('/cariler')
+    sales_response = client.get('/gunluk-satislar')
+    quotes_response = client.get('/teklifler')
+    foreign_response = client.get(f'/cari/{foreign_cari_id}', follow_redirects=False)
+
+    assert customers_response.status_code == 200
+    assert b'Inactive Creator Customer' in customers_response.data
+    assert b'Foreign Organization Customer' not in customers_response.data
+    assert b'ORG-SHARED-SALE-001' in sales_response.data
+    assert b'ORG-SHARED-QUOTE-001' in quotes_response.data
+    assert foreign_response.status_code == 302
+
+
+def test_new_commercial_records_receive_current_organization(client):
+    cari_response = client.post(
+        '/cari-ekle',
+        data={'unvan': 'Organization Owned Customer'},
+        follow_redirects=False,
+    )
+    assert cari_response.status_code == 302
+
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        product = Urun.query.filter_by(barkod='1234567890123').first()
+        cari = Cari.query.filter_by(unvan='Organization Owned Customer').first()
+        organization_id = owner.organization_id
+        assert cari.organization_id == organization_id
+        product_id = product.id
+        cari_id = cari.id
+
+    sale_response = client.post('/pos/satis', json={
+        'items': [{
+            'id': product_id,
+            'name': 'Test Urun',
+            'price': 100,
+            'quantity': 1,
+        }],
+        'kdvRate': 0,
+        'discount': 0,
+        'customerId': cari_id,
+        'paymentMethod': 'credit',
+    })
+    assert sale_response.status_code == 200
+    assert sale_response.get_json()['success'] is True
+
+    quote_response = client.post('/teklif/ekle', data={
+        'cari_id': str(cari_id),
+        'teklif_no': 'ORG-OWNED-QUOTE-001',
+        'tarih': '2026-07-23',
+        'kdv_orani': '0',
+        'urunler[]': [str(product_id)],
+        'miktarlar[]': ['1'],
+        'birimler[]': ['Adet'],
+        'fiyatlar[]': ['100'],
+    }, follow_redirects=False)
+    assert quote_response.status_code == 302
+
+    with app.app_context():
+        sale = Satis.query.filter_by(cari_id=cari_id).order_by(Satis.id.desc()).first()
+        quote = Teklif.query.filter_by(teklif_no='ORG-OWNED-QUOTE-001').first()
+        movement = CariHareket.query.filter_by(
+            cari_id=cari_id,
+            referans_tip='satis',
+        ).order_by(CariHareket.id.desc()).first()
+        assert sale.organization_id == organization_id
+        assert quote.organization_id == organization_id
+        assert movement.organization_id == organization_id
+
+
 def test_demo_data_tools_are_hidden_for_regular_users(client):
     product_page = client.get('/urun-ekle')
     assert product_page.status_code == 200
@@ -3587,8 +3704,16 @@ def test_iade_urun_iadesi_cari_alacak_olustur_does_not_touch_cash(client):
         cari = db.session.get(Cari, cari_id)
         assert float(product.stok_miktari or 0) == stock_before + 1.0
         assert float(cari.alacak or 0) == 0.0
-        assert Iade.query.filter_by(user_id=owner.id).count() >= 1
-        assert CariHareket.query.filter_by(user_id=owner.id, cari_id=cari_id, islem_tipi='iade').count() >= 1
+        return_record = Iade.query.filter_by(user_id=owner.id).order_by(Iade.id.desc()).first()
+        return_movement = CariHareket.query.filter_by(
+            user_id=owner.id,
+            cari_id=cari_id,
+            islem_tipi='iade',
+        ).order_by(CariHareket.id.desc()).first()
+        assert return_record is not None
+        assert return_record.organization_id == owner.organization_id
+        assert return_movement is not None
+        assert return_movement.organization_id == owner.organization_id
         assert CashTransaction.query.filter_by(user_id=owner.id, referans_tip='iade').count() == 0
 
 

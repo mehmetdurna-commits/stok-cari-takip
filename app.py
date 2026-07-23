@@ -495,9 +495,11 @@ class Cari(db.Model):
     tipi = db.Column(db.String(20), default='Müşteri')  # Müşteri veya Tedarikçi
     borc = db.Column(db.Numeric(18, 2), default=0)
     alacak = db.Column(db.Numeric(18, 2), default=0)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=True, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     kayit_tarihi = db.Column(db.DateTime, default=utc_now)
     teklifler = db.relationship('Teklif', backref='cari', lazy=True)
+    organization = db.relationship('Organization', foreign_keys=[organization_id], backref='customers')
 
     @property
     def bakiye(self):
@@ -508,6 +510,7 @@ class Teklif(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     teklif_no = db.Column(db.String(50), unique=True, nullable=False)
     cari_id = db.Column(db.Integer, db.ForeignKey('cari.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=True, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     tarih = db.Column(db.DateTime, default=utc_now)
     gecerlilik_tarihi = db.Column(db.DateTime)
@@ -518,6 +521,7 @@ class Teklif(db.Model):
     notlar = db.Column(db.Text)
 
     kalemler = db.relationship('TeklifKalemi', backref='teklif', lazy=True, cascade='all, delete-orphan')
+    organization = db.relationship('Organization', foreign_keys=[organization_id], backref='quotes')
 
 
 class TeklifKalemi(db.Model):
@@ -536,6 +540,7 @@ class TeklifKalemi(db.Model):
 class Iade(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     cari_id = db.Column(db.Integer, db.ForeignKey('cari.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=True, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     satis_id = db.Column(db.Integer, db.ForeignKey('satis.id'), nullable=True)
     iade_turu = db.Column(db.String(50), nullable=False)  # para_iadesi, urun_iadesi, hizmet_iadesi, degisim
@@ -551,6 +556,7 @@ class Iade(db.Model):
     cari = db.relationship('Cari', backref='iadeler')
     satis = db.relationship('Satis', backref='iadeler')
     kalemler = db.relationship('IadeKalem', lazy='dynamic', backref='iade_obj')
+    organization = db.relationship('Organization', foreign_keys=[organization_id], backref='returns')
 
 
 class IadeKalem(db.Model):
@@ -571,6 +577,7 @@ class IadeKalem(db.Model):
 class CariHareket(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     cari_id = db.Column(db.Integer, db.ForeignKey('cari.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=True, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     tarih = db.Column(db.DateTime, default=utc_now)
     islem_tipi = db.Column(db.String(20), nullable=False)  # odeme, tahsilat, satis, iade
@@ -581,6 +588,7 @@ class CariHareket(db.Model):
     referans_tip = db.Column(db.String(20))  # satis, teklif
 
     cari = db.relationship('Cari', backref='hareketler')
+    organization = db.relationship('Organization', foreign_keys=[organization_id], backref='customer_movements')
 
 
 class StokHareket(db.Model):
@@ -1672,9 +1680,22 @@ def backfill_inventory_organizations():
         db.session.commit()
 
 
+def backfill_commercial_organizations():
+    changed = False
+    for model in (Cari, Satis, Teklif, Iade, CariHareket):
+        for record in model.query.filter(model.organization_id.is_(None)).all():
+            user = db.session.get(User, record.user_id)
+            if not user or not user.organization_id:
+                continue
+            record.organization_id = user.organization_id
+            changed = True
+    if changed:
+        db.session.commit()
+
+
 def current_organization():
     try:
-        if not current_user.is_authenticated:
+        if not current_user or not current_user.is_authenticated:
             return None
         organization = ensure_user_organization(current_user)
         if db.session.is_modified(current_user):
@@ -1754,6 +1775,13 @@ def tenant_query(model):
     if hasattr(model, 'organization_id'):
         return organization_owned_query(model)
     return model.query.filter(model.user_id.in_(tenant_user_ids()))
+
+
+def tenant_query_with_user_fallback(model, user_ids):
+    organization = current_organization()
+    if organization:
+        return organization_owned_query(model, organization)
+    return model.query.filter(model.user_id.in_(user_ids or []))
 
 
 PLATFORM_MODULES = [
@@ -2089,6 +2117,7 @@ def system_health_context():
 
 def build_tenant_backup_payload(user):
     """Request-context independent tenant backup payload."""
+    organization = db.session.get(Organization, user.organization_id) if user.organization_id else None
     return {
         'user_info': {
             'firma_adi': user.firma_adi,
@@ -2116,7 +2145,7 @@ def build_tenant_backup_payload(user):
                 'depo_adi': urun.depo_adi,
                 'eklenme_tarihi': urun.eklenme_tarihi.isoformat() if urun.eklenme_tarihi else None
             }
-            for urun in Urun.query.filter_by(user_id=user.id).all()
+            for urun in organization_owned_query(Urun, organization).all()
         ],
         'cariler': [
             {
@@ -2131,7 +2160,7 @@ def build_tenant_backup_payload(user):
                 'alacak': cari.alacak,
                 'created_at': cari.kayit_tarihi.isoformat() if cari.kayit_tarihi else None
             }
-            for cari in Cari.query.filter_by(user_id=user.id).all()
+            for cari in organization_owned_query(Cari, organization).all()
         ],
         'satislar': [
             {
@@ -2143,7 +2172,7 @@ def build_tenant_backup_payload(user):
                 'durum': satis.durum,
                 'notlar': satis.notlar
             }
-            for satis in Satis.query.filter_by(user_id=user.id).all()
+            for satis in organization_owned_query(Satis, organization).all()
         ],
         'teklifler': [
             {
@@ -2155,7 +2184,7 @@ def build_tenant_backup_payload(user):
                 'durum': teklif.durum,
                 'notlar': teklif.notlar
             }
-            for teklif in Teklif.query.filter_by(user_id=user.id).all()
+            for teklif in organization_owned_query(Teklif, organization).all()
         ],
         'iade_kayitlari': [
             {
@@ -2167,7 +2196,7 @@ def build_tenant_backup_payload(user):
                 'tarih': iade.tarih.isoformat() if iade.tarih else None,
                 'durum': iade.durum
             }
-            for iade in Iade.query.filter_by(user_id=user.id).all()
+            for iade in organization_owned_query(Iade, organization).all()
         ],
         'backup_info': {
             'created_at': datetime.now(timezone.utc).isoformat(),
@@ -3044,8 +3073,16 @@ def run_platform_workflow_test():
         organization.name = f'TEST_ROBOT Firma {suffix}'
         sandbox_organization_id = organization.id
 
-        warehouse = Warehouse(name='TEST_ROBOT Depo', user_id=sandbox_user.id)
-        category = Category(name='TEST_ROBOT Kategori', user_id=sandbox_user.id)
+        warehouse = Warehouse(
+            name='TEST_ROBOT Depo',
+            user_id=sandbox_user.id,
+            organization_id=organization.id,
+        )
+        category = Category(
+            name='TEST_ROBOT Kategori',
+            user_id=sandbox_user.id,
+            organization_id=organization.id,
+        )
         product = Urun(
             barkod=f'TR-{suffix}',
             urun_adi=f'TEST_ROBOT Urun {suffix}',
@@ -3057,12 +3094,14 @@ def run_platform_workflow_test():
             kritik_stok=2,
             depo_adi=warehouse.name,
             user_id=sandbox_user.id,
+            organization_id=organization.id,
         )
         cari = Cari(
             unvan=f'TEST_ROBOT Cari {suffix}',
             yetkili='Test Robotu',
             tipi='Musteri',
             user_id=sandbox_user.id,
+            organization_id=organization.id,
         )
         db.session.add_all([warehouse, category, product, cari])
         db.session.commit()
@@ -3760,12 +3799,32 @@ def ensure_database_schema():
                 connection.execute(text('ALTER TABLE cari ADD COLUMN vergidairesi VARCHAR(100)'))
             if 'vergi_numarasi' not in cari_columns:
                 connection.execute(text('ALTER TABLE cari ADD COLUMN vergi_numarasi VARCHAR(100)'))
+        if 'iade' in inspector.get_table_names():
+            iade_columns = [col['name'] for col in inspector.get_columns('iade')]
+            if 'satis_id' not in iade_columns:
+                connection.execute(text('ALTER TABLE iade ADD COLUMN satis_id INTEGER'))
+            if 'refund_mode' not in iade_columns:
+                connection.execute(text('ALTER TABLE iade ADD COLUMN refund_mode VARCHAR(20)'))
+        if 'iade_kalem' in inspector.get_table_names():
+            iade_kalem_columns = [col['name'] for col in inspector.get_columns('iade_kalem')]
+            if 'satis_kalemi_id' not in iade_kalem_columns:
+                connection.execute(text('ALTER TABLE iade_kalem ADD COLUMN satis_kalemi_id INTEGER'))
 
         if 'audit_log' in inspector.get_table_names():
             audit_columns = [col['name'] for col in inspector.get_columns('audit_log')]
             if 'details' not in audit_columns:
                 connection.execute(text('ALTER TABLE audit_log ADD COLUMN details TEXT'))
-        for table_name in ('urun', 'stok_hareket', 'category', 'warehouse'):
+        for table_name in (
+            'urun',
+            'stok_hareket',
+            'category',
+            'warehouse',
+            'cari',
+            'satis',
+            'teklif',
+            'iade',
+            'cari_hareket',
+        ):
             if table_name not in inspector.get_table_names():
                 continue
             table_columns = [col['name'] for col in inspector.get_columns(table_name)]
@@ -3779,6 +3838,7 @@ def ensure_database_schema():
 
     backfill_user_organizations()
     backfill_inventory_organizations()
+    backfill_commercial_organizations()
     bootstrap_platform_admins()
 
 
@@ -3916,6 +3976,7 @@ def enforce_organization_controls():
 class Satis(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     fatura_no = db.Column(db.String(50), unique=True, nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=True, index=True)
     cari_id = db.Column(db.Integer, db.ForeignKey('cari.id'), nullable=True)  # Perakende satış için nullable
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     tarih = db.Column(db.DateTime, default=utc_now)
@@ -3930,6 +3991,7 @@ class Satis(db.Model):
 
     cari = db.relationship('Cari', backref='satislar')
     kalemler = db.relationship('SatisKalemi', backref='satis', lazy=True, cascade='all, delete-orphan')
+    organization = db.relationship('Organization', foreign_keys=[organization_id], backref='sales')
 
 
 class SatisKalemi(db.Model):
@@ -5123,8 +5185,7 @@ def assistant_cari_candidates(term, limit=5):
     if not tenant_ids:
         return []
     search = f'%{term}%'
-    cariler_query = Cari.query.filter(
-        Cari.user_id.in_(tenant_ids),
+    cariler_query = tenant_query(Cari).filter(
         or_(Cari.unvan.ilike(search), Cari.yetkili.ilike(search), Cari.telefon.ilike(search))
     )
     cariler = cariler_query.order_by(Cari.unvan.asc()).limit(limit).all()
@@ -5159,8 +5220,7 @@ def assistant_today_summary():
     if not tenant_ids or not today_start or not today_end:
         return empty
 
-    sales = Satis.query.filter(
-        Satis.user_id.in_(tenant_ids),
+    sales = tenant_query(Satis).filter(
         Satis.tarih >= today_start,
         Satis.tarih < today_end,
         Satis.durum != 'iptal'
@@ -5191,7 +5251,7 @@ def assistant_today_summary():
         func.coalesce(Urun.stok_miktari, 0) <= func.coalesce(Urun.kritik_stok, 0)
     ).count()
 
-    open_receivable = sum(float(cari.bakiye or 0) for cari in Cari.query.filter(Cari.user_id.in_(tenant_ids)).all() if (cari.bakiye or 0) > 0)
+    open_receivable = sum(float(cari.bakiye or 0) for cari in tenant_query(Cari).all() if (cari.bakiye or 0) > 0)
 
     return {
         'date': today.strftime('%d.%m.%Y'),
@@ -5241,7 +5301,7 @@ def assistant_receivables_overview(limit=8):
     if not tenant_ids:
         return {'total': 0, 'customer_count': 0, 'items': []}
 
-    cariler = Cari.query.filter(Cari.user_id.in_(tenant_ids)).all()
+    cariler = tenant_query(Cari).all()
     receivables = [cari for cari in cariler if float(cari.bakiye or 0) > 0]
     receivables.sort(key=lambda cari: float(cari.bakiye or 0), reverse=True)
     return {
@@ -5349,8 +5409,7 @@ def assistant_business_priorities():
             'action': 'Carileri Gör',
         })
 
-    draft_quote_count = Teklif.query.filter(
-        Teklif.user_id.in_(tenant_ids),
+    draft_quote_count = tenant_query(Teklif).filter(
         Teklif.durum == 'taslak'
     ).count()
     if draft_quote_count:
@@ -5545,7 +5604,7 @@ def execute_assistant_collection(command, selected_cari_id=None):
     tahsilat_turu = 'Nakit'
     aciklama = 'Esstok Konuş ile tahsilat yapıldı'
     adjust_cari_account(cari, amount, 'tahsilat')
-    hareket = CariHareket(
+    hareket = assign_current_organization(CariHareket(
         cari_id=cari.id,
         user_id=current_user.id,
         islem_tipi='tahsilat',
@@ -5553,7 +5612,7 @@ def execute_assistant_collection(command, selected_cari_id=None):
         aciklama=aciklama,
         odeme_turu=tahsilat_turu,
         referans_tip='assistant_tahsilat'
-    )
+    ))
     db.session.add(hareket)
     create_cash_transaction(
         cari,
@@ -5819,7 +5878,7 @@ def api_notifications():
 
     if preferences.get('notify_customer_activity', True):
         risky_customers = [
-            cari for cari in Cari.query.filter(Cari.user_id.in_(tenant_ids)).all()
+            cari for cari in tenant_query(Cari).all()
             if (cari.bakiye or 0) > 1000
         ]
         if risky_customers:
@@ -5836,8 +5895,7 @@ def api_notifications():
     if preferences.get('notify_daily_reports', True):
         today = local_today()
         today_start, _ = local_day_bounds(today)
-        today_sales = Satis.query.filter(
-            Satis.user_id.in_(tenant_ids),
+        today_sales = tenant_query(Satis).filter(
             Satis.tarih >= today_start
         ).order_by(Satis.tarih.desc()).limit(3).all()
         if today_sales:
@@ -5852,8 +5910,7 @@ def api_notifications():
             })
 
     if preferences.get('notify_quote_status', True):
-        open_quotes = Teklif.query.filter(
-            Teklif.user_id.in_(tenant_ids),
+        open_quotes = tenant_query(Teklif).filter(
             Teklif.durum.in_(['taslak', 'gonderildi'])
         ).count()
         if open_quotes:
@@ -7264,17 +7321,16 @@ def dashboard():
     # Kullanıcı istatistikleri
     tenant_ids = tenant_user_ids()
     urunler = tenant_query(Urun).all()
-    cariler = Cari.query.filter(Cari.user_id.in_(tenant_ids)).all()
-    satislar = Satis.query.filter(Satis.user_id.in_(tenant_ids)).all()
+    cariler = tenant_query(Cari).all()
+    satislar = tenant_query(Satis).all()
     aktif_satislar = [s for s in satislar if s.durum != 'iptal']
-    teklifler = Teklif.query.filter(Teklif.user_id.in_(tenant_ids)).all()
+    teklifler = tenant_query(Teklif).all()
 
     toplam_urun = len(urunler)
     toplam_cari = len(cariler)
     toplam_satis = len(aktif_satislar)
     toplam_teklif = len(teklifler)
-    tahsilat_sayisi = CariHareket.query.filter(
-        CariHareket.user_id.in_(tenant_ids),
+    tahsilat_sayisi = tenant_query(CariHareket).filter(
         CariHareket.islem_tipi == 'tahsilat'
     ).count()
 
@@ -7319,14 +7375,12 @@ def dashboard():
     bugun_baslangic, yarin_baslangic = local_day_bounds(bugun)
     hafta_baslangic, _ = local_day_bounds(bu_hafta_basi)
 
-    bugunku_satislar = Satis.query.filter(
-        Satis.user_id.in_(tenant_ids),
+    bugunku_satislar = tenant_query(Satis).filter(
         Satis.tarih >= bugun_baslangic,
         Satis.tarih < yarin_baslangic
     ).all()
 
-    haftalik_satislar = Satis.query.filter(
-        Satis.user_id.in_(tenant_ids),
+    haftalik_satislar = tenant_query(Satis).filter(
         Satis.tarih >= hafta_baslangic
     ).all()
 
@@ -7350,8 +7404,7 @@ def dashboard():
         ay_sonu = datetime.combine(((ay_basi + timedelta(days=32)).replace(day=1) -
                                    timedelta(days=1)), datetime.max.time())
 
-        ay_satislar = Satis.query.filter(
-            Satis.user_id.in_(tenant_ids),
+        ay_satislar = tenant_query(Satis).filter(
             Satis.tarih >= ay_basi,
             Satis.tarih <= ay_sonu,
             Satis.durum != 'iptal'
@@ -7472,8 +7525,7 @@ def dashboard():
             'tone': 'emerald',
             'url': url_for('gunluk_satislar'),
         })
-    cari_hareketleri = CariHareket.query.filter(
-        CariHareket.user_id.in_(tenant_ids),
+    cari_hareketleri = tenant_query(CariHareket).filter(
         CariHareket.islem_tipi.in_(['tahsilat', 'odeme']),
     ).order_by(CariHareket.tarih.desc()).limit(4).all()
     for hareket in cari_hareketleri:
@@ -7723,9 +7775,8 @@ def build_cari_balance_map(cari_ids, tenant_ids):
         for cari_id in normalized_ids
     }
 
-    hareketler = CariHareket.query.filter(
+    hareketler = tenant_query_with_user_fallback(CariHareket, tenant_ids).filter(
         CariHareket.cari_id.in_(normalized_ids),
-        CariHareket.user_id.in_(tenant_ids),
     ).all()
 
     for hareket in hareketler:
@@ -7779,8 +7830,8 @@ def build_cari_list_context(search_query='', selected_type='all'):
     search_query = (search_query or '').strip()
     selected_type = (selected_type or 'all').strip() or 'all'
     tenant_ids = tenant_user_ids()
-    all_cariler = Cari.query.filter(Cari.user_id.in_(tenant_ids)).all()
-    cariler_query = Cari.query.filter(Cari.user_id.in_(tenant_ids))
+    all_cariler = tenant_query(Cari).all()
+    cariler_query = tenant_query(Cari)
 
     if search_query:
         cariler_query = cariler_query.filter(
@@ -7831,13 +7882,13 @@ def cari_detay(id):
     tenant_ids = tenant_user_ids()
     ensure_default_accounts_for_user(current_user.id)
     accounts = Account.query.filter(Account.user_id.in_(tenant_ids), Account.active.is_(True)).order_by(Account.type, Account.name).all()
-    satislar = Satis.query.filter(Satis.cari_id == cari.id, Satis.user_id.in_(tenant_ids)).order_by(Satis.tarih.desc()).all()
+    satislar = tenant_query(Satis).filter(Satis.cari_id == cari.id).order_by(Satis.tarih.desc()).all()
 
     # Cari'ye ait teklifleri getir
-    teklifler = Teklif.query.filter(Teklif.cari_id == cari.id, Teklif.user_id.in_(tenant_ids)).order_by(Teklif.tarih.desc()).all()
+    teklifler = tenant_query(Teklif).filter(Teklif.cari_id == cari.id).order_by(Teklif.tarih.desc()).all()
 
     # Cari'ye ait hareketleri getir
-    hareketler = CariHareket.query.filter(CariHareket.cari_id == cari.id, CariHareket.user_id.in_(tenant_ids)).order_by(CariHareket.tarih.desc()).all()
+    hareketler = tenant_query(CariHareket).filter(CariHareket.cari_id == cari.id).order_by(CariHareket.tarih.desc()).all()
     balance_snapshot = resolve_cari_balance_snapshot(cari, tenant_ids, hareketler=hareketler)
 
     return render_template('cari_işlem_gecmisi_detayi.html',
@@ -7880,9 +7931,8 @@ def build_cari_ekstre_context(cari, tenant_ids, date_from_raw='', date_to_raw=''
     if date_to_raw:
         _, to_dt = local_day_bounds(date_to_raw)
 
-    hareket_query = CariHareket.query.filter(
-        CariHareket.cari_id == cari.id,
-        CariHareket.user_id.in_(tenant_ids),
+    hareket_query = tenant_query_with_user_fallback(CariHareket, tenant_ids).filter(
+        CariHareket.cari_id == cari.id
     )
     if from_dt:
         hareket_query = hareket_query.filter(CariHareket.tarih >= from_dt)
@@ -7893,9 +7943,8 @@ def build_cari_ekstre_context(cari, tenant_ids, date_from_raw='', date_to_raw=''
 
     opening_hareketler = []
     if from_dt:
-        opening_query = CariHareket.query.filter(
+        opening_query = tenant_query_with_user_fallback(CariHareket, tenant_ids).filter(
             CariHareket.cari_id == cari.id,
-            CariHareket.user_id.in_(tenant_ids),
             CariHareket.tarih < from_dt
         )
         opening_hareketler = opening_query.order_by(CariHareket.tarih.asc(), CariHareket.id.asc()).all()
@@ -8011,9 +8060,8 @@ def cari_ekstre_csv(id):
             flash('Biti? tarihi geçersiz.', 'error')
             return redirect(url_for('cari_ekstre_csv', id=cari.id))
 
-    hareket_query = CariHareket.query.filter(
-        CariHareket.cari_id == cari.id,
-        CariHareket.user_id.in_(tenant_ids),
+    hareket_query = tenant_query_with_user_fallback(CariHareket, tenant_ids).filter(
+        CariHareket.cari_id == cari.id
     )
     if from_dt:
         hareket_query = hareket_query.filter(CariHareket.tarih >= from_dt)
@@ -8023,9 +8071,8 @@ def cari_ekstre_csv(id):
 
     opening_balance = 0.0
     if from_dt:
-        opening_query = CariHareket.query.filter(
+        opening_query = tenant_query_with_user_fallback(CariHareket, tenant_ids).filter(
             CariHareket.cari_id == cari.id,
-            CariHareket.user_id.in_(tenant_ids),
             CariHareket.tarih < from_dt
         )
         for h in opening_query.all():
@@ -8115,7 +8162,7 @@ def cari_ekle():
             flash('Cari unvanı zorunludur!', 'error')
             return redirect(url_for('cari_ekle'))
 
-        yeni_cari = Cari(
+        yeni_cari = assign_current_organization(Cari(
             unvan=unvan,
             yetkili=request.form.get('yetkili'),
             telefon=request.form.get('telefon'),
@@ -8125,7 +8172,7 @@ def cari_ekle():
             adres=request.form.get('adres'),
             tipi=request.form.get('tipi', 'Müşteri'),
             user_id=current_user.id
-        )
+        ))
 
         db.session.add(yeni_cari)
         db.session.commit()
@@ -8183,7 +8230,7 @@ def pos():
         urunler = [u for u in urunler if (u.stok_miktari or 0) > ((u.kritik_stok or 0) + 15)]
     elif selected_stock_status == 'out':
         urunler = [u for u in urunler if (u.stok_miktari or 0) <= 0]
-    cariler = Cari.query.filter(Cari.user_id.in_(tenant_ids)).all()
+    cariler = tenant_query(Cari).all()
 
     # Ürünleri JSON serializable hale getir
     urunler_json = [serialize_pos_product(u) for u in urunler]
@@ -8273,7 +8320,7 @@ def pos_satis():
             if not account or account.user_id not in tenant_ids or not account.active:
                 return jsonify({'success': False, 'message': 'Seçilen hesap geçersiz.'})
 
-        satis = Satis(
+        satis = assign_current_organization(Satis(
             fatura_no=fatura_no,
             cari_id=cari.id if cari else None,
             user_id=current_user.id,
@@ -8282,7 +8329,7 @@ def pos_satis():
             kdv_orani=kdv_orani,
             iskonto=iskonto,
             durum='tamamlandi'
-        )
+        ))
         db.session.add(satis)
         db.session.flush()
 
@@ -8375,7 +8422,7 @@ def pos_satis():
 
         if cari and odeme_yontemi == 'Alacak':
             cari.alacak = (cari.alacak or 0) + satis.genel_toplam
-            cari_hareket = CariHareket(
+            cari_hareket = assign_current_organization(CariHareket(
                 cari_id=cari.id,
                 user_id=current_user.id,
                 islem_tipi='satis',
@@ -8384,7 +8431,7 @@ def pos_satis():
                 odeme_turu=odeme_yontemi,
                 referans_id=satis.id,
                 referans_tip='satis'
-            )
+            ))
             db.session.add(cari_hareket)
 
         if odeme_yontemi != 'Alacak':
@@ -9112,7 +9159,7 @@ def onmuhasebe_raporlar():
 @app.route('/teklifler')
 @login_required
 def teklif_yonetimi():
-    teklifler = Teklif.query.filter(Teklif.user_id.in_(tenant_user_ids())).order_by(Teklif.tarih.desc()).all()
+    teklifler = tenant_query(Teklif).order_by(Teklif.tarih.desc()).all()
     toplam_teklif = len(teklifler)
     taslak_sayisi = len([t for t in teklifler if t.durum == 'taslak'])
     gonderilen_sayisi = len([t for t in teklifler if t.durum == 'gonderildi'])
@@ -9167,7 +9214,7 @@ def teklif_ekle():
             flash(kalem_hatasi, 'error')
             return redirect(url_for('teklif_ekle'))
 
-        yeni_teklif = Teklif(
+        yeni_teklif = assign_current_organization(Teklif(
             teklif_no=teklif_no,
             cari_id=cari_id,
             user_id=current_user.id,
@@ -9178,7 +9225,7 @@ def teklif_ekle():
             kdv_orani=kdv_orani,
             toplam_tutar=toplam_tutar,
             genel_toplam=toplam_tutar * (1 + kdv_orani / 100)
-        )
+        ))
         db.session.add(yeni_teklif)
         db.session.flush()
 
@@ -9190,7 +9237,7 @@ def teklif_ekle():
         return redirect(url_for('teklif_yonetimi'))
 
     tenant_ids = tenant_user_ids()
-    cariler = Cari.query.filter(Cari.user_id.in_(tenant_ids)).all()
+    cariler = tenant_query(Cari).all()
     urunler = tenant_query(Urun).all()
     selected_cari_id = request.args.get('cari_id', type=int)
     if selected_cari_id and not any(cari.id == selected_cari_id for cari in cariler):
@@ -9268,7 +9315,7 @@ def teklif_duzenle(id):
         return redirect(url_for('teklif_yonetimi'))
 
     tenant_ids = tenant_user_ids()
-    cariler = Cari.query.filter(Cari.user_id.in_(tenant_ids)).all()
+    cariler = tenant_query(Cari).all()
     urunler = tenant_query(Urun).all()
     from datetime import date
     bugun = date.today().strftime('%Y-%m-%d')
@@ -9319,8 +9366,8 @@ def teklif_durum_guncelle(id):
 def raporlar():
     tenant_ids = tenant_user_ids()
     urunler = tenant_query(Urun).all()
-    cariler = Cari.query.filter(Cari.user_id.in_(tenant_ids)).all()
-    satislar = Satis.query.filter(Satis.user_id.in_(tenant_ids)).all()
+    cariler = tenant_query(Cari).all()
+    satislar = tenant_query(Satis).all()
     nakit_hareketleri = CashTransaction.query.filter(CashTransaction.user_id.in_(tenant_ids)).all()
     aktif_satislar = [s for s in satislar if s.durum != 'iptal']
 
@@ -9487,9 +9534,8 @@ def remaining_monetary_refund_for_sale(sale):
 
 def build_returnable_sales(tenant_ids):
     sales = (
-        Satis.query
+        tenant_query(Satis)
         .filter(
-            Satis.user_id.in_(tenant_ids),
             Satis.cari_id.isnot(None),
             Satis.durum == 'tamamlandi',
         )
@@ -9563,7 +9609,7 @@ def cari_odeme(cari_id):
         cari_borc_oncesi = cari.borc or 0
         adjust_cari_account(cari, tutar, 'odeme')
 
-        hareket = CariHareket(
+        hareket = assign_current_organization(CariHareket(
             cari_id=cari.id,
             user_id=current_user.id,
             islem_tipi='odeme',
@@ -9571,7 +9617,7 @@ def cari_odeme(cari_id):
             aciklama=aciklama or f'{odeme_turu} ile Ödeme alındı',
             odeme_turu=odeme_turu,
             referans_tip='cari_odeme'
-        )
+        ))
         db.session.add(hareket)
 
         create_cash_transaction(
@@ -9623,7 +9669,7 @@ def cari_tahsilat(cari_id):
 
         adjust_cari_account(cari, tutar, 'tahsilat')
 
-        hareket = CariHareket(
+        hareket = assign_current_organization(CariHareket(
             cari_id=cari.id,
             user_id=current_user.id,
             islem_tipi='tahsilat',
@@ -9631,7 +9677,7 @@ def cari_tahsilat(cari_id):
             aciklama=aciklama or f'{tahsilat_turu} ile tahsilat yapıldı',
             odeme_turu=tahsilat_turu,
             referans_tip='cari_tahsilat'
-        )
+        ))
         db.session.add(hareket)
 
         create_cash_transaction(
@@ -9825,7 +9871,7 @@ def iade():
             else:
                 toplam_iade_tutari = manuel_iade_tutari
 
-            iade_kaydi = Iade(
+            iade_kaydi = assign_current_organization(Iade(
                 cari_id=cari.id,
                 user_id=current_user.id,
                 satis_id=satis.id,
@@ -9838,7 +9884,7 @@ def iade():
                 tarih=utc_now(),
                 ip_adresi=request.remote_addr,
                 user_agent=request.headers.get('User-Agent', '')
-            )
+            ))
             db.session.add(iade_kaydi)
             db.session.flush()
 
@@ -9871,7 +9917,7 @@ def iade():
             # Doğrudan para iadesi kasa/banka çıkışıyla kapandığı için cari bakiyeyi ayrıca değiştirmez.
             if alacak_olustur:
                 adjust_cari_account(cari, toplam_iade_tutari, 'tahsilat')
-                db.session.add(CariHareket(
+                db.session.add(assign_current_organization(CariHareket(
                     cari_id=cari.id,
                     user_id=current_user.id,
                     islem_tipi='iade',
@@ -9880,7 +9926,7 @@ def iade():
                     odeme_turu='Alacak',
                     referans_id=iade_kaydi.id,
                     referans_tip='iade'
-                ))
+                )))
 
             if refund_mode == 'payment':
                 create_cash_transaction(
@@ -9893,7 +9939,7 @@ def iade():
                     referans_tip='iade',
                     account_id=account_id
                 )
-                db.session.add(CariHareket(
+                db.session.add(assign_current_organization(CariHareket(
                     cari_id=cari.id,
                     user_id=current_user.id,
                     islem_tipi='iade_bilgi',
@@ -9902,7 +9948,7 @@ def iade():
                     odeme_turu=odeme_turu,
                     referans_id=iade_kaydi.id,
                     referans_tip='iade'
-                ))
+                )))
             db.session.commit()
             if stok_etkili:
                 flash(f'{len(iade_kalemleri)} Ürün için iade işlemi başarıyla tamamlandı!', 'success')
@@ -9916,20 +9962,19 @@ def iade():
 
     # İstatistikler
     tenant_ids = tenant_user_ids()
-    toplam_iade = Iade.query.filter(Iade.user_id.in_(tenant_ids)).count()
-    bekleyen_iade = Iade.query.filter(Iade.user_id.in_(tenant_ids), Iade.durum == 'beklemede').count()
-    tamamlanan_iade = Iade.query.filter(Iade.user_id.in_(tenant_ids), Iade.durum == 'tamamlandi').count()
-    toplam_iade_deger = db.session.query(db.func.sum(Iade.iade_tutari)).filter(Iade.user_id.in_(tenant_ids)).scalar() or 0
+    toplam_iade = tenant_query(Iade).count()
+    bekleyen_iade = tenant_query(Iade).filter(Iade.durum == 'beklemede').count()
+    tamamlanan_iade = tenant_query(Iade).filter(Iade.durum == 'tamamlandi').count()
+    toplam_iade_deger = tenant_query(Iade).with_entities(db.func.sum(Iade.iade_tutari)).scalar() or 0
 
     # Son iadeler
-    son_iadeler = db.session.query(
-        Iade, Cari
-    ).join(Cari, Iade.cari_id == Cari.id).filter(
-        Iade.user_id.in_(tenant_ids)
-    ).order_by(Iade.tarih.desc()).limit(10).all()
+    son_iadeler = [
+        (return_record, return_record.cari)
+        for return_record in tenant_query(Iade).order_by(Iade.tarih.desc()).limit(10).all()
+    ]
 
     ensure_default_accounts_for_user(current_user.id)
-    cariler = Cari.query.filter(Cari.user_id.in_(tenant_ids)).all()
+    cariler = tenant_query(Cari).all()
     accounts = Account.query.filter(Account.user_id.in_(tenant_ids), Account.active.is_(True)).order_by(Account.type, Account.name).all()
 
     cariler_json = [{
@@ -10070,10 +10115,10 @@ def organization_usage(organization):
     return {
         'users': len(user_ids),
         'products': organization_owned_query(Urun, organization).count(),
-        'customers': Cari.query.filter(Cari.user_id.in_(user_ids)).count(),
-        'sales': Satis.query.filter(Satis.user_id.in_(user_ids)).count(),
-        'quotes': Teklif.query.filter(Teklif.user_id.in_(user_ids)).count(),
-        'returns': Iade.query.filter(Iade.user_id.in_(user_ids)).count(),
+        'customers': organization_owned_query(Cari, organization).count(),
+        'sales': organization_owned_query(Satis, organization).count(),
+        'quotes': organization_owned_query(Teklif, organization).count(),
+        'returns': organization_owned_query(Iade, organization).count(),
         'cash_total': float(cash_total),
         'last_activity': last_log.timestamp if last_log else None,
     }
@@ -10091,9 +10136,9 @@ def reset_organization_operational_data(organization):
         deleted_counts[label] = count
         return count
 
-    satis_ids = [row[0] for row in db.session.query(Satis.id).filter(Satis.user_id.in_(user_ids)).all()]
-    teklif_ids = [row[0] for row in db.session.query(Teklif.id).filter(Teklif.user_id.in_(user_ids)).all()]
-    iade_ids = [row[0] for row in db.session.query(Iade.id).filter(Iade.user_id.in_(user_ids)).all()]
+    satis_ids = [record.id for record in organization_owned_query(Satis, organization).all()]
+    teklif_ids = [record.id for record in organization_owned_query(Teklif, organization).all()]
+    iade_ids = [record.id for record in organization_owned_query(Iade, organization).all()]
     personel_ids = [row[0] for row in db.session.query(Personel.id).filter(Personel.user_id.in_(user_ids)).all()]
     action_ids = [row[0] for row in db.session.query(ActionItem.id).filter_by(organization_id=organization.id).all()]
     ticket_ids = [row[0] for row in db.session.query(SupportTicket.id).filter_by(organization_id=organization.id).all()]
@@ -10117,17 +10162,17 @@ def reset_organization_operational_data(organization):
     if ticket_ids:
         delete_records('destek_mesajlari', SupportTicketMessage.query.filter(SupportTicketMessage.ticket_id.in_(ticket_ids)))
 
-    delete_records('iadeler', Iade.query.filter(Iade.user_id.in_(user_ids)))
-    delete_records('satislar', Satis.query.filter(Satis.user_id.in_(user_ids)))
-    delete_records('teklifler', Teklif.query.filter(Teklif.user_id.in_(user_ids)))
-    delete_records('cari_hareketleri', CariHareket.query.filter(CariHareket.user_id.in_(user_ids)))
+    delete_records('iadeler', organization_owned_query(Iade, organization))
+    delete_records('satislar', organization_owned_query(Satis, organization))
+    delete_records('teklifler', organization_owned_query(Teklif, organization))
+    delete_records('cari_hareketleri', organization_owned_query(CariHareket, organization))
     delete_records('stok_hareketleri', organization_owned_query(StokHareket, organization))
     delete_records('nakit_hareketleri', CashTransaction.query.filter(CashTransaction.user_id.in_(user_ids)))
     if account_ids:
         delete_records('mutabakatlar', AccountReconciliation.query.filter(AccountReconciliation.account_id.in_(account_ids)))
     delete_records('hesaplar', Account.query.filter(Account.user_id.in_(user_ids)))
     delete_records('urunler', organization_owned_query(Urun, organization))
-    delete_records('cariler', Cari.query.filter(Cari.user_id.in_(user_ids)))
+    delete_records('cariler', organization_owned_query(Cari, organization))
     delete_records('kategoriler', organization_owned_query(Category, organization))
     delete_records('depolar', organization_owned_query(Warehouse, organization))
     delete_records('personeller', Personel.query.filter(Personel.user_id.in_(user_ids)))
@@ -11612,8 +11657,8 @@ def admin_panel():
     # Tenant istatistikleri
     total_users = 1
     total_products = tenant_query(Urun).count()
-    total_sales = Satis.query.filter_by(user_id=current_user.id).count()
-    total_quotes = Teklif.query.filter_by(user_id=current_user.id).count()
+    total_sales = tenant_query(Satis).count()
+    total_quotes = tenant_query(Teklif).count()
 
     # Son tenant audit loglar?
     recent_logs = AuditLog.query.filter_by(user_id=current_user.id).order_by(AuditLog.timestamp.desc()).limit(20).all()
@@ -11749,7 +11794,7 @@ def create_backup():
                     'borc': cari.borc,
                     'alacak': cari.alacak
                 }
-                for cari in Cari.query.filter_by(user_id=current_user.id).all()
+                for cari in tenant_query(Cari).all()
             ],
             'satislar': [
                 {
@@ -11758,7 +11803,7 @@ def create_backup():
                     'genel_toplam': satis.genel_toplam,
                     'durum': satis.durum
                 }
-                for satis in Satis.query.filter_by(user_id=current_user.id).all()
+                for satis in tenant_query(Satis).all()
             ],
             'teklifler': [
                 {
@@ -11767,7 +11812,7 @@ def create_backup():
                     'genel_toplam': teklif.genel_toplam,
                     'durum': teklif.durum
                 }
-                for teklif in Teklif.query.filter_by(user_id=current_user.id).all()
+                for teklif in tenant_query(Teklif).all()
             ],
             'backup_info': {
                 'created_at': datetime.now(timezone.utc).isoformat(),
@@ -11857,8 +11902,8 @@ def ayarlar():
 
     # Kullan?c? istatistikleri
     toplam_urun = len(urunler)
-    toplam_cari = Cari.query.filter_by(user_id=current_user.id).count()
-    toplam_satis = Satis.query.filter_by(user_id=current_user.id).count()
+    toplam_cari = tenant_query(Cari).count()
+    toplam_satis = tenant_query(Satis).count()
 
     # Sistem mod?lleri ve izinleri
     moduller = [
@@ -12813,7 +12858,7 @@ def settings_backup():
             })
 
         # Carileri ekle
-        cariler = Cari.query.filter_by(user_id=current_user.id).all()
+        cariler = tenant_query(Cari).all()
         for cari in cariler:
             backup_data['cariler'].append({
                 'id': cari.id,
@@ -12829,7 +12874,7 @@ def settings_backup():
             })
 
         # Satışlar? ekle
-        satislar = Satis.query.filter_by(user_id=current_user.id).all()
+        satislar = tenant_query(Satis).all()
         for satis in satislar:
             backup_data['satislar'].append({
                 'id': satis.id,
@@ -12842,7 +12887,7 @@ def settings_backup():
             })
 
         # Teklifleri ekle
-        teklifler = Teklif.query.filter_by(user_id=current_user.id).all()
+        teklifler = tenant_query(Teklif).all()
         for teklif in teklifler:
             backup_data['teklifler'].append({
                 'id': teklif.id,
@@ -12855,7 +12900,7 @@ def settings_backup():
             })
 
         # İade kayıtların? ekle
-        iade_kayitlari = Iade.query.filter_by(user_id=current_user.id).all()
+        iade_kayitlari = tenant_query(Iade).all()
         for iade in iade_kayitlari:
             backup_data['iade_kayitlari'].append({
                 'id': iade.id,
@@ -12915,20 +12960,23 @@ def restore_backup():
             return jsonify({'success': False, 'message': 'Geçersiz yedekleme format?'}), 400
 
         # Silme s?ras?: alt veriler Önce
-        db.session.query(IadeKalem).filter(IadeKalem.iade_id.in_(db.session.query(
-            Iade.id).filter_by(user_id=current_user.id))).delete(synchronize_session=False)
-        db.session.query(SatisKalemi).filter(SatisKalemi.satis_id.in_(db.session.query(
-            Satis.id).filter_by(user_id=current_user.id))).delete(synchronize_session=False)
-        db.session.query(TeklifKalemi).filter(TeklifKalemi.teklif_id.in_(db.session.query(
-            Teklif.id).filter_by(user_id=current_user.id))).delete(synchronize_session=False)
-        db.session.query(CariHareket).filter_by(user_id=current_user.id).delete(synchronize_session=False)
-        db.session.query(StokHareket).filter_by(user_id=current_user.id).delete(synchronize_session=False)
+        iade_ids = [record.id for record in tenant_query(Iade).all()]
+        satis_ids = [record.id for record in tenant_query(Satis).all()]
+        teklif_ids = [record.id for record in tenant_query(Teklif).all()]
+        if iade_ids:
+            IadeKalem.query.filter(IadeKalem.iade_id.in_(iade_ids)).delete(synchronize_session=False)
+        if satis_ids:
+            SatisKalemi.query.filter(SatisKalemi.satis_id.in_(satis_ids)).delete(synchronize_session=False)
+        if teklif_ids:
+            TeklifKalemi.query.filter(TeklifKalemi.teklif_id.in_(teklif_ids)).delete(synchronize_session=False)
+        tenant_query(CariHareket).delete(synchronize_session=False)
+        tenant_query(StokHareket).delete(synchronize_session=False)
         db.session.query(CashTransaction).filter_by(user_id=current_user.id).delete(synchronize_session=False)
-        db.session.query(Iade).filter_by(user_id=current_user.id).delete(synchronize_session=False)
-        db.session.query(Satis).filter_by(user_id=current_user.id).delete(synchronize_session=False)
-        db.session.query(Teklif).filter_by(user_id=current_user.id).delete(synchronize_session=False)
-        db.session.query(Cari).filter_by(user_id=current_user.id).delete(synchronize_session=False)
-        db.session.query(Urun).filter_by(user_id=current_user.id).delete(synchronize_session=False)
+        tenant_query(Iade).delete(synchronize_session=False)
+        tenant_query(Satis).delete(synchronize_session=False)
+        tenant_query(Teklif).delete(synchronize_session=False)
+        tenant_query(Cari).delete(synchronize_session=False)
+        tenant_query(Urun).delete(synchronize_session=False)
 
         # Kullan?c? bilgilerini yedekten geri y?kleme
         user_info = backup_data.get('user_info', {}) or {}
@@ -12942,7 +12990,7 @@ def restore_backup():
 
         old_to_new_cari = {}
         for cari_data in backup_data.get('cariler', []):
-            cari = Cari(
+            cari = assign_current_organization(Cari(
                 unvan=cari_data.get('unvan'),
                 telefon=cari_data.get('telefon'),
                 email=cari_data.get('email'),
@@ -12952,7 +13000,7 @@ def restore_backup():
                 borc=cari_data.get('borc') or 0,
                 alacak=cari_data.get('alacak') or 0,
                 user_id=current_user.id
-            )
+            ))
             db.session.add(cari)
             db.session.flush()
             if cari_data.get('id') is not None:
@@ -12979,7 +13027,7 @@ def restore_backup():
 
         for satis_data in backup_data.get('satislar', []):
             new_cari_id = old_to_new_cari.get(satis_data.get('cari_id')) if satis_data.get('cari_id') else None
-            satis = Satis(
+            satis = assign_current_organization(Satis(
                 fatura_no=satis_data.get('fatura_no'),
                 cari_id=new_cari_id,
                 user_id=current_user.id,
@@ -12991,12 +13039,12 @@ def restore_backup():
                 genel_toplam=satis_data.get('genel_toplam') or 0,
                 notlar=satis_data.get('notlar'),
                 durum=satis_data.get('durum') or 'tamamlandi'
-            )
+            ))
             db.session.add(satis)
 
         for teklif_data in backup_data.get('teklifler', []):
             new_cari_id = old_to_new_cari.get(teklif_data.get('cari_id')) if teklif_data.get('cari_id') else None
-            teklif = Teklif(
+            teklif = assign_current_organization(Teklif(
                 teklif_no=teklif_data.get('teklif_no'),
                 cari_id=new_cari_id,
                 user_id=current_user.id,
@@ -13006,12 +13054,12 @@ def restore_backup():
                 genel_toplam=teklif_data.get('genel_toplam') or 0,
                 notlar=teklif_data.get('notlar'),
                 durum=teklif_data.get('durum') or 'taslak'
-            )
+            ))
             db.session.add(teklif)
 
         for iade_data in backup_data.get('iade_kayitlari', []):
             new_cari_id = old_to_new_cari.get(iade_data.get('cari_id')) if iade_data.get('cari_id') else None
-            iade = Iade(
+            iade = assign_current_organization(Iade(
                 cari_id=new_cari_id,
                 user_id=current_user.id,
                 iade_turu=iade_data.get('iade_turu'),
@@ -13019,7 +13067,7 @@ def restore_backup():
                 iade_tutari=iade_data.get('iade_tutari') or 0,
                 tarih=parse_iso_datetime(iade_data.get('tarih')) or utc_now(),
                 durum=iade_data.get('durum') or 'tamamlandi'
-            )
+            ))
             db.session.add(iade)
 
         db.session.commit()
@@ -13265,8 +13313,7 @@ def iade_istatistikleri():
             else:
                 sonraki_ay = ay_baslangic.replace(month=month + 1)
 
-            ay_iadeler = Iade.query.filter(
-                Iade.user_id.in_(tenant_user_ids()),
+            ay_iadeler = tenant_query(Iade).filter(
                 Iade.tarih >= ay_baslangic,
                 Iade.tarih < sonraki_ay
             ).count()
@@ -14087,7 +14134,7 @@ def stok_cikis():
             fatura_no = generate_fatura_no(prefix='FTR')
 
             # Satış kaydı oluştur
-            satis = Satis(
+            satis = assign_current_organization(Satis(
                 fatura_no=fatura_no,
                 cari_id=cari_id,
                 user_id=current_user.id,
@@ -14096,7 +14143,7 @@ def stok_cikis():
                 notlar=notlar,
                 kdv_orani=kdv_orani,
                 iskonto=iskonto
-            )
+            ))
             db.session.add(satis)
             db.session.flush()  # satis.id almak için
 
@@ -14173,7 +14220,7 @@ def stok_cikis():
             # Cari alacak ve hareket kaydı oluştur/gÖncelle
             if cari:
                 cari.alacak = (cari.alacak or 0) + satis.genel_toplam
-                db.session.add(CariHareket(
+                db.session.add(assign_current_organization(CariHareket(
                     cari_id=cari.id,
                     user_id=current_user.id,
                     islem_tipi='satis',
@@ -14182,7 +14229,7 @@ def stok_cikis():
                     odeme_turu='Alacak',
                     referans_id=satis.id,
                     referans_tip='satis'
-                ))
+                )))
 
             db.session.commit()
             flash(f'Satış kaydı oluşturuldu: {fatura_no}', 'success')
@@ -14254,9 +14301,8 @@ def gunluk_satislar():
                 cari = None
                 original_cari_sale_movement = None
                 if satis.cari_id:
-                    cari = Cari.query.filter(Cari.id == satis.cari_id, Cari.user_id.in_(tenant_user_ids())).first()
-                    original_cari_sale_movement = CariHareket.query.filter(
-                        CariHareket.user_id.in_(tenant_user_ids()),
+                    cari = tenant_query(Cari).filter(Cari.id == satis.cari_id).first()
+                    original_cari_sale_movement = tenant_query(CariHareket).filter(
                         CariHareket.cari_id == satis.cari_id,
                         CariHareket.referans_id == satis.id,
                         CariHareket.referans_tip == 'satis',
@@ -14264,7 +14310,7 @@ def gunluk_satislar():
                     ).first()
                     if cari and original_cari_sale_movement:
                         cari.alacak = max(0, (cari.alacak or 0) - (satis.genel_toplam or 0))
-                        db.session.add(CariHareket(
+                        db.session.add(assign_current_organization(CariHareket(
                             cari_id=cari.id,
                             user_id=current_user.id,
                             islem_tipi='iade',
@@ -14273,7 +14319,7 @@ def gunluk_satislar():
                             odeme_turu='İptal',
                             referans_id=satis.id,
                             referans_tip='satis_iptal'
-                        ))
+                        )))
 
                 # Nakit hareketini ters kayt ile dengele
                 cash_entries = CashTransaction.query.filter(
@@ -14319,8 +14365,7 @@ def gunluk_satislar():
         baslangic, bitis = local_day_bounds(secili_tarih)
 
     # Se?ili tarihteki satışlar? ?ek
-    satislar = Satis.query.filter(
-        Satis.user_id.in_(tenant_user_ids()),
+    satislar = tenant_query(Satis).filter(
         Satis.tarih >= baslangic,
         Satis.tarih < bitis
     ).order_by(Satis.tarih.desc()).all()
@@ -14338,8 +14383,7 @@ def gunluk_satislar():
             payment_methods.setdefault(entry.referans_id, entry.odeme_turu or 'Peşin')
 
         credit_sale_ids = {
-            hareket.referans_id for hareket in CariHareket.query.filter(
-                CariHareket.user_id.in_(tenant_user_ids()),
+            hareket.referans_id for hareket in tenant_query(CariHareket).filter(
                 CariHareket.referans_id.in_(sale_ids),
                 CariHareket.referans_tip == 'satis',
                 CariHareket.islem_tipi == 'satis'
@@ -14472,8 +14516,7 @@ def satis_fis_yazdir(satis_id):
     if cash_entry and cash_entry.odeme_turu:
         payment_method = cash_entry.odeme_turu
     else:
-        credit_entry = CariHareket.query.filter(
-            CariHareket.user_id.in_(tenant_user_ids()),
+        credit_entry = tenant_query(CariHareket).filter(
             CariHareket.referans_id == satis.id,
             CariHareket.referans_tip == 'satis',
             CariHareket.islem_tipi == 'satis'
@@ -14524,8 +14567,7 @@ def satis_irsaliye_yazdir(satis_id):
     if cash_entry and cash_entry.odeme_turu:
         payment_method = cash_entry.odeme_turu
     else:
-        credit_entry = CariHareket.query.filter(
-            CariHareket.user_id.in_(tenant_user_ids()),
+        credit_entry = tenant_query(CariHareket).filter(
             CariHareket.referans_id == satis.id,
             CariHareket.referans_tip == 'satis',
             CariHareket.islem_tipi == 'satis'
@@ -14632,18 +14674,20 @@ def urun_sil(id):
         return redirect(url_for('urunler'))
 
     # Kontrol: Ürün satış kaleminde kullanılıyor mu
-    satis_kalemi_var = SatisKalemi.query.join(Satis).filter(
+    tenant_sale_ids = tenant_query(Satis).with_entities(Satis.id)
+    satis_kalemi_var = SatisKalemi.query.filter(
         SatisKalemi.urun_id == urun.id,
-        Satis.user_id.in_(tenant_user_ids())
+        SatisKalemi.satis_id.in_(tenant_sale_ids),
     ).first()
     if satis_kalemi_var:
         flash('Bu Ürün satış kayıtlarında kullan?ldüş? için silinemez!', 'error')
         return redirect(url_for('urunler'))
 
     # Kontrol: Ürün teklif kaleminde kullanılıyor mu
-    teklif_kalemi_var = TeklifKalemi.query.join(Teklif).filter(
+    tenant_quote_ids = tenant_query(Teklif).with_entities(Teklif.id)
+    teklif_kalemi_var = TeklifKalemi.query.filter(
         TeklifKalemi.urun_id == urun.id,
-        Teklif.user_id.in_(tenant_user_ids())
+        TeklifKalemi.teklif_id.in_(tenant_quote_ids),
     ).first()
     if teklif_kalemi_var:
         flash('Bu Ürün tekliflerde kullan?ldüş? için silinemez!', 'error')
