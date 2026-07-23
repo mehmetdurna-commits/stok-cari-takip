@@ -2758,6 +2758,103 @@ def test_product_filters_render_without_reload_errors(client):
     assert b'Test Urun' in response.data
 
 
+def test_inventory_is_owned_by_organization_and_survives_inactive_creator(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        teammate = User.query.filter_by(email='other@example.com').first()
+        organization = ensure_user_organization(owner)
+        teammate.organization_id = organization.id
+        teammate.aktif = False
+        shared_product = Urun(
+            barkod='ORG-SHARED-001',
+            urun_adi='Inactive Creator Product',
+            kategori='Shared',
+            birim='Adet',
+            stok_miktari=5,
+            kritik_stok=1,
+            depo_adi='Ana Depo',
+            user_id=teammate.id,
+            organization_id=organization.id,
+        )
+        foreign_owner = User(
+            email='foreign-inventory@example.com',
+            password=generate_password_hash('password123'),
+            firma_adi='Foreign Inventory Company',
+        )
+        db.session.add_all([shared_product, foreign_owner])
+        db.session.flush()
+        foreign_organization = ensure_user_organization(foreign_owner)
+        db.session.add(Urun(
+            barkod='ORG-FOREIGN-001',
+            urun_adi='Foreign Organization Product',
+            kategori='Foreign',
+            birim='Adet',
+            stok_miktari=9,
+            kritik_stok=1,
+            depo_adi='Ana Depo',
+            user_id=foreign_owner.id,
+            organization_id=foreign_organization.id,
+        ))
+        db.session.commit()
+
+    response = client.get('/urunler')
+
+    assert response.status_code == 200
+    assert b'Inactive Creator Product' in response.data
+    assert b'Foreign Organization Product' not in response.data
+
+
+def test_new_inventory_records_receive_current_organization(client):
+    response = client.post('/urun-ekle', data={
+        'barkod': 'ORG-CREATE-001',
+        'urun_adi': 'Organization Owned Product',
+        'kategori': 'Organization Category',
+        'birim': 'Adet',
+        'alis_fiyati': '10',
+        'satis_fiyati': '20',
+        'stok_miktari': '3',
+        'kritik_stok': '1',
+        'depo_adi': 'Organization Warehouse',
+    }, follow_redirects=False)
+
+    assert response.status_code == 302
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        product = Urun.query.filter_by(barkod='ORG-CREATE-001').first()
+        warehouse = Warehouse.query.filter_by(name='Organization Warehouse').first()
+        assert product is not None
+        assert product.organization_id == owner.organization_id
+        assert warehouse is not None
+        assert warehouse.organization_id == owner.organization_id
+
+
+def test_stock_movement_receives_product_organization(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        organization = ensure_user_organization(owner)
+        product = Urun.query.filter_by(barkod='1234567890123').first()
+        product.organization_id = organization.id
+        db.session.commit()
+        product_id = product.id
+
+    response = client.post('/stok/giris', data={
+        'urun_id': str(product_id),
+        'miktar': '2',
+        'depo': 'Ana Depo',
+        'aciklama': 'Organization ownership test',
+    }, follow_redirects=False)
+
+    assert response.status_code == 302
+    with app.app_context():
+        movement = StokHareket.query.filter_by(
+            urun_id=product_id,
+            aciklama='Organization ownership test',
+        ).first()
+        owner = User.query.filter_by(email='test@example.com').first()
+        assert movement is not None
+        assert movement.organization_id == owner.organization_id
+
+
 def test_demo_data_tools_are_hidden_for_regular_users(client):
     product_page = client.get('/urun-ekle')
     assert product_page.status_code == 200

@@ -476,8 +476,11 @@ class Urun(db.Model):
     stok_miktari = db.Column(db.Numeric(18, 4), default=0)
     kritik_stok = db.Column(db.Numeric(18, 4), default=10)
     depo_adi = db.Column(db.String(100), default='Ana Depo')
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=True, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     eklenme_tarihi = db.Column(db.DateTime, default=utc_now)
+
+    organization = db.relationship('Organization', foreign_keys=[organization_id], backref='products')
 
 
 class Cari(db.Model):
@@ -583,6 +586,7 @@ class CariHareket(db.Model):
 class StokHareket(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     urun_id = db.Column(db.Integer, db.ForeignKey('urun.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=True, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     tarih = db.Column(db.DateTime, default=utc_now)
     islem_tipi = db.Column(db.String(20), nullable=False)  # giris, cikis
@@ -597,6 +601,7 @@ class StokHareket(db.Model):
 
     urun = db.relationship('Urun', backref='stok_hareketleri')
     cari = db.relationship('Cari', backref='stok_hareketleri')
+    organization = db.relationship('Organization', foreign_keys=[organization_id], backref='stock_movements')
 
 
 class AuditLog(db.Model):
@@ -795,27 +800,33 @@ class BackupLog(db.Model):
 class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=True, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=utc_now)
     updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
 
     __table_args__ = (
         db.UniqueConstraint('user_id', 'name', name='uq_user_category_name'),
+        db.UniqueConstraint('organization_id', 'name', name='uq_organization_category_name'),
     )
     user = db.relationship('User', backref='categories')
+    organization = db.relationship('Organization', foreign_keys=[organization_id], backref='categories')
 
 
 class Warehouse(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=True, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=utc_now)
     updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
 
     __table_args__ = (
         db.UniqueConstraint('user_id', 'name', name='uq_user_warehouse_name'),
+        db.UniqueConstraint('organization_id', 'name', name='uq_organization_warehouse_name'),
     )
     user = db.relationship('User', backref='warehouses')
+    organization = db.relationship('Organization', foreign_keys=[organization_id], backref='warehouses')
 
 
 # Personel Y?netimi Modelleri
@@ -1047,8 +1058,11 @@ def package_usage_for_user(user=None):
     organization = current_organization() if user.is_authenticated else None
     plan = normalize_plan((organization.plan if organization else None) or user.paket_tipi or 'demo')
     limit = effective_product_limit(plan, organization, user)
-    tenant_ids = organization_user_ids(organization) if organization else [user.id]
-    product_count = Urun.query.filter(Urun.user_id.in_(tenant_ids)).count() if tenant_ids else 0
+    product_count = (
+        organization_owned_query(Urun, organization).count()
+        if organization
+        else Urun.query.filter_by(user_id=user.id).count()
+    )
     remaining = None if limit is None else max(0, limit - product_count)
     percent = 0 if limit is None else min(100, int((product_count / max(limit, 1)) * 100))
     return {
@@ -1645,6 +1659,19 @@ def backfill_user_organizations():
         db.session.commit()
 
 
+def backfill_inventory_organizations():
+    changed = False
+    for model in (Urun, StokHareket, Category, Warehouse):
+        for record in model.query.filter(model.organization_id.is_(None)).all():
+            user = db.session.get(User, record.user_id)
+            if not user or not user.organization_id:
+                continue
+            record.organization_id = user.organization_id
+            changed = True
+    if changed:
+        db.session.commit()
+
+
 def current_organization():
     try:
         if not current_user.is_authenticated:
@@ -1670,11 +1697,62 @@ def tenant_user_ids():
     ]
 
 
+def organization_all_user_ids(organization=None):
+    organization = organization or current_organization()
+    if not organization:
+        return []
+    return [
+        user_id for (user_id,) in db.session.query(User.id)
+        .filter(User.organization_id == organization.id)
+        .all()
+    ]
+
+
+def organization_owned_query(model, organization=None):
+    organization = organization or current_organization()
+    if not organization:
+        return model.query.filter(model.id.is_(None))
+
+    organization_column = getattr(model, 'organization_id', None)
+    user_column = getattr(model, 'user_id', None)
+    if organization_column is None:
+        return model.query.filter(user_column.in_(organization_all_user_ids(organization)))
+
+    legacy_user_ids = organization_all_user_ids(organization)
+    conditions = [organization_column == organization.id]
+    if user_column is not None and legacy_user_ids:
+        conditions.append(
+            organization_column.is_(None) & user_column.in_(legacy_user_ids)
+        )
+    return model.query.filter(or_(*conditions))
+
+
+def assign_current_organization(record):
+    organization = current_organization()
+    if not organization:
+        raise RuntimeError('Firma bilgisi bulunamadı.')
+    if hasattr(record, 'organization_id'):
+        record.organization_id = organization.id
+    return record
+
+
 def belongs_to_current_tenant(record):
-    return bool(record and getattr(record, 'user_id', None) in tenant_user_ids())
+    if not record:
+        return False
+
+    organization = current_organization()
+    if not organization:
+        return False
+
+    record_organization_id = getattr(record, 'organization_id', None)
+    if record_organization_id is not None:
+        return record_organization_id == organization.id
+    return getattr(record, 'user_id', None) in organization_all_user_ids(organization)
 
 
 def tenant_query(model):
+    if hasattr(model, 'organization_id'):
+        return organization_owned_query(model)
     return model.query.filter(model.user_id.in_(tenant_user_ids()))
 
 
@@ -3554,29 +3632,27 @@ def module_for_endpoint(endpoint):
 
 
 def tenant_categories_with_counts():
-    tenant_ids = tenant_user_ids()
     categories = {}
-    for product in Urun.query.filter(Urun.user_id.in_(tenant_ids)).all():
+    for product in tenant_query(Urun).all():
         name = (product.kategori or '').strip()
         if name:
             categories[name] = categories.get(name, 0) + 1
 
-    for category in Category.query.filter(Category.user_id.in_(tenant_ids)).order_by(Category.name).all():
+    for category in tenant_query(Category).order_by(Category.name).all():
         categories.setdefault(category.name, 0)
 
     return dict(sorted(categories.items(), key=lambda item: item[0].lower()))
 
 
 def tenant_warehouses_with_metrics():
-    tenant_ids = tenant_user_ids()
     warehouses = {}
-    for product in Urun.query.filter(Urun.user_id.in_(tenant_ids)).all():
+    for product in tenant_query(Urun).all():
         name = normalize_warehouse_name(product.depo_adi)
         warehouses.setdefault(name, {'product_count': 0, 'stock_quantity': 0.0})
         warehouses[name]['product_count'] += 1
         warehouses[name]['stock_quantity'] += float(product.stok_miktari or 0)
 
-    for warehouse in Warehouse.query.filter(Warehouse.user_id.in_(tenant_ids)).order_by(Warehouse.name).all():
+    for warehouse in tenant_query(Warehouse).order_by(Warehouse.name).all():
         warehouses.setdefault(warehouse.name, {'product_count': 0, 'stock_quantity': 0.0})
 
     return dict(sorted(warehouses.items(), key=lambda item: item[0].lower()))
@@ -3689,11 +3765,20 @@ def ensure_database_schema():
             audit_columns = [col['name'] for col in inspector.get_columns('audit_log')]
             if 'details' not in audit_columns:
                 connection.execute(text('ALTER TABLE audit_log ADD COLUMN details TEXT'))
+        for table_name in ('urun', 'stok_hareket', 'category', 'warehouse'):
+            if table_name not in inspector.get_table_names():
+                continue
+            table_columns = [col['name'] for col in inspector.get_columns(table_name)]
+            if 'organization_id' not in table_columns:
+                connection.execute(text(
+                    f'ALTER TABLE {table_name} ADD COLUMN organization_id INTEGER'
+                ))
     finally:
         connection.commit()
         connection.close()
 
     backfill_user_organizations()
+    backfill_inventory_organizations()
     bootstrap_platform_admins()
 
 
@@ -4341,9 +4426,11 @@ def normalize_warehouse_name(value):
 
 def ensure_warehouse(name):
     warehouse_name = normalize_warehouse_name(name)
-    warehouse = Warehouse.query.filter_by(user_id=current_user.id, name=warehouse_name).first()
+    warehouse = tenant_query(Warehouse).filter_by(name=warehouse_name).first()
     if not warehouse:
-        warehouse = Warehouse(name=warehouse_name, user_id=current_user.id)
+        warehouse = assign_current_organization(
+            Warehouse(name=warehouse_name, user_id=current_user.id)
+        )
         db.session.add(warehouse)
         db.session.flush()
     return warehouse
@@ -4373,7 +4460,7 @@ def get_or_create_product_in_warehouse(source_product, warehouse_name):
     if existing_product:
         return existing_product
 
-    new_product = Urun(
+    new_product = assign_current_organization(Urun(
         barkod=source_product.barkod,
         urun_adi=source_product.urun_adi,
         kategori=source_product.kategori,
@@ -4384,7 +4471,7 @@ def get_or_create_product_in_warehouse(source_product, warehouse_name):
         kritik_stok=source_product.kritik_stok,
         depo_adi=warehouse_name,
         user_id=current_user.id
-    )
+    ))
     db.session.add(new_product)
     db.session.flush()
     return new_product
@@ -4395,7 +4482,7 @@ def record_stock_movement(urun, movement_type, quantity, warehouse_name, old_sto
     quantity = quantity_value(quantity)
     old_stock = quantity_value(old_stock)
     new_stock = quantity_value(new_stock)
-    movement = StokHareket(
+    movement = assign_current_organization(StokHareket(
         urun_id=urun.id,
         user_id=current_user.id,
         islem_tipi=movement_type,
@@ -4407,7 +4494,7 @@ def record_stock_movement(urun, movement_type, quantity, warehouse_name, old_sto
         cari_id=cari_id,
         ip_adresi=request.remote_addr,
         user_agent=request.headers.get('User-Agent', '')
-    )
+    ))
     db.session.add(movement)
     return movement
 
@@ -5009,8 +5096,7 @@ def assistant_product_candidates(term, limit=5):
     for search_term in dict.fromkeys(search_terms):
         search = f'%{search_term}%'
         filters.extend((Urun.urun_adi.ilike(search), Urun.barkod.ilike(search)))
-    products = Urun.query.filter(
-        Urun.user_id.in_(tenant_ids),
+    products = tenant_query(Urun).filter(
         or_(*filters)
     ).order_by(Urun.urun_adi.asc()).limit(limit).all()
     return [{
@@ -5101,8 +5187,7 @@ def assistant_today_summary():
         CashTransaction.referans_tip.in_(('cari_tahsilat', 'assistant_tahsilat'))
     ).scalar() or 0
 
-    critical_count = Urun.query.filter(
-        Urun.user_id.in_(tenant_ids),
+    critical_count = tenant_query(Urun).filter(
         func.coalesce(Urun.stok_miktari, 0) <= func.coalesce(Urun.kritik_stok, 0)
     ).count()
 
@@ -5134,8 +5219,7 @@ def assistant_critical_stock_items(limit=8):
     tenant_ids = assistant_tenant_ids()
     if not tenant_ids:
         return []
-    products = Urun.query.filter(
-        Urun.user_id.in_(tenant_ids),
+    products = tenant_query(Urun).filter(
         func.coalesce(Urun.stok_miktari, 0) <= func.coalesce(Urun.kritik_stok, 0)
     ).order_by(
         func.coalesce(Urun.stok_miktari, 0).asc(),
@@ -5227,8 +5311,7 @@ def assistant_business_priorities():
         return {'status': 'clear', 'items': []}
 
     items = []
-    out_of_stock_count = Urun.query.filter(
-        Urun.user_id.in_(tenant_ids),
+    out_of_stock_count = tenant_query(Urun).filter(
         func.coalesce(Urun.stok_miktari, 0) <= 0
     ).count()
     if out_of_stock_count:
@@ -5241,8 +5324,7 @@ def assistant_business_priorities():
             'action': 'Ürünleri Gör',
         })
 
-    critical_stock_count = Urun.query.filter(
-        Urun.user_id.in_(tenant_ids),
+    critical_stock_count = tenant_query(Urun).filter(
         func.coalesce(Urun.stok_miktari, 0) > 0,
         func.coalesce(Urun.stok_miktari, 0) <= func.coalesce(Urun.kritik_stok, 0)
     ).count()
@@ -5722,8 +5804,7 @@ def api_notifications():
     tenant_ids = tenant_user_ids()
 
     if preferences.get('notify_stock_alerts', True):
-        critical_products = Urun.query.filter(
-            Urun.user_id.in_(tenant_ids),
+        critical_products = tenant_query(Urun).filter(
             Urun.stok_miktari <= Urun.kritik_stok
         ).order_by(Urun.stok_miktari.asc()).limit(5).all()
         if critical_products:
@@ -7182,7 +7263,7 @@ def dashboard():
 
     # Kullanıcı istatistikleri
     tenant_ids = tenant_user_ids()
-    urunler = Urun.query.filter(Urun.user_id.in_(tenant_ids)).all()
+    urunler = tenant_query(Urun).all()
     cariler = Cari.query.filter(Cari.user_id.in_(tenant_ids)).all()
     satislar = Satis.query.filter(Satis.user_id.in_(tenant_ids)).all()
     aktif_satislar = [s for s in satislar if s.durum != 'iptal']
@@ -7405,9 +7486,8 @@ def dashboard():
             'tone': 'primary',
             'url': url_for('cariler'),
         })
-    son_stok_hareketleri = StokHareket.query.filter(
-        StokHareket.user_id.in_(tenant_ids),
-    ).order_by(StokHareket.tarih.desc()).limit(3).all()
+    son_stok_hareketleri = tenant_query(StokHareket) \
+        .order_by(StokHareket.tarih.desc()).limit(3).all()
     for hareket in son_stok_hareketleri:
         son_hareketler.append({
             'timestamp': hareket.tarih,
@@ -7485,9 +7565,8 @@ def urunler():
     search_query = request.args.get('search', '').strip()
     selected_category = request.args.get('category', 'all').strip() or 'all'
     selected_stock_status = request.args.get('stock_status', 'all').strip() or 'all'
-    tenant_ids = tenant_user_ids()
-    all_products = Urun.query.filter(Urun.user_id.in_(tenant_ids)).all()
-    urunler_query = Urun.query.filter(Urun.user_id.in_(tenant_ids))
+    all_products = tenant_query(Urun).all()
+    urunler_query = tenant_query(Urun)
 
     # Arama sorgusu
     if search_query:
@@ -7544,7 +7623,7 @@ def urun_ekle():
         depo_adi = normalize_warehouse_name(request.form.get('yeni_depo_adi') or request.form.get('depo_adi'))
         ensure_warehouse(depo_adi)
 
-        yeni_urun = Urun(
+        yeni_urun = assign_current_organization(Urun(
             barkod=request.form.get('barkod'),
             urun_adi=request.form.get('urun_adi'),
             kategori=request.form.get('kategori'),
@@ -7555,7 +7634,7 @@ def urun_ekle():
             kritik_stok=quantity_value(request.form.get('kritik_stok', 10)),
             depo_adi=depo_adi,
             user_id=current_user.id
-        )
+        ))
 
         db.session.add(yeni_urun)
         db.session.commit()
@@ -7602,10 +7681,12 @@ def urun_demo_veri_ekle():
         ensure_warehouse(depot_name)
 
     for index, (name, category, unit, purchase_price, sale_price, stock, critical_stock) in enumerate(demo_products, start=1):
-        if not Category.query.filter_by(user_id=current_user.id, name=category).first():
-            db.session.add(Category(name=category, user_id=current_user.id))
+        if not tenant_query(Category).filter_by(name=category).first():
+            db.session.add(assign_current_organization(
+                Category(name=category, user_id=current_user.id)
+            ))
 
-        db.session.add(Urun(
+        db.session.add(assign_current_organization(Urun(
             barkod=f'DEMO-{timestamp}-{index:02d}',
             urun_adi=name,
             kategori=category,
@@ -7616,7 +7697,7 @@ def urun_demo_veri_ekle():
             kritik_stok=critical_stock,
             depo_adi=demo_depots[(index - 1) % len(demo_depots)],
             user_id=current_user.id,
-        ))
+        )))
         created_count += 1
 
     db.session.commit()
@@ -8079,8 +8160,8 @@ def pos():
     selected_category = request.args.get('category', 'all').strip() or 'all'
     selected_stock_status = request.args.get('stock', 'all').strip() or 'all'
 
-    all_products = Urun.query.filter(Urun.user_id.in_(tenant_ids)).all()
-    urunler_query = Urun.query.filter(Urun.user_id.in_(tenant_ids))
+    all_products = tenant_query(Urun).all()
+    urunler_query = tenant_query(Urun)
 
     if search_query:
         urunler_query = urunler_query.filter(
@@ -9110,7 +9191,7 @@ def teklif_ekle():
 
     tenant_ids = tenant_user_ids()
     cariler = Cari.query.filter(Cari.user_id.in_(tenant_ids)).all()
-    urunler = Urun.query.filter(Urun.user_id.in_(tenant_ids)).all()
+    urunler = tenant_query(Urun).all()
     selected_cari_id = request.args.get('cari_id', type=int)
     if selected_cari_id and not any(cari.id == selected_cari_id for cari in cariler):
         selected_cari_id = None
@@ -9188,7 +9269,7 @@ def teklif_duzenle(id):
 
     tenant_ids = tenant_user_ids()
     cariler = Cari.query.filter(Cari.user_id.in_(tenant_ids)).all()
-    urunler = Urun.query.filter(Urun.user_id.in_(tenant_ids)).all()
+    urunler = tenant_query(Urun).all()
     from datetime import date
     bugun = date.today().strftime('%Y-%m-%d')
     return render_template('teklif_form.html', teklif=teklif, cariler=cariler, urunler=urunler,
@@ -9237,7 +9318,7 @@ def teklif_durum_guncelle(id):
 @login_required
 def raporlar():
     tenant_ids = tenant_user_ids()
-    urunler = Urun.query.filter(Urun.user_id.in_(tenant_ids)).all()
+    urunler = tenant_query(Urun).all()
     cariler = Cari.query.filter(Cari.user_id.in_(tenant_ids)).all()
     satislar = Satis.query.filter(Satis.user_id.in_(tenant_ids)).all()
     nakit_hareketleri = CashTransaction.query.filter(CashTransaction.user_id.in_(tenant_ids)).all()
@@ -9320,7 +9401,7 @@ def raporlar():
     en_cok_satan_map = {}
     for satis in aktif_satislar:
         for kalem in satis.kalemler:
-            urun = Urun.query.filter(Urun.id == kalem.urun_id, Urun.user_id.in_(tenant_ids)).first()
+            urun = tenant_query(Urun).filter(Urun.id == kalem.urun_id).first()
             if urun:
                 row = en_cok_satan_map.setdefault(urun.id, {
                     'urun_adi': urun.urun_adi,
@@ -9988,7 +10069,7 @@ def organization_usage(organization):
 
     return {
         'users': len(user_ids),
-        'products': Urun.query.filter(Urun.user_id.in_(user_ids)).count(),
+        'products': organization_owned_query(Urun, organization).count(),
         'customers': Cari.query.filter(Cari.user_id.in_(user_ids)).count(),
         'sales': Satis.query.filter(Satis.user_id.in_(user_ids)).count(),
         'quotes': Teklif.query.filter(Teklif.user_id.in_(user_ids)).count(),
@@ -10040,15 +10121,15 @@ def reset_organization_operational_data(organization):
     delete_records('satislar', Satis.query.filter(Satis.user_id.in_(user_ids)))
     delete_records('teklifler', Teklif.query.filter(Teklif.user_id.in_(user_ids)))
     delete_records('cari_hareketleri', CariHareket.query.filter(CariHareket.user_id.in_(user_ids)))
-    delete_records('stok_hareketleri', StokHareket.query.filter(StokHareket.user_id.in_(user_ids)))
+    delete_records('stok_hareketleri', organization_owned_query(StokHareket, organization))
     delete_records('nakit_hareketleri', CashTransaction.query.filter(CashTransaction.user_id.in_(user_ids)))
     if account_ids:
         delete_records('mutabakatlar', AccountReconciliation.query.filter(AccountReconciliation.account_id.in_(account_ids)))
     delete_records('hesaplar', Account.query.filter(Account.user_id.in_(user_ids)))
-    delete_records('urunler', Urun.query.filter(Urun.user_id.in_(user_ids)))
+    delete_records('urunler', organization_owned_query(Urun, organization))
     delete_records('cariler', Cari.query.filter(Cari.user_id.in_(user_ids)))
-    delete_records('kategoriler', Category.query.filter(Category.user_id.in_(user_ids)))
-    delete_records('depolar', Warehouse.query.filter(Warehouse.user_id.in_(user_ids)))
+    delete_records('kategoriler', organization_owned_query(Category, organization))
+    delete_records('depolar', organization_owned_query(Warehouse, organization))
     delete_records('personeller', Personel.query.filter(Personel.user_id.in_(user_ids)))
     delete_records('departmanlar', Departman.query.filter(Departman.user_id.in_(user_ids)))
     delete_records('destek_talepleri', SupportTicket.query.filter_by(organization_id=organization.id))
@@ -11530,7 +11611,7 @@ def admin_panel():
 
     # Tenant istatistikleri
     total_users = 1
-    total_products = Urun.query.filter_by(user_id=current_user.id).count()
+    total_products = tenant_query(Urun).count()
     total_sales = Satis.query.filter_by(user_id=current_user.id).count()
     total_quotes = Teklif.query.filter_by(user_id=current_user.id).count()
 
@@ -11658,7 +11739,7 @@ def create_backup():
                     'satis_fiyati': urun.satis_fiyati,
                     'depo_adi': urun.depo_adi
                 }
-                for urun in Urun.query.filter_by(user_id=current_user.id).all()
+                for urun in tenant_query(Urun).all()
             ],
             'cariler': [
                 {
@@ -11759,7 +11840,7 @@ def ayarlar():
     from flask import session
 
     # Kategorileri ?ek - kullan?c?n?n Ürünlerindeki benzersiz kategoriler
-    urunler = Urun.query.filter_by(user_id=current_user.id).all()
+    urunler = tenant_query(Urun).all()
     kategori_sayim = {}
     for urun in urunler:
         kategori = urun.kategori or 'Kategorisiz'
@@ -12461,11 +12542,13 @@ def manage_categories():
         if not category_name:
             return jsonify({'success': False, 'message': 'Kategori adı gerekli'})
 
-        existing = Category.query.filter_by(user_id=current_user.id, name=category_name).first()
+        existing = tenant_query(Category).filter_by(name=category_name).first()
         if existing:
             return jsonify({'success': False, 'message': 'Kategori zaten mevcut'})
 
-        kategoriyeni = Category(name=category_name, user_id=current_user.id)
+        kategoriyeni = assign_current_organization(
+            Category(name=category_name, user_id=current_user.id)
+        )
         db.session.add(kategoriyeni)
         db.session.commit()
         return jsonify({'success': True, 'message': 'Kategori eklendi'})
@@ -12481,11 +12564,11 @@ def manage_categories():
         if old_name == new_name:
             return jsonify({'success': True, 'message': 'Kategori adı zaten aynı'})
 
-        kategori = Category.query.filter_by(user_id=current_user.id, name=old_name).first()
+        kategori = tenant_query(Category).filter_by(name=old_name).first()
         if not kategori:
             return jsonify({'success': False, 'message': 'Kategori bulunamadı'})
 
-        if Category.query.filter_by(user_id=current_user.id, name=new_name).first():
+        if tenant_query(Category).filter_by(name=new_name).first():
             return jsonify({'success': False, 'message': 'Yeni kategori adı zaten mevcut'})
 
         kategori.name = new_name
@@ -12508,7 +12591,7 @@ def manage_categories():
                             'message': f'Kategoride {urun_sayisi} Ürün var. '
                                        'Önce Ürünleri silin veya başka kategoriye taşıyın.'})
 
-        kategori = Category.query.filter_by(user_id=current_user.id, name=category_name).first()
+        kategori = tenant_query(Category).filter_by(name=category_name).first()
         if not kategori:
             return jsonify({'success': False, 'message': 'Kategori bulunamadı'})
 
@@ -12533,11 +12616,13 @@ def manage_warehouses():
             return jsonify({'success': False, 'message': 'Depo adi gerekli'})
         depot_name = normalize_warehouse_name(data.get('name'))
 
-        existing = Warehouse.query.filter_by(user_id=current_user.id, name=depot_name).first()
+        existing = tenant_query(Warehouse).filter_by(name=depot_name).first()
         if existing:
             return jsonify({'success': False, 'message': 'Depo zaten mevcut'})
 
-        yeni_depo = Warehouse(name=depot_name, user_id=current_user.id)
+        yeni_depo = assign_current_organization(
+            Warehouse(name=depot_name, user_id=current_user.id)
+        )
         db.session.add(yeni_depo)
         db.session.commit()
         return jsonify({'success': True, 'message': 'Depo eklendi'})
@@ -12552,11 +12637,11 @@ def manage_warehouses():
         if old_name == new_name:
             return jsonify({'success': True, 'message': 'Depo adı zaten aynı'})
 
-        depo = Warehouse.query.filter_by(user_id=current_user.id, name=old_name).first()
+        depo = tenant_query(Warehouse).filter_by(name=old_name).first()
         if not depo:
             return jsonify({'success': False, 'message': 'Depo bulunamadı'})
 
-        if Warehouse.query.filter_by(user_id=current_user.id, name=new_name).first():
+        if tenant_query(Warehouse).filter_by(name=new_name).first():
             return jsonify({'success': False, 'message': 'Yeni depo adı zaten mevcut'})
 
         depo.name = new_name
@@ -12577,7 +12662,7 @@ def manage_warehouses():
         if urun_sayisi > 0:
             return jsonify({'success': False, 'message': f'Depoda {urun_sayisi} Ürün var. Önce Ürünleri taşıyın.'})
 
-        depo = Warehouse.query.filter_by(user_id=current_user.id, name=depot_name).first()
+        depo = tenant_query(Warehouse).filter_by(name=depot_name).first()
         if not depo:
             return jsonify({'success': False, 'message': 'Depo bulunamadı'})
 
@@ -12711,7 +12796,7 @@ def settings_backup():
         }
 
         # Ürünleri ekle
-        urunler = Urun.query.filter_by(user_id=current_user.id).all()
+        urunler = tenant_query(Urun).all()
         for urun in urunler:
             backup_data['urunler'].append({
                 'id': urun.id,
@@ -12875,7 +12960,7 @@ def restore_backup():
 
         old_to_new_urun = {}
         for urun_data in backup_data.get('urunler', []):
-            urun = Urun(
+            urun = assign_current_organization(Urun(
                 barkod=urun_data.get('barkod'),
                 urun_adi=urun_data.get('urun_adi'),
                 kategori=urun_data.get('kategori'),
@@ -12886,7 +12971,7 @@ def restore_backup():
                 kritik_stok=urun_data.get('kritik_stok') or 0,
                 depo_adi=urun_data.get('depo_adi'),
                 user_id=current_user.id
-            )
+            ))
             db.session.add(urun)
             db.session.flush()
             if urun_data.get('id') is not None:
@@ -13002,7 +13087,7 @@ def security_audit():
 @app.route('/api/barkod/<barkod>')
 @login_required
 def barkod_ara(barkod):
-    urun = Urun.query.filter_by(barkod=barkod, user_id=current_user.id).first()
+    urun = tenant_query(Urun).filter_by(barkod=barkod).first()
     if urun:
         return jsonify({
             'success': True,
@@ -13241,7 +13326,7 @@ def api_pos_create_product():
             })
 
         ensure_warehouse(warehouse)
-        product = Urun(
+        product = assign_current_organization(Urun(
             barkod=barcode,
             urun_adi=product_name,
             kategori=category,
@@ -13252,7 +13337,7 @@ def api_pos_create_product():
             kritik_stok=critical_stock,
             depo_adi=warehouse,
             user_id=current_user.id
-        )
+        ))
         db.session.add(product)
         db.session.commit()
 
@@ -13304,16 +13389,14 @@ def _find_import_product(row, tenant_ids):
     urun_adi = _match_stock_import_value(row, *STOCK_IMPORT_PRODUCT_NAME_KEYS)
 
     if barkod:
-        product = Urun.query.filter(
-            Urun.user_id.in_(tenant_ids),
+        product = tenant_query(Urun).filter(
             Urun.barkod == barkod,
         ).order_by(Urun.id.asc()).first()
         if product:
             return product
 
     if urun_adi:
-        return Urun.query.filter(
-            Urun.user_id.in_(tenant_ids),
+        return tenant_query(Urun).filter(
             func.lower(Urun.urun_adi) == urun_adi.lower(),
         ).order_by(Urun.id.asc()).first()
 
@@ -13338,7 +13421,7 @@ def _create_product_from_import_row(row):
         raise ValueError('Ürün adı boş bırakılamaz.')
 
     ensure_warehouse(depo)
-    product = Urun(
+    product = assign_current_organization(Urun(
         barkod=barkod,
         urun_adi=urun_adi,
         kategori=kategori,
@@ -13349,7 +13432,7 @@ def _create_product_from_import_row(row):
         kritik_stok=kritik_stok,
         depo_adi=depo,
         user_id=current_user.id,
-    )
+    ))
     db.session.add(product)
     db.session.flush()
     return product
@@ -13908,8 +13991,8 @@ def stok_giris():
     selected_category = request.args.get('category', 'all').strip() or 'all'
     selected_stock_status = request.args.get('stock', 'all').strip() or 'all'
 
-    all_products = Urun.query.filter(Urun.user_id.in_(tenant_ids)).all()
-    urunler_query = Urun.query.filter(Urun.user_id.in_(tenant_ids))
+    all_products = tenant_query(Urun).all()
+    urunler_query = tenant_query(Urun)
 
     if search_query:
         urunler_query = urunler_query.filter(
