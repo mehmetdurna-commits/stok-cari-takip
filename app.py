@@ -735,6 +735,7 @@ class SubscriptionPayment(db.Model):
 
 class CashTransaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=True, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=True)
     cari_id = db.Column(db.Integer, db.ForeignKey('cari.id'), nullable=True)
@@ -751,10 +752,12 @@ class CashTransaction(db.Model):
     user = db.relationship('User', backref='nakit_hareketleri')
     cari = db.relationship('Cari', backref='nakit_hareketleri')
     account = db.relationship('Account', backref='transactions')
+    organization = db.relationship('Organization', foreign_keys=[organization_id], backref='cash_transactions')
 
 
 class Account(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=True, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     type = db.Column(db.String(20), nullable=False, default='cash')  # cash, bank, pos
     name = db.Column(db.String(120), nullable=False)
@@ -772,10 +775,12 @@ class Account(db.Model):
     )
 
     user = db.relationship('User', backref='accounts')
+    organization = db.relationship('Organization', foreign_keys=[organization_id], backref='accounts')
 
 
 class AccountReconciliation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=True, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
     recon_date = db.Column(db.Date, nullable=False)
@@ -789,6 +794,7 @@ class AccountReconciliation(db.Model):
 
     user = db.relationship('User', backref='account_reconciliations')
     account = db.relationship('Account', backref='reconciliations')
+    organization = db.relationship('Organization', foreign_keys=[organization_id], backref='account_reconciliations')
 
 
 class BackupLog(db.Model):
@@ -1689,6 +1695,45 @@ def backfill_commercial_organizations():
                 continue
             record.organization_id = user.organization_id
             changed = True
+    if changed:
+        db.session.commit()
+
+
+def backfill_financial_organizations():
+    changed = False
+    for account in Account.query.filter(Account.organization_id.is_(None)).all():
+        user = db.session.get(User, account.user_id)
+        if not user or not user.organization_id:
+            continue
+        account.organization_id = user.organization_id
+        changed = True
+
+    for transaction in CashTransaction.query.filter(CashTransaction.organization_id.is_(None)).all():
+        account = db.session.get(Account, transaction.account_id) if transaction.account_id else None
+        user = db.session.get(User, transaction.user_id)
+        organization_id = (
+            getattr(account, 'organization_id', None)
+            or getattr(user, 'organization_id', None)
+        )
+        if not organization_id:
+            continue
+        transaction.organization_id = organization_id
+        changed = True
+
+    for reconciliation in AccountReconciliation.query.filter(
+        AccountReconciliation.organization_id.is_(None)
+    ).all():
+        account = db.session.get(Account, reconciliation.account_id)
+        user = db.session.get(User, reconciliation.user_id)
+        organization_id = (
+            getattr(account, 'organization_id', None)
+            or getattr(user, 'organization_id', None)
+        )
+        if not organization_id:
+            continue
+        reconciliation.organization_id = organization_id
+        changed = True
+
     if changed:
         db.session.commit()
 
@@ -3824,6 +3869,9 @@ def ensure_database_schema():
             'teklif',
             'iade',
             'cari_hareket',
+            'account',
+            'cash_transaction',
+            'account_reconciliation',
         ):
             if table_name not in inspector.get_table_names():
                 continue
@@ -3839,6 +3887,7 @@ def ensure_database_schema():
     backfill_user_organizations()
     backfill_inventory_organizations()
     backfill_commercial_organizations()
+    backfill_financial_organizations()
     bootstrap_platform_admins()
 
 
@@ -4432,13 +4481,40 @@ def normalize_payment_method(value):
 
 
 def ensure_default_accounts_for_user(user_id):
-    existing = Account.query.filter_by(user_id=user_id).all()
+    user = db.session.get(User, user_id)
+    organization = ensure_user_organization(user) if user else None
+    existing = (
+        organization_owned_query(Account, organization).all()
+        if organization
+        else Account.query.filter_by(user_id=user_id).all()
+    )
     if existing:
         return existing
     defaults = [
-        Account(user_id=user_id, type='cash', name='Nakit Kasa', currency='TRY', opening_balance=0),
-        Account(user_id=user_id, type='bank', name='Banka Hesabi', currency='TRY', opening_balance=0),
-        Account(user_id=user_id, type='pos', name='POS', currency='TRY', opening_balance=0),
+        Account(
+            organization_id=organization.id if organization else None,
+            user_id=user_id,
+            type='cash',
+            name='Nakit Kasa',
+            currency='TRY',
+            opening_balance=0,
+        ),
+        Account(
+            organization_id=organization.id if organization else None,
+            user_id=user_id,
+            type='bank',
+            name='Banka Hesabi',
+            currency='TRY',
+            opening_balance=0,
+        ),
+        Account(
+            organization_id=organization.id if organization else None,
+            user_id=user_id,
+            type='pos',
+            name='POS',
+            currency='TRY',
+            opening_balance=0,
+        ),
     ]
     db.session.add_all(defaults)
     db.session.commit()
@@ -4596,7 +4672,11 @@ def create_cash_transaction(cari, tutar, islem_tipi='giris', odeme_turu='Nakit',
     if not account_id and current_user.is_authenticated:
         account = default_account_for_payment_method(current_user.id, odeme_turu)
         account_id = account.id if account else None
-    transaction = CashTransaction(
+    elif account_id:
+        account = db.session.get(Account, account_id)
+        if not belongs_to_current_tenant(account):
+            raise ValueError('Seçilen finans hesabı bu firmaya ait değil.')
+    transaction = assign_current_organization(CashTransaction(
         user_id=current_user.id,
         account_id=account_id,
         cari_id=cari.id if cari else None,
@@ -4609,7 +4689,7 @@ def create_cash_transaction(cari, tutar, islem_tipi='giris', odeme_turu='Nakit',
         referans_tip=referans_tip,
         ip_adresi=request.remote_addr,
         user_agent=request.headers.get('User-Agent', '')
-    )
+    ))
     db.session.add(transaction)
     return transaction
 
@@ -5227,8 +5307,7 @@ def assistant_today_summary():
     ).order_by(Satis.tarih.desc()).all()
     sales_total = sum(float(sale.genel_toplam or 0) for sale in sales)
 
-    sale_cash_transactions = CashTransaction.query.filter(
-        CashTransaction.user_id.in_(tenant_ids),
+    sale_cash_transactions = tenant_query(CashTransaction).filter(
         CashTransaction.tarih >= today_start,
         CashTransaction.tarih < today_end,
         CashTransaction.islem_tipi == 'giris',
@@ -5239,8 +5318,9 @@ def assistant_today_summary():
         key = (transaction.odeme_turu or 'Belirtilmedi').strip() or 'Belirtilmedi'
         payment_totals[key] = payment_totals.get(key, 0) + float(transaction.tutar or 0)
 
-    collections_total = db.session.query(func.coalesce(func.sum(CashTransaction.tutar), 0)).filter(
-        CashTransaction.user_id.in_(tenant_ids),
+    collections_total = tenant_query(CashTransaction).with_entities(
+        func.coalesce(func.sum(CashTransaction.tutar), 0)
+    ).filter(
         CashTransaction.tarih >= today_start,
         CashTransaction.tarih < today_end,
         CashTransaction.islem_tipi == 'giris',
@@ -5326,22 +5406,20 @@ def assistant_account_overview():
     if not tenant_ids:
         return empty
 
-    accounts = Account.query.filter(
-        Account.user_id.in_(tenant_ids),
+    accounts = tenant_query(Account).filter(
         Account.active.is_(True)
     ).order_by(Account.type.asc(), Account.name.asc()).all()
     if not accounts:
         return empty
 
     account_ids = [account.id for account in accounts]
-    movement_rows = db.session.query(
+    movement_rows = tenant_query(CashTransaction).with_entities(
         CashTransaction.account_id,
         func.coalesce(func.sum(case(
             (CashTransaction.islem_tipi == 'giris', CashTransaction.tutar),
             else_=-CashTransaction.tutar
         )), 0)
     ).filter(
-        CashTransaction.user_id.in_(tenant_ids),
         CashTransaction.account_id.in_(account_ids)
     ).group_by(CashTransaction.account_id).all()
     movement_totals = {account_id: float(total or 0) for account_id, total in movement_rows}
@@ -5457,16 +5535,13 @@ def assistant_default_account(account_type, ensure=False):
     account_type = account_type if account_type in {'cash', 'bank'} else 'cash'
     if ensure:
         ensure_default_accounts_for_user(current_user.id)
-    tenant_ids = assistant_tenant_ids()
-    account = Account.query.filter(
-        Account.user_id == current_user.id,
+    account = tenant_query(Account).filter(
         Account.type == account_type,
         Account.active.is_(True)
     ).order_by(Account.id.asc()).first()
     if account:
         return account
-    return Account.query.filter(
-        Account.user_id.in_(tenant_ids),
+    return tenant_query(Account).filter(
         Account.type == account_type,
         Account.active.is_(True)
     ).order_by(Account.id.asc()).first()
@@ -5738,15 +5813,15 @@ def api_assistant_execute():
     account = db.session.get(Account, int(account_id)) if account_id else None
     if not account:
         account = assistant_default_account(action.get('account_type'), ensure=True)
-    if not account or account.user_id not in assistant_tenant_ids() or not account.active:
+    if not account or not belongs_to_current_tenant(account) or not account.active:
         return jsonify({'success': False, 'message': 'Uygun aktif kasa/banka hesabı bulunamadı.'}), 400
     if account.type == 'pos':
         return jsonify({'success': False, 'message': 'POS hesabı için doğrudan giriş/çıkış yapılamaz. POS aktarımı için Ön Muhasebe ekranını kullanın.'}), 400
 
     odeme_turu = {'cash': 'Nakit', 'bank': 'Banka'}.get(account.type, 'Nakit')
     description = (action.get('description') or assistant_field_value(result, 'Açıklama') or 'Esstok Konuş para hareketi').strip()
-    tx = CashTransaction(
-        user_id=account.user_id,
+    tx = assign_current_organization(CashTransaction(
+        user_id=current_user.id,
         account_id=account.id,
         cari_id=None,
         tarih=utc_now(),
@@ -5757,7 +5832,7 @@ def api_assistant_execute():
         referans_tip='assistant',
         ip_adresi=request.remote_addr,
         user_agent=(request.user_agent.string or '')[:500],
-    )
+    ))
     db.session.add(tx)
     db.session.flush()
     platform_audit(
@@ -6128,9 +6203,8 @@ def calculate_bulk_payroll_summary(period=None):
 
 def payroll_payment_transactions(period):
     return (
-        CashTransaction.query
+        tenant_query(CashTransaction)
         .filter(
-            CashTransaction.user_id == current_user.id,
             CashTransaction.referans_tip == 'maas_odeme',
             CashTransaction.islem_tipi == 'cikis',
             CashTransaction.aciklama.ilike(f'{period}%'),
@@ -6145,9 +6219,8 @@ def paid_cash_prime_ids(user_id, prime_ids):
     if not prime_ids:
         return set()
     rows = (
-        CashTransaction.query
+        tenant_query(CashTransaction)
         .filter(
-            CashTransaction.user_id == user_id,
             CashTransaction.referans_tip == 'personel_prim',
             CashTransaction.referans_id.in_(prime_ids),
             CashTransaction.islem_tipi == 'cikis',
@@ -6162,9 +6235,8 @@ def personel_finance_history(personel):
         return []
 
     salary_transactions = (
-        CashTransaction.query
+        tenant_query(CashTransaction)
         .filter(
-            CashTransaction.user_id == personel.user_id,
             CashTransaction.referans_tip == 'maas_odeme',
             CashTransaction.islem_tipi == 'cikis',
         )
@@ -6186,10 +6258,9 @@ def personel_finance_history(personel):
             related_salary_transactions.append(transaction)
 
     advance_transactions = (
-        CashTransaction.query
+        tenant_query(CashTransaction)
         .join(Avans, CashTransaction.referans_id == Avans.id)
         .filter(
-            CashTransaction.user_id == personel.user_id,
             CashTransaction.referans_tip == 'personel_avans',
             CashTransaction.islem_tipi == 'cikis',
             Avans.personel_id == personel.id,
@@ -6197,10 +6268,9 @@ def personel_finance_history(personel):
         .all()
     )
     prime_transactions = (
-        CashTransaction.query
+        tenant_query(CashTransaction)
         .join(Prim, CashTransaction.referans_id == Prim.id)
         .filter(
-            CashTransaction.user_id == personel.user_id,
             CashTransaction.referans_tip == 'personel_prim',
             CashTransaction.islem_tipi == 'cikis',
             Prim.personel_id == personel.id,
@@ -6552,7 +6622,7 @@ def toplu_maas_odeme():
     account = None
     if account_id_raw and str(account_id_raw).isdigit():
         account = db.session.get(Account, int(account_id_raw))
-    if not account or account.user_id != current_user.id or not account.active:
+    if not account or not belongs_to_current_tenant(account) or not account.active:
         flash('Maaş Ödemesi için geçerli bir kasa/banka hesabı seçin.', 'error')
         return redirect(url_for('toplu_maas_bordrosu', period=payroll_period))
 
@@ -6589,7 +6659,7 @@ def toplu_maas_odeme():
             payslip.odeme_tarihi = paid_at
 
         db.session.flush()
-        transaction = CashTransaction(
+        transaction = assign_current_organization(CashTransaction(
             user_id=current_user.id,
             account_id=account.id,
             tarih=paid_at,
@@ -6598,7 +6668,7 @@ def toplu_maas_odeme():
             odeme_turu='Havale/EFT' if account.type == 'bank' else 'Nakit',
             aciklama=f'{payroll_period} toplu maaş Ödemesi ({len(payable_rows)} personel)',
             referans_tip='maas_odeme',
-        )
+        ))
         db.session.add(transaction)
         db.session.commit()
         flash(f'{len(payable_rows)} personel için toplam ₺{total_payable:,.2f} maaş Ödemesi kaydedildi.', 'success')
@@ -6849,7 +6919,7 @@ def avans_ode(id):
     account = None
     if account_id_raw and str(account_id_raw).isdigit():
         account = db.session.get(Account, int(account_id_raw))
-    if not account or account.user_id != current_user.id or not account.active:
+    if not account or not belongs_to_current_tenant(account) or not account.active:
         flash('Avans Ödemesi için geçerli bir kasa/banka hesabı seçin.', 'error')
         return redirect(url_for('avanslar'))
 
@@ -6860,7 +6930,7 @@ def avans_ode(id):
         note = (request.form.get('odeme_notu') or '').strip()
         if note:
             avans.aciklama = f'{avans.aciklama}\nÖdeme notu: {note}' if avans.aciklama else f'Ödeme notu: {note}'
-        db.session.add(CashTransaction(
+        db.session.add(assign_current_organization(CashTransaction(
             user_id=current_user.id,
             account_id=account.id,
             tarih=paid_at,
@@ -6870,7 +6940,7 @@ def avans_ode(id):
             aciklama=f'{avans.personel.ad} {avans.personel.soyad} avans Ödemesi',
             referans_id=avans.id,
             referans_tip='personel_avans',
-        ))
+        )))
         db.session.commit()
         flash('Avans Ödemesi kaydedildi ve finans çıkışı oluşturuldu.', 'success')
     except Exception as exc:
@@ -6912,10 +6982,9 @@ def avans_sil(id):
     if avans.user_id != current_user.id or avans.personel.user_id != current_user.id:
         abort(403)
 
-    CashTransaction.query.filter_by(
-        user_id=current_user.id,
-        referans_tip='personel_avans',
-        referans_id=avans.id,
+    tenant_query(CashTransaction).filter(
+        CashTransaction.referans_tip == 'personel_avans',
+        CashTransaction.referans_id == avans.id,
     ).delete(synchronize_session=False)
     db.session.delete(avans)
     db.session.commit()
@@ -6950,7 +7019,7 @@ def prim_ode(id):
     account = None
     if account_id_raw and str(account_id_raw).isdigit():
         account = db.session.get(Account, int(account_id_raw))
-    if not account or account.user_id != current_user.id or not account.active:
+    if not account or not belongs_to_current_tenant(account) or not account.active:
         flash('Prim Ödemesi için geçerli bir kasa/banka hesabı seçin.', 'error')
         return redirect(url_for('primler'))
 
@@ -6959,7 +7028,7 @@ def prim_ode(id):
         note = (request.form.get('odeme_notu') or '').strip()
         if note:
             prim.aciklama = f'{prim.aciklama}\nPeşin Ödeme notu: {note}' if prim.aciklama else f'Peşin Ödeme notu: {note}'
-        db.session.add(CashTransaction(
+        db.session.add(assign_current_organization(CashTransaction(
             user_id=current_user.id,
             account_id=account.id,
             tarih=paid_at,
@@ -6969,7 +7038,7 @@ def prim_ode(id):
             aciklama=f'{prim.personel.ad} {prim.personel.soyad} peşin prim Ödemesi',
             referans_id=prim.id,
             referans_tip='personel_prim',
-        ))
+        )))
         db.session.commit()
         flash('Prim peşin Ödendi ve finans çıkışı oluşturuldu.', 'success')
     except Exception as exc:
@@ -7010,10 +7079,9 @@ def prim_sil(id):
     if prim.user_id != current_user.id or prim.personel.user_id != current_user.id:
         abort(403)
 
-    CashTransaction.query.filter_by(
-        user_id=current_user.id,
-        referans_tip='personel_prim',
-        referans_id=prim.id,
+    tenant_query(CashTransaction).filter(
+        CashTransaction.referans_tip == 'personel_prim',
+        CashTransaction.referans_id == prim.id,
     ).delete(synchronize_session=False)
     db.session.delete(prim)
     db.session.commit()
@@ -7490,8 +7558,7 @@ def dashboard():
         'bank': money_value(0),
         'pos': money_value(0),
     }
-    aktif_hesaplar = Account.query.filter(
-        Account.user_id.in_(tenant_ids),
+    aktif_hesaplar = tenant_query(Account).filter(
         Account.active.is_(True),
     ).all()
     for hesap in aktif_hesaplar:
@@ -7878,10 +7945,10 @@ def cari_detay(id):
         flash('Bu cariye erişim izniniz yok!', 'error')
         return redirect(url_for('cariler'))
 
-    # Cari'ye ait satışlar? getir
     tenant_ids = tenant_user_ids()
+    # Cari'ye ait satışlar? getir
     ensure_default_accounts_for_user(current_user.id)
-    accounts = Account.query.filter(Account.user_id.in_(tenant_ids), Account.active.is_(True)).order_by(Account.type, Account.name).all()
+    accounts = tenant_query(Account).filter(Account.active.is_(True)).order_by(Account.type, Account.name).all()
     satislar = tenant_query(Satis).filter(Satis.cari_id == cari.id).order_by(Satis.tarih.desc()).all()
 
     # Cari'ye ait teklifleri getir
@@ -8258,9 +8325,8 @@ def pos():
 @app.route('/pos-odeme')
 @login_required
 def pos_odeme():
-    tenant_ids = tenant_user_ids()
     ensure_default_accounts_for_user(current_user.id)
-    accounts = Account.query.filter(Account.user_id.in_(tenant_ids), Account.active.is_(True)).order_by(Account.type, Account.name).all()
+    accounts = tenant_query(Account).filter(Account.active.is_(True)).order_by(Account.type, Account.name).all()
     accounts_json = [{
         'id': a.id,
         'name': a.name,
@@ -8315,9 +8381,8 @@ def pos_satis():
             account_id = None
 
         if account_id:
-            tenant_ids = tenant_user_ids()
             account = db.session.get(Account, account_id)
-            if not account or account.user_id not in tenant_ids or not account.active:
+            if not belongs_to_current_tenant(account) or not account.active:
                 return jsonify({'success': False, 'message': 'Seçilen hesap geçersiz.'})
 
         satis = assign_current_organization(Satis(
@@ -8483,21 +8548,20 @@ def pos_satis():
 @app.route('/nakit')
 @login_required
 def nakit_yonetimi():
-    tenant_ids = tenant_user_ids()
     # ensure defaults for current user (so UI can show accounts immediately)
     ensure_default_accounts_for_user(current_user.id)
 
     selected_account_id = request.args.get('account_id', '').strip()
     account_id = int(selected_account_id) if selected_account_id.isdigit() else None
 
-    accounts = Account.query.filter(Account.user_id.in_(tenant_ids), Account.active.is_(True)).order_by(Account.type, Account.name).all()
+    accounts = tenant_query(Account).filter(Account.active.is_(True)).order_by(Account.type, Account.name).all()
     account_type_labels = {
         'cash': 'Kasa',
         'bank': 'Banka',
         'pos': 'POS',
     }
 
-    tx_query = CashTransaction.query.filter(CashTransaction.user_id.in_(tenant_ids))
+    tx_query = tenant_query(CashTransaction)
     if account_id:
         tx_query = tx_query.filter(CashTransaction.account_id == account_id)
     totals = tx_query.with_entities(
@@ -8523,11 +8587,7 @@ def nakit_yonetimi():
 @app.route('/onmuhasebe/hesaplar', methods=['GET', 'POST'])
 @login_required
 def onmuhasebe_hesaplar():
-    tenant_ids = tenant_user_ids()
-
-    # Ensure defaults exist for all tenant users so the screen never looks "empty" by mistake.
-    for user_id in tenant_ids:
-        ensure_default_accounts_for_user(user_id)
+    ensure_default_accounts_for_user(current_user.id)
 
     if request.method == 'POST':
         action = (request.form.get('action') or '').strip()
@@ -8554,7 +8614,12 @@ def onmuhasebe_hesaplar():
                 flash('Açılış bakiyesi geçersiz.', 'error')
                 return redirect(url_for('onmuhasebe_hesaplar'))
 
-            account = Account(
+            duplicate_account = tenant_query(Account).filter(func.lower(Account.name) == name.lower()).first()
+            if duplicate_account:
+                flash('Aynı isimde bir hesap zaten var.', 'error')
+                return redirect(url_for('onmuhasebe_hesaplar'))
+
+            account = assign_current_organization(Account(
                 user_id=current_user.id,
                 type=account_type,
                 name=name,
@@ -8563,7 +8628,7 @@ def onmuhasebe_hesaplar():
                 active=True,
                 iban=iban,
                 bank_name=bank_name,
-            )
+            ))
             db.session.add(account)
             try:
                 db.session.commit()
@@ -8581,7 +8646,7 @@ def onmuhasebe_hesaplar():
                 return redirect(url_for('onmuhasebe_hesaplar'))
 
             account = db.session.get(Account, int(account_id_raw))
-            if not account or account.user_id not in tenant_ids:
+            if not account or not belongs_to_current_tenant(account):
                 flash('Hesap bulunamadı.', 'error')
                 return redirect(url_for('onmuhasebe_hesaplar'))
 
@@ -8602,7 +8667,7 @@ def onmuhasebe_hesaplar():
                 return redirect(url_for('onmuhasebe_hesaplar'))
 
             account = db.session.get(Account, int(account_id_raw))
-            if not account or account.user_id not in tenant_ids or not account.active:
+            if not account or not belongs_to_current_tenant(account) or not account.active:
                 flash('Seçilen hesap bulunamadı veya aktif değil.', 'error')
                 return redirect(url_for('onmuhasebe_hesaplar'))
 
@@ -8630,7 +8695,7 @@ def onmuhasebe_hesaplar():
                     return redirect(url_for('onmuhasebe_hesaplar'))
 
                 target = db.session.get(Account, int(target_account_id_raw))
-                if not target or target.user_id not in tenant_ids or not target.active:
+                if not target or not belongs_to_current_tenant(target) or not target.active:
                     flash('Hedef hesap bulunamadı veya aktif değil.', 'error')
                     return redirect(url_for('onmuhasebe_hesaplar'))
 
@@ -8647,8 +8712,8 @@ def onmuhasebe_hesaplar():
                     return redirect(url_for('onmuhasebe_hesaplar'))
 
                 note = aciklama or ('POS valör tahsilatı' if account.type == 'pos' and target.type == 'bank' else 'Hesaplar arası transfer')
-                db.session.add(CashTransaction(
-                    user_id=account.user_id,
+                db.session.add(assign_current_organization(CashTransaction(
+                    user_id=current_user.id,
                     account_id=account.id,
                     cari_id=None,
                     tarih=utc_now(),
@@ -8659,9 +8724,9 @@ def onmuhasebe_hesaplar():
                     referans_tip='transfer',
                     ip_adresi=request.remote_addr,
                     user_agent=(request.user_agent.string or '')[:500],
-                ))
-                db.session.add(CashTransaction(
-                    user_id=target.user_id,
+                )))
+                db.session.add(assign_current_organization(CashTransaction(
+                    user_id=current_user.id,
                     account_id=target.id,
                     cari_id=None,
                     tarih=utc_now(),
@@ -8672,7 +8737,7 @@ def onmuhasebe_hesaplar():
                     referans_tip='transfer',
                     ip_adresi=request.remote_addr,
                     user_agent=(request.user_agent.string or '')[:500],
-                ))
+                )))
                 db.session.commit()
                 flash('Para aktarımı tamamlandı.', 'success')
                 return redirect(url_for('onmuhasebe_hesaplar'))
@@ -8683,8 +8748,8 @@ def onmuhasebe_hesaplar():
                 'pos': 'POS',
             }.get(account.type, 'Nakit')
 
-            db.session.add(CashTransaction(
-                user_id=account.user_id,
+            db.session.add(assign_current_organization(CashTransaction(
+                user_id=current_user.id,
                 account_id=account.id,
                 cari_id=None,
                 tarih=utc_now(),
@@ -8695,7 +8760,7 @@ def onmuhasebe_hesaplar():
                 referans_tip='manual',
                 ip_adresi=request.remote_addr,
                 user_agent=(request.user_agent.string or '')[:500],
-            ))
+            )))
             db.session.commit()
             flash('Para hareketi kaydedildi.', 'success')
             return redirect(url_for('onmuhasebe_hesaplar'))
@@ -8703,17 +8768,16 @@ def onmuhasebe_hesaplar():
         flash('Geçersiz işlem.', 'error')
         return redirect(url_for('onmuhasebe_hesaplar'))
 
-    accounts = Account.query.filter(Account.user_id.in_(tenant_ids)).order_by(Account.active.desc(), Account.type, Account.name).all()
+    accounts = tenant_query(Account).order_by(Account.active.desc(), Account.type, Account.name).all()
 
     # Aggregate cash transaction totals per account for current tenant.
     # balance = opening_balance + giris - cikis
     aggregates = (
-        db.session.query(
+        tenant_query(CashTransaction).with_entities(
             CashTransaction.account_id.label('account_id'),
             func.sum(case((CashTransaction.islem_tipi == 'giris', CashTransaction.tutar), else_=0.0)).label('sum_giris'),
             func.sum(case((CashTransaction.islem_tipi == 'cikis', CashTransaction.tutar), else_=0.0)).label('sum_cikis'),
         )
-        .filter(CashTransaction.user_id.in_(tenant_ids))
         .group_by(CashTransaction.account_id)
         .all()
     )
@@ -8759,15 +8823,12 @@ def onmuhasebe_hesaplar():
 @app.route('/onmuhasebe/hesaplar/<int:account_id>', methods=['GET', 'POST'])
 @login_required
 def onmuhasebe_hesap_detay(account_id: int):
-    tenant_ids = tenant_user_ids()
     account = db.session.get(Account, account_id)
-    if not account or account.user_id not in tenant_ids:
+    if not account or not belongs_to_current_tenant(account):
         flash('Hesap bulunamadı.', 'error')
         return redirect(url_for('onmuhasebe_hesaplar'))
 
-    # Ensure default accounts exist so transfer dropdown never breaks.
-    for user_id in tenant_ids:
-        ensure_default_accounts_for_user(user_id)
+    ensure_default_accounts_for_user(current_user.id)
 
     if request.method == 'POST':
         action = (request.form.get('action') or '').strip()
@@ -8807,8 +8868,8 @@ def onmuhasebe_hesap_detay(account_id: int):
                 'pos': 'POS',
             }.get(account.type, 'Nakit')
 
-            tx = CashTransaction(
-                user_id=account.user_id,
+            tx = assign_current_organization(CashTransaction(
+                user_id=current_user.id,
                 account_id=account.id,
                 cari_id=None,
                 tarih=tarih,
@@ -8819,7 +8880,7 @@ def onmuhasebe_hesap_detay(account_id: int):
                 referans_tip='manual',
                 ip_adresi=request.remote_addr,
                 user_agent=(request.user_agent.string or '')[:500],
-            )
+            ))
             db.session.add(tx)
             db.session.commit()
             flash('Hareket eklendi.', 'success')
@@ -8836,7 +8897,7 @@ def onmuhasebe_hesap_detay(account_id: int):
                 return redirect(url_for('onmuhasebe_hesap_detay', account_id=account.id))
 
             target = db.session.get(Account, int(target_id_raw))
-            if not target or target.user_id not in tenant_ids:
+            if not target or not belongs_to_current_tenant(target):
                 flash('Hedef hesap bulunamadı.', 'error')
                 return redirect(url_for('onmuhasebe_hesap_detay', account_id=account.id))
 
@@ -8869,8 +8930,8 @@ def onmuhasebe_hesap_detay(account_id: int):
 
             note = aciklama or 'Hesaplar aras? transfer'
 
-            out_tx = CashTransaction(
-                user_id=account.user_id,
+            out_tx = assign_current_organization(CashTransaction(
+                user_id=current_user.id,
                 account_id=account.id,
                 tarih=tarih,
                 islem_tipi='cikis',
@@ -8880,9 +8941,9 @@ def onmuhasebe_hesap_detay(account_id: int):
                 referans_tip='transfer',
                 ip_adresi=request.remote_addr,
                 user_agent=(request.user_agent.string or '')[:500],
-            )
-            in_tx = CashTransaction(
-                user_id=target.user_id,
+            ))
+            in_tx = assign_current_organization(CashTransaction(
+                user_id=current_user.id,
                 account_id=target.id,
                 tarih=tarih,
                 islem_tipi='giris',
@@ -8892,7 +8953,7 @@ def onmuhasebe_hesap_detay(account_id: int):
                 referans_tip='transfer',
                 ip_adresi=request.remote_addr,
                 user_agent=(request.user_agent.string or '')[:500],
-            )
+            ))
             db.session.add(out_tx)
             db.session.add(in_tx)
             db.session.commit()
@@ -8905,10 +8966,7 @@ def onmuhasebe_hesap_detay(account_id: int):
     # Filters
     date_from_raw = (request.args.get('from') or '').strip()
     date_to_raw = (request.args.get('to') or '').strip()
-    tx_query = CashTransaction.query.filter(
-        CashTransaction.user_id.in_(tenant_ids),
-        CashTransaction.account_id == account.id,
-    )
+    tx_query = tenant_query(CashTransaction).filter(CashTransaction.account_id == account.id)
     if date_from_raw:
         try:
             date_from, _ = local_day_bounds(date_from_raw)
@@ -8931,11 +8989,11 @@ def onmuhasebe_hesap_detay(account_id: int):
 
     # Overall balance (not just filtered range)
     overall = (
-        db.session.query(
+        tenant_query(CashTransaction).with_entities(
             func.sum(case((CashTransaction.islem_tipi == 'giris', CashTransaction.tutar), else_=0.0)).label('sum_giris'),
             func.sum(case((CashTransaction.islem_tipi == 'cikis', CashTransaction.tutar), else_=0.0)).label('sum_cikis'),
         )
-        .filter(CashTransaction.user_id.in_(tenant_ids), CashTransaction.account_id == account.id)
+        .filter(CashTransaction.account_id == account.id)
         .first()
     )
     overall_giris = float((overall.sum_giris or 0.0) if overall else 0.0)
@@ -8943,8 +9001,7 @@ def onmuhasebe_hesap_detay(account_id: int):
     opening_balance = float(account.opening_balance or 0.0)
     overall_balance = opening_balance + overall_giris - overall_cikis
 
-    transfer_targets = Account.query.filter(
-        Account.user_id.in_(tenant_ids),
+    transfer_targets = tenant_query(Account).filter(
         Account.active.is_(True),
         Account.id != account.id,
     ).order_by(Account.type, Account.name).all()
@@ -8966,11 +9023,9 @@ def onmuhasebe_hesap_detay(account_id: int):
 @app.route('/onmuhasebe/mutabakat', methods=['GET', 'POST'])
 @login_required
 def onmuhasebe_mutabakat():
-    tenant_ids = tenant_user_ids()
-    for user_id in tenant_ids:
-        ensure_default_accounts_for_user(user_id)
+    ensure_default_accounts_for_user(current_user.id)
 
-    accounts = Account.query.filter(Account.user_id.in_(tenant_ids), Account.active.is_(True)).order_by(Account.type, Account.name).all()
+    accounts = tenant_query(Account).filter(Account.active.is_(True)).order_by(Account.type, Account.name).all()
 
     if request.method == 'POST':
         account_id_raw = (request.form.get('account_id') or '').strip()
@@ -8983,7 +9038,7 @@ def onmuhasebe_mutabakat():
             return redirect(url_for('onmuhasebe_mutabakat'))
 
         account = db.session.get(Account, int(account_id_raw))
-        if not account or account.user_id not in tenant_ids or not account.active:
+        if not account or not belongs_to_current_tenant(account) or not account.active:
             flash('Seçilen hesap bulunamadı veya aktif değil.', 'error')
             return redirect(url_for('onmuhasebe_mutabakat'))
 
@@ -9001,12 +9056,11 @@ def onmuhasebe_mutabakat():
 
         end_dt = datetime(recon_date.year, recon_date.month, recon_date.day, 23, 59, 59, tzinfo=timezone.utc)
         sums = (
-            db.session.query(
+            tenant_query(CashTransaction).with_entities(
                 func.sum(case((CashTransaction.islem_tipi == 'giris', CashTransaction.tutar), else_=0.0)).label('sum_giris'),
                 func.sum(case((CashTransaction.islem_tipi == 'cikis', CashTransaction.tutar), else_=0.0)).label('sum_cikis'),
             )
             .filter(
-                CashTransaction.user_id.in_(tenant_ids),
                 CashTransaction.account_id == account.id,
                 CashTransaction.tarih <= end_dt,
             )
@@ -9018,21 +9072,21 @@ def onmuhasebe_mutabakat():
         expected_balance = opening_balance + sum_giris - sum_cikis
         difference = counted_balance - expected_balance
 
-        rec = AccountReconciliation(
-            user_id=account.user_id,
+        rec = assign_current_organization(AccountReconciliation(
+            user_id=current_user.id,
             account_id=account.id,
             recon_date=recon_date,
             expected_balance=expected_balance,
             counted_balance=counted_balance,
             difference=difference,
             note=note or None,
-        )
+        ))
         db.session.add(rec)
         db.session.flush()
 
         if abs(difference) >= 0.0001:
-            tx = CashTransaction(
-                user_id=account.user_id,
+            tx = assign_current_organization(CashTransaction(
+                user_id=current_user.id,
                 account_id=account.id,
                 cari_id=None,
                 tarih=end_dt,
@@ -9044,7 +9098,7 @@ def onmuhasebe_mutabakat():
                 referans_tip='reconciliation',
                 ip_adresi=request.remote_addr,
                 user_agent=(request.user_agent.string or '')[:500],
-            )
+            ))
             db.session.add(tx)
 
         db.session.commit()
@@ -9053,9 +9107,7 @@ def onmuhasebe_mutabakat():
 
     selected_account_id = request.args.get('account_id', '').strip()
     reconciliations = (
-        AccountReconciliation.query
-        .join(Account, AccountReconciliation.account_id == Account.id)
-        .filter(Account.user_id.in_(tenant_ids))
+        tenant_query(AccountReconciliation)
         .order_by(AccountReconciliation.created_at.desc())
         .limit(50)
         .all()
@@ -9072,17 +9124,15 @@ def onmuhasebe_mutabakat():
 @app.route('/onmuhasebe/raporlar')
 @login_required
 def onmuhasebe_raporlar():
-    tenant_ids = tenant_user_ids()
-    for user_id in tenant_ids:
-        ensure_default_accounts_for_user(user_id)
+    ensure_default_accounts_for_user(current_user.id)
 
-    accounts = Account.query.filter(Account.user_id.in_(tenant_ids)).order_by(Account.active.desc(), Account.type, Account.name).all()
+    accounts = tenant_query(Account).order_by(Account.active.desc(), Account.type, Account.name).all()
 
     date_from_raw = (request.args.get('from') or '').strip()
     date_to_raw = (request.args.get('to') or '').strip()
     selected_account_id = (request.args.get('account_id') or '').strip()
 
-    tx_query = CashTransaction.query.filter(CashTransaction.user_id.in_(tenant_ids))
+    tx_query = tenant_query(CashTransaction)
 
     account_id = int(selected_account_id) if selected_account_id.isdigit() else None
     if account_id:
@@ -9364,11 +9414,10 @@ def teklif_durum_guncelle(id):
 @app.route('/raporlar')
 @login_required
 def raporlar():
-    tenant_ids = tenant_user_ids()
     urunler = tenant_query(Urun).all()
     cariler = tenant_query(Cari).all()
     satislar = tenant_query(Satis).all()
-    nakit_hareketleri = CashTransaction.query.filter(CashTransaction.user_id.in_(tenant_ids)).all()
+    nakit_hareketleri = tenant_query(CashTransaction).all()
     aktif_satislar = [s for s in satislar if s.durum != 'iptal']
 
     # Temel istatistikler
@@ -9600,9 +9649,8 @@ def cari_odeme(cari_id):
             return redirect(url_for('cari_detay', id=cari_id))
 
         if account_id:
-            tenant_ids = tenant_user_ids()
             account = db.session.get(Account, account_id)
-            if not account or account.user_id not in tenant_ids or not account.active:
+            if not account or not belongs_to_current_tenant(account) or not account.active:
                 flash('Seçilen hesap bulunamadı veya aktif değil.', 'error')
                 return redirect(url_for('cari_detay', id=cari_id))
 
@@ -9661,9 +9709,8 @@ def cari_tahsilat(cari_id):
             return redirect(url_for('cari_detay', id=cari_id))
 
         if account_id:
-            tenant_ids = tenant_user_ids()
             account = db.session.get(Account, account_id)
-            if not account or account.user_id not in tenant_ids or not account.active:
+            if not account or not belongs_to_current_tenant(account) or not account.active:
                 flash('Seçilen hesap bulunamadı veya aktif değil.', 'error')
                 return redirect(url_for('cari_detay', id=cari_id))
 
@@ -9758,7 +9805,7 @@ def iade():
 
             if account_id:
                 account = db.session.get(Account, account_id)
-                if not account or account.user_id not in tenant_user_ids() or not account.active:
+                if not account or not belongs_to_current_tenant(account) or not account.active:
                     flash('Seçilen hesap bulunamadı veya aktif değil.', 'error')
                     return redirect(url_for('iade'))
 
@@ -9975,7 +10022,7 @@ def iade():
 
     ensure_default_accounts_for_user(current_user.id)
     cariler = tenant_query(Cari).all()
-    accounts = Account.query.filter(Account.user_id.in_(tenant_ids), Account.active.is_(True)).order_by(Account.type, Account.name).all()
+    accounts = tenant_query(Account).filter(Account.active.is_(True)).order_by(Account.type, Account.name).all()
 
     cariler_json = [{
         'id': c.id,
@@ -10107,8 +10154,8 @@ def organization_usage(organization):
             'quotes': 0, 'returns': 0, 'cash_total': 0.0, 'last_activity': None
         }
 
-    cash_total = db.session.query(db.func.coalesce(db.func.sum(CashTransaction.tutar), 0)) \
-        .filter(CashTransaction.user_id.in_(user_ids)).scalar() or 0
+    cash_total = organization_owned_query(CashTransaction, organization) \
+        .with_entities(db.func.coalesce(db.func.sum(CashTransaction.tutar), 0)).scalar() or 0
     last_log = AuditLog.query.filter(AuditLog.user_id.in_(user_ids)) \
         .order_by(AuditLog.timestamp.desc()).first()
 
@@ -10142,7 +10189,10 @@ def reset_organization_operational_data(organization):
     personel_ids = [row[0] for row in db.session.query(Personel.id).filter(Personel.user_id.in_(user_ids)).all()]
     action_ids = [row[0] for row in db.session.query(ActionItem.id).filter_by(organization_id=organization.id).all()]
     ticket_ids = [row[0] for row in db.session.query(SupportTicket.id).filter_by(organization_id=organization.id).all()]
-    account_ids = [row[0] for row in db.session.query(Account.id).filter(Account.user_id.in_(user_ids)).all()]
+    account_ids = [
+        row[0]
+        for row in organization_owned_query(Account, organization).with_entities(Account.id).all()
+    ]
 
     if iade_ids:
         delete_records('iade_kalemleri', IadeKalem.query.filter(IadeKalem.iade_id.in_(iade_ids)))
@@ -10167,10 +10217,10 @@ def reset_organization_operational_data(organization):
     delete_records('teklifler', organization_owned_query(Teklif, organization))
     delete_records('cari_hareketleri', organization_owned_query(CariHareket, organization))
     delete_records('stok_hareketleri', organization_owned_query(StokHareket, organization))
-    delete_records('nakit_hareketleri', CashTransaction.query.filter(CashTransaction.user_id.in_(user_ids)))
+    delete_records('nakit_hareketleri', organization_owned_query(CashTransaction, organization))
     if account_ids:
-        delete_records('mutabakatlar', AccountReconciliation.query.filter(AccountReconciliation.account_id.in_(account_ids)))
-    delete_records('hesaplar', Account.query.filter(Account.user_id.in_(user_ids)))
+        delete_records('mutabakatlar', organization_owned_query(AccountReconciliation, organization))
+    delete_records('hesaplar', organization_owned_query(Account, organization))
     delete_records('urunler', organization_owned_query(Urun, organization))
     delete_records('cariler', organization_owned_query(Cari, organization))
     delete_records('kategoriler', organization_owned_query(Category, organization))
@@ -14322,8 +14372,7 @@ def gunluk_satislar():
                         )))
 
                 # Nakit hareketini ters kayt ile dengele
-                cash_entries = CashTransaction.query.filter(
-                    CashTransaction.user_id.in_(tenant_user_ids()),
+                cash_entries = tenant_query(CashTransaction).filter(
                     CashTransaction.referans_id == satis.id,
                     CashTransaction.referans_tip == 'satis',
                     CashTransaction.islem_tipi == 'giris'
@@ -14373,8 +14422,7 @@ def gunluk_satislar():
     sale_ids = [satis.id for satis in satislar]
     payment_methods = {}
     if sale_ids:
-        cash_entries = CashTransaction.query.filter(
-            CashTransaction.user_id.in_(tenant_user_ids()),
+        cash_entries = tenant_query(CashTransaction).filter(
             CashTransaction.referans_id.in_(sale_ids),
             CashTransaction.referans_tip == 'satis',
             CashTransaction.islem_tipi == 'giris'
@@ -14507,8 +14555,7 @@ def satis_fis_yazdir(satis_id):
     autoprint = request.args.get('autoprint') in {'1', 'true', 'yes'}
 
     payment_method = 'Peşin'
-    cash_entry = CashTransaction.query.filter(
-        CashTransaction.user_id.in_(tenant_user_ids()),
+    cash_entry = tenant_query(CashTransaction).filter(
         CashTransaction.referans_id == satis.id,
         CashTransaction.referans_tip == 'satis',
         CashTransaction.islem_tipi == 'giris'
@@ -14558,8 +14605,7 @@ def satis_irsaliye_yazdir(satis_id):
         return redirect(url_for('gunluk_satislar'))
 
     payment_method = 'Peşin'
-    cash_entry = CashTransaction.query.filter(
-        CashTransaction.user_id.in_(tenant_user_ids()),
+    cash_entry = tenant_query(CashTransaction).filter(
         CashTransaction.referans_id == satis.id,
         CashTransaction.referans_tip == 'satis',
         CashTransaction.islem_tipi == 'giris'

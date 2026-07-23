@@ -2972,6 +2972,138 @@ def test_new_commercial_records_receive_current_organization(client):
         assert movement.organization_id == organization_id
 
 
+def test_financial_records_are_owned_by_organization_and_survive_inactive_creator(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        teammate = User.query.filter_by(email='other@example.com').first()
+        organization = ensure_user_organization(owner)
+        teammate.organization_id = organization.id
+        teammate.aktif = False
+
+        shared_account = Account(
+            organization_id=organization.id,
+            user_id=teammate.id,
+            type='bank',
+            name='Inactive Creator Bank',
+            currency='TRY',
+            opening_balance=0,
+            active=True,
+        )
+        db.session.add(shared_account)
+        db.session.flush()
+        db.session.add_all([
+            CashTransaction(
+                organization_id=organization.id,
+                user_id=teammate.id,
+                account_id=shared_account.id,
+                islem_tipi='giris',
+                tutar=Decimal('250.00'),
+                odeme_turu='Banka',
+                aciklama='Inactive creator finance movement',
+            ),
+            AccountReconciliation(
+                organization_id=organization.id,
+                user_id=teammate.id,
+                account_id=shared_account.id,
+                recon_date=date(2026, 7, 23),
+                expected_balance=Decimal('250.00'),
+                counted_balance=Decimal('250.00'),
+                difference=Decimal('0.00'),
+                note='Inactive creator reconciliation',
+            ),
+        ])
+
+        foreign_owner = User(
+            email='foreign-finance@example.com',
+            password=generate_password_hash('password123'),
+            firma_adi='Foreign Finance Company',
+        )
+        db.session.add(foreign_owner)
+        db.session.flush()
+        foreign_organization = ensure_user_organization(foreign_owner)
+        foreign_account = Account(
+            organization_id=foreign_organization.id,
+            user_id=foreign_owner.id,
+            type='bank',
+            name='Foreign Organization Bank',
+            currency='TRY',
+            opening_balance=0,
+            active=True,
+        )
+        db.session.add(foreign_account)
+        db.session.commit()
+        shared_account_id = shared_account.id
+        foreign_account_id = foreign_account.id
+
+    accounts_response = client.get('/onmuhasebe/hesaplar')
+    detail_response = client.get(f'/onmuhasebe/hesaplar/{shared_account_id}')
+    reconciliation_response = client.get('/onmuhasebe/mutabakat')
+    foreign_response = client.get(f'/onmuhasebe/hesaplar/{foreign_account_id}', follow_redirects=False)
+
+    assert accounts_response.status_code == 200
+    assert b'Inactive Creator Bank' in accounts_response.data
+    assert b'Foreign Organization Bank' not in accounts_response.data
+    assert detail_response.status_code == 200
+    assert b'Inactive creator finance movement' in detail_response.data
+    assert reconciliation_response.status_code == 200
+    assert b'Inactive Creator Bank' in reconciliation_response.data
+    assert foreign_response.status_code == 302
+
+
+def test_new_financial_records_receive_current_organization_and_actor(client):
+    response = client.post('/onmuhasebe/hesaplar', data={
+        'action': 'create',
+        'name': 'Organization Owned Cash',
+        'type': 'cash',
+        'currency': 'TRY',
+        'opening_balance': '0',
+    }, follow_redirects=False)
+    assert response.status_code == 302
+
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        account = Account.query.filter_by(name='Organization Owned Cash').first()
+        assert account is not None
+        assert account.organization_id == owner.organization_id
+        assert account.user_id == owner.id
+        account_id = account.id
+        organization_id = owner.organization_id
+        owner_id = owner.id
+
+    movement_response = client.post('/onmuhasebe/hesaplar', data={
+        'action': 'quick_tx',
+        'account_id': str(account_id),
+        'islem_tipi': 'giris',
+        'tutar': '25',
+        'aciklama': 'Organization owned movement',
+    }, follow_redirects=False)
+    assert movement_response.status_code == 302
+
+    reconciliation_response = client.post('/onmuhasebe/mutabakat', data={
+        'account_id': str(account_id),
+        'recon_date': '2026-07-23',
+        'counted_balance': '25',
+        'note': 'Organization owned reconciliation',
+    }, follow_redirects=False)
+    assert reconciliation_response.status_code == 302
+
+    with app.app_context():
+        movement = CashTransaction.query.filter_by(
+            account_id=account_id,
+            aciklama='Organization owned movement',
+        ).first()
+        reconciliation = AccountReconciliation.query.filter_by(
+            account_id=account_id,
+            note='Organization owned reconciliation',
+        ).first()
+        assert movement is not None
+        assert movement.organization_id == organization_id
+        assert movement.user_id == owner_id
+        assert reconciliation is not None
+        assert reconciliation.organization_id == organization_id
+        assert reconciliation.user_id == owner_id
+
+
 def test_demo_data_tools_are_hidden_for_regular_users(client):
     product_page = client.get('/urun-ekle')
     assert product_page.status_code == 200
