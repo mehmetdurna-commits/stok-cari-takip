@@ -11,6 +11,33 @@
 
 {% block header_actions %}{% endblock %}
 
+{% block head %}
+<style>
+    .dashboard-tab {
+        color: #64748b;
+        border: 1px solid transparent;
+    }
+    .dashboard-tab[aria-selected="true"] {
+        background: #ffffff;
+        color: #0f172a;
+        border-color: #dbeafe;
+        box-shadow: 0 8px 22px -15px rgba(37, 99, 235, 0.55);
+    }
+    .dark .dashboard-tab {
+        color: #94a3b8;
+    }
+    .dark .dashboard-tab[aria-selected="true"] {
+        background: #1e293b;
+        color: #ffffff;
+        border-color: #334155;
+        box-shadow: 0 8px 22px -15px rgba(0, 0, 0, 0.75);
+    }
+    .dashboard-tab-panel[hidden] {
+        display: none !important;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 {% set riskli_cari = (cari_risk_analizi.yuksek_risk|length) + (cari_risk_analizi.orta_risk|length) %}
 {% set takip_bekleyenler = (kritik_stok or 0) + riskli_cari %}
@@ -20,7 +47,42 @@
 {% set nakit_bitis = nakit_oran %}
 {% set banka_bitis = nakit_oran + banka_oran %}
 
-<div class="mx-auto max-w-[1600px] space-y-5 pb-8">
+<div id="dashboard-workspace" class="mx-auto max-w-[1600px] space-y-5 pb-8">
+    <section class="flex justify-start">
+        <div class="inline-flex w-fit items-center gap-1 rounded-2xl border border-slate-200 bg-slate-100/80 p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900/70" role="tablist" aria-label="Dashboard çalışma alanı">
+            <button
+                id="dashboard-summary-tab"
+                type="button"
+                role="tab"
+                aria-selected="true"
+                aria-controls="dashboard-summary-panel"
+                tabindex="0"
+                data-dashboard-tab="summary"
+                class="dashboard-tab inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2 text-sm font-black transition duration-200 hover:bg-white/70 hover:text-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:hover:bg-slate-800/70 dark:hover:text-primary-300 dark:focus-visible:ring-offset-slate-950">
+                <span class="material-symbols-outlined text-[19px]" aria-hidden="true">today</span>
+                <span>Bugünkü Özet</span>
+            </button>
+            <button
+                id="dashboard-actions-tab"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="dashboard-actions-panel"
+                tabindex="-1"
+                data-dashboard-tab="actions"
+                class="dashboard-tab inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2 text-sm font-black transition duration-200 hover:bg-white/70 hover:text-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:hover:bg-slate-800/70 dark:hover:text-primary-300 dark:focus-visible:ring-offset-slate-950">
+                <span class="material-symbols-outlined text-[19px]" aria-hidden="true">apps</span>
+                <span>Hızlı İşlemler</span>
+            </button>
+        </div>
+    </section>
+
+    <div
+        id="dashboard-summary-panel"
+        class="dashboard-tab-panel space-y-5"
+        role="tabpanel"
+        aria-labelledby="dashboard-summary-tab"
+        data-dashboard-panel="summary">
     <section class="relative overflow-hidden rounded-3xl border border-primary-100 bg-gradient-to-r from-primary-50 via-white to-cyan-50 p-5 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-primary-950/30 sm:p-6">
         <div class="absolute -right-12 -top-16 h-48 w-48 rounded-full bg-primary-200/30 blur-3xl dark:bg-primary-700/10"></div>
         <div class="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -311,5 +373,96 @@
             </div>
         </article>
     </section>
+    </div>
+
+    <div
+        id="dashboard-actions-panel"
+        class="dashboard-tab-panel"
+        role="tabpanel"
+        aria-labelledby="dashboard-actions-tab"
+        data-dashboard-panel="actions"
+        hidden>
+        <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+            <div class="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+            {% for group in quick_action_groups %}
+                {% for action in group.actions %}
+                <a
+                    href="{{ action.url }}"
+                    class="dashboard-action-card group flex min-h-28 flex-col items-center justify-center rounded-2xl border border-slate-200 bg-slate-50/60 px-2 py-3 text-center shadow-sm transition duration-200 hover:-translate-y-1 hover:border-primary-200 hover:bg-white hover:shadow-lg hover:shadow-primary-900/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-slate-800 dark:bg-slate-950/35 dark:hover:border-primary-800 dark:hover:bg-slate-800 dark:focus-visible:ring-offset-slate-950"
+                    data-action-card
+                    data-action-endpoint="{{ action.endpoint }}"
+                    aria-label="{{ action.label }}: {{ action.description }}"
+                    title="{{ action.description }}">
+                    <span class="flex size-12 items-center justify-center rounded-2xl shadow-sm ring-1 transition duration-200 group-hover:scale-105
+                        {% if action.tone == 'emerald' %}bg-emerald-50 text-emerald-600 ring-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/50
+                        {% elif action.tone == 'amber' %}bg-amber-50 text-amber-600 ring-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900/50
+                        {% elif action.tone == 'violet' %}bg-violet-50 text-violet-600 ring-violet-100 dark:bg-violet-950/40 dark:text-violet-300 dark:ring-violet-900/50
+                        {% elif action.tone == 'cyan' %}bg-cyan-50 text-cyan-700 ring-cyan-100 dark:bg-cyan-950/40 dark:text-cyan-300 dark:ring-cyan-900/50
+                        {% elif action.tone == 'rose' %}bg-rose-50 text-rose-600 ring-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-900/50
+                        {% elif action.tone == 'slate' %}bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700
+                        {% else %}bg-primary-50 text-primary-600 ring-primary-100 dark:bg-primary-950/40 dark:text-primary-300 dark:ring-primary-900/50{% endif %}">
+                        <span class="material-symbols-outlined text-[26px]" aria-hidden="true">{{ action.icon }}</span>
+                    </span>
+                    <span class="mt-2 text-xs font-black leading-4 text-slate-900 dark:text-white">{{ action.label }}</span>
+                </a>
+                {% endfor %}
+            {% endfor %}
+            </div>
+        </section>
+    </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (() => {
+        const storageKey = 'esstok.dashboard.activeTab';
+        const validTabs = ['summary', 'actions'];
+        const tabs = Array.from(document.querySelectorAll('[data-dashboard-tab]'));
+        const panels = Array.from(document.querySelectorAll('[data-dashboard-panel]'));
+
+        if (!tabs.length || !panels.length) return;
+
+        const activateTab = (tabName, options = {}) => {
+            const selectedTab = validTabs.includes(tabName) ? tabName : 'summary';
+            tabs.forEach((tab) => {
+                const isSelected = tab.dataset.dashboardTab === selectedTab;
+                tab.setAttribute('aria-selected', String(isSelected));
+                tab.tabIndex = isSelected ? 0 : -1;
+            });
+            panels.forEach((panel) => {
+                panel.hidden = panel.dataset.dashboardPanel !== selectedTab;
+            });
+            try {
+                localStorage.setItem(storageKey, selectedTab);
+            } catch (error) {}
+            if (options.focus) {
+                tabs.find((tab) => tab.dataset.dashboardTab === selectedTab)?.focus();
+            }
+        };
+
+        let initialTab = 'summary';
+        try {
+            const savedTab = localStorage.getItem(storageKey);
+            if (validTabs.includes(savedTab)) initialTab = savedTab;
+        } catch (error) {}
+        activateTab(initialTab);
+
+        tabs.forEach((tab, index) => {
+            tab.addEventListener('click', () => {
+                activateTab(tab.dataset.dashboardTab);
+            });
+            tab.addEventListener('keydown', (event) => {
+                let nextIndex = null;
+                if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
+                if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
+                if (event.key === 'Home') nextIndex = 0;
+                if (event.key === 'End') nextIndex = tabs.length - 1;
+                if (nextIndex === null) return;
+                event.preventDefault();
+                activateTab(tabs[nextIndex].dataset.dashboardTab, { focus: true });
+            });
+        });
+    })();
+</script>
 {% endblock %}

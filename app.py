@@ -3715,6 +3715,261 @@ def module_for_endpoint(endpoint):
     return None
 
 
+DASHBOARD_QUICK_ACTION_GROUPS = (
+    {
+        'title': 'Satış İşlemleri',
+        'icon': 'point_of_sale',
+        'actions': (
+            {
+                'endpoint': 'pos',
+                'module': 'pos',
+                'label': 'Hızlı Satış',
+                'icon': 'point_of_sale',
+                'description': 'Barkodlu veya ürün aramalı satış yap.',
+                'keywords': 'pos kasa satış barkod ödeme',
+                'tone': 'primary',
+            },
+            {
+                'endpoint': 'gunluk_satislar',
+                'module': 'pos',
+                'label': 'Günlük Satışlar',
+                'icon': 'receipt_long',
+                'description': 'Satışları incele, fiş veya irsaliye yazdır.',
+                'keywords': 'satış geçmiş fiş irsaliye iptal',
+                'tone': 'emerald',
+            },
+            {
+                'endpoint': 'iade',
+                'module': 'iade',
+                'label': 'İade İşlemi',
+                'icon': 'assignment_return',
+                'description': 'Satışa bağlı ürün veya ödeme iadesi oluştur.',
+                'keywords': 'iade değişim para ürün',
+                'tone': 'amber',
+            },
+        ),
+    },
+    {
+        'title': 'Stok ve Ürün',
+        'icon': 'inventory_2',
+        'actions': (
+            {
+                'endpoint': 'urunler',
+                'module': 'urunler',
+                'label': 'Ürünler',
+                'icon': 'inventory_2',
+                'description': 'Ürünleri, fiyatları ve mevcut stokları görüntüle.',
+                'keywords': 'ürün stok liste fiyat barkod',
+                'tone': 'primary',
+            },
+            {
+                'endpoint': 'urun_ekle',
+                'module': 'urunler',
+                'label': 'Yeni Ürün',
+                'icon': 'add_box',
+                'description': 'Yeni ürün ve başlangıç stok bilgisi ekle.',
+                'keywords': 'ürün ekle yeni barkod stok',
+                'tone': 'violet',
+            },
+            {
+                'endpoint': 'stok_giris',
+                'module': 'urunler',
+                'label': 'Stok Girişi',
+                'icon': 'move_to_inbox',
+                'description': 'Tekli veya toplu stok girişi kaydet.',
+                'keywords': 'stok giriş alım toplu excel',
+                'tone': 'emerald',
+            },
+            {
+                'endpoint': 'stok_cikis',
+                'module': 'urunler',
+                'label': 'Stok Çıkışı',
+                'icon': 'outbox',
+                'description': 'Satış dışı stok çıkışı kaydet.',
+                'keywords': 'stok çıkış fire kullanım',
+                'tone': 'rose',
+            },
+        ),
+    },
+    {
+        'title': 'Cari Hesaplar',
+        'icon': 'group',
+        'actions': (
+            {
+                'endpoint': 'cariler',
+                'module': 'cariler',
+                'label': 'Cari Hesaplar',
+                'icon': 'group',
+                'description': 'Müşteri ve tedarikçi bakiyelerini takip et.',
+                'keywords': 'cari müşteri tedarikçi borç alacak tahsilat ödeme',
+                'tone': 'cyan',
+            },
+            {
+                'endpoint': 'cari_ekle',
+                'module': 'cariler',
+                'label': 'Yeni Cari',
+                'icon': 'person_add',
+                'description': 'Yeni müşteri veya tedarikçi hesabı aç.',
+                'keywords': 'cari ekle müşteri tedarikçi yeni',
+                'tone': 'primary',
+            },
+        ),
+    },
+    {
+        'title': 'Kasa ve Finans',
+        'icon': 'account_balance_wallet',
+        'actions': (
+            {
+                'endpoint': 'nakit_yonetimi',
+                'module': 'nakit',
+                'label': 'Nakit Yönetimi',
+                'icon': 'payments',
+                'description': 'Gelir, gider ve nakit hareketlerini yönet.',
+                'keywords': 'nakit kasa gelir gider masraf',
+                'tone': 'emerald',
+            },
+            {
+                'endpoint': 'onmuhasebe_hesaplar',
+                'module': 'nakit',
+                'label': 'Para Hesapları',
+                'icon': 'account_balance',
+                'description': 'Kasa, banka ve POS hesaplarını görüntüle.',
+                'keywords': 'ön muhasebe kasa banka pos hesap aktarım',
+                'tone': 'cyan',
+            },
+        ),
+    },
+    {
+        'title': 'Teklif ve Personel',
+        'icon': 'description',
+        'actions': (
+            {
+                'endpoint': 'teklif_yonetimi',
+                'module': 'teklifler',
+                'label': 'Teklifler',
+                'icon': 'description',
+                'description': 'Teklifleri görüntüle ve durumlarını takip et.',
+                'keywords': 'teklif liste durum müşteri',
+                'tone': 'violet',
+            },
+            {
+                'endpoint': 'teklif_ekle',
+                'module': 'teklifler',
+                'label': 'Yeni Teklif',
+                'icon': 'note_add',
+                'description': 'Müşteriye yeni fiyat teklifi hazırla.',
+                'keywords': 'teklif ekle yeni fiyat',
+                'tone': 'primary',
+            },
+            {
+                'endpoint': 'personel_yonetimi',
+                'module': 'personel',
+                'label': 'Personel',
+                'icon': 'badge',
+                'description': 'Personel kayıtları ve çalışma durumlarını yönet.',
+                'keywords': 'personel çalışan bordro izin avans prim',
+                'tone': 'amber',
+            },
+            {
+                'endpoint': 'personel_ekle',
+                'module': 'personel',
+                'label': 'Yeni Personel',
+                'icon': 'person_add',
+                'description': 'Yeni personel kaydı oluştur.',
+                'keywords': 'personel ekle çalışan yeni',
+                'tone': 'emerald',
+            },
+            {
+                'endpoint': 'izinler',
+                'module': 'personel',
+                'label': 'İzin Yönetimi',
+                'icon': 'event_available',
+                'description': 'Personel izinlerini görüntüle ve yönet.',
+                'keywords': 'izin personel onay tatil',
+                'tone': 'cyan',
+            },
+        ),
+    },
+    {
+        'title': 'Raporlar ve Sistem',
+        'icon': 'monitoring',
+        'actions': (
+            {
+                'endpoint': 'raporlar',
+                'module': 'raporlar',
+                'label': 'Raporlar',
+                'icon': 'monitoring',
+                'description': 'Satış, stok ve cari performansını incele.',
+                'keywords': 'rapor grafik analiz satış stok cari',
+                'tone': 'primary',
+            },
+            {
+                'endpoint': 'settings',
+                'module': 'settings',
+                'label': 'Firma Ayarları',
+                'icon': 'settings',
+                'description': 'Firma, kullanıcı ve uygulama tercihlerini yönet.',
+                'keywords': 'ayar firma kullanıcı bildirim tercih',
+                'tone': 'slate',
+            },
+            {
+                'endpoint': 'support_tickets',
+                'module': 'support',
+                'label': 'Destek Talepleri',
+                'icon': 'support_agent',
+                'description': 'Destek taleplerini oluştur veya takip et.',
+                'keywords': 'destek yardım talep sorun',
+                'tone': 'rose',
+            },
+            {
+                'endpoint': 'super_admin_dashboard',
+                'label': 'Süper Admin',
+                'icon': 'shield_person',
+                'description': 'Platform ve firma yönetim merkezini aç.',
+                'keywords': 'süper admin platform firma sistem',
+                'tone': 'slate',
+                'platform_admin_only': True,
+            },
+        ),
+    },
+)
+
+
+def dashboard_quick_action_groups():
+    organization = current_organization()
+    permissions = (
+        parse_module_permissions(organization.module_permissions)
+        if organization and not is_platform_admin_user(current_user)
+        else {key: True for key, _label in PLATFORM_MODULES}
+    )
+    groups = []
+
+    for group in DASHBOARD_QUICK_ACTION_GROUPS:
+        visible_actions = []
+        for action in group['actions']:
+            if action.get('platform_admin_only') and not is_platform_admin_user(current_user):
+                continue
+            module = action.get('module')
+            if module and not permissions.get(module, True):
+                continue
+            endpoint = action['endpoint']
+            if endpoint not in app.view_functions:
+                continue
+            visible_actions.append({
+                **action,
+                'url': url_for(endpoint),
+            })
+
+        if visible_actions:
+            groups.append({
+                'title': group['title'],
+                'icon': group['icon'],
+                'actions': visible_actions,
+            })
+
+    return groups
+
+
 def tenant_categories_with_counts():
     categories = {}
     for product in tenant_query(Urun).all():
@@ -7387,6 +7642,7 @@ def dashboard():
     from datetime import date, timedelta
 
     # Kullanıcı istatistikleri
+    quick_action_groups = dashboard_quick_action_groups()
     tenant_ids = tenant_user_ids()
     urunler = tenant_query(Urun).all()
     cariler = tenant_query(Cari).all()
@@ -7673,7 +7929,8 @@ def dashboard():
                            son_hareketler=son_hareketler,
                            kritik_urunler=kritik_urunler,
                            panel_zamani=panel_zamani,
-                           karsilama=karsilama)
+                           karsilama=karsilama,
+                           quick_action_groups=quick_action_groups)
 
 # Ürün Y?netimi
 

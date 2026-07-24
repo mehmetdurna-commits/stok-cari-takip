@@ -48,6 +48,7 @@ from app import (
     ensure_user_organization,
     ensure_default_accounts_for_user,
     generate_password_reset_token,
+    PLATFORM_MODULES,
     platform_can,
     parse_module_permissions,
     user_display_name,
@@ -2721,12 +2722,55 @@ def test_dashboard_renders_without_name_errors(client):
     assert 'Satış Trendi'.encode('utf-8') in response.data
     assert 'Bugün Ne Oldu?'.encode('utf-8') in response.data
     assert 'Para Nerede?'.encode('utf-8') in response.data
+    assert 'role="tablist"'.encode('utf-8') in response.data
+    assert 'Bugünkü Özet'.encode('utf-8') in response.data
+    assert 'Hızlı İşlemler'.encode('utf-8') in response.data
+    assert 'İşlem ara…'.encode('utf-8') not in response.data
+    assert b'lg:grid-cols-7' in response.data
+    assert b'data-action-endpoint="pos"' in response.data
+    assert b'data-action-endpoint="urun_ekle"' in response.data
+    assert b'data-action-endpoint="super_admin_dashboard"' not in response.data
 
 
 def test_format_quantity_removes_decimal_padding():
     assert format_quantity(Decimal('1.0000')) == '1'
     assert format_quantity(Decimal('3.9200')) == '3,92'
     assert format_quantity(Decimal('0.1250')) == '0,125'
+
+
+def test_dashboard_quick_actions_follow_organization_module_permissions(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        organization = ensure_user_organization(owner)
+        permissions = {key: True for key, _label in PLATFORM_MODULES}
+        permissions['personel'] = False
+        permissions['teklifler'] = False
+        organization.module_permissions = json.dumps(permissions, ensure_ascii=False)
+        db.session.commit()
+
+    response = client.get('/dashboard')
+
+    assert response.status_code == 200
+    assert b'data-action-endpoint="personel_yonetimi"' not in response.data
+    assert b'data-action-endpoint="personel_ekle"' not in response.data
+    assert b'data-action-endpoint="izinler"' not in response.data
+    assert b'data-action-endpoint="teklif_yonetimi"' not in response.data
+    assert b'data-action-endpoint="teklif_ekle"' not in response.data
+    assert b'data-action-endpoint="pos"' in response.data
+    assert b'data-action-endpoint="urun_ekle"' in response.data
+
+
+def test_dashboard_quick_actions_show_platform_tools_only_to_platform_admin(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        owner.is_platform_admin = True
+        owner.platform_role = 'owner'
+        db.session.commit()
+
+    response = client.get('/dashboard')
+
+    assert response.status_code == 200
+    assert b'data-action-endpoint="super_admin_dashboard"' in response.data
 
 
 def test_dashboard_renders_with_decimal_account_balances(client):
