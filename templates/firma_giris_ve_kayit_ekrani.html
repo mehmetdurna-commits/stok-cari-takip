@@ -77,16 +77,31 @@
         position: relative;
         z-index: 30;
         height: 5.5rem;
+        padding: 0;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.3) 72%, rgba(255, 255, 255, 0));
+    }
+
+    .auth-header::after {
+        content: "";
+        position: absolute;
+        left: 7%;
+        right: 7%;
+        bottom: 0;
+        height: 1px;
+        pointer-events: none;
+        background: linear-gradient(90deg, transparent, rgba(91, 132, 202, 0.16) 24%, rgba(91, 132, 202, 0.16) 76%, transparent);
+    }
+
+    .auth-header-inner {
+        position: relative;
+        width: min(100%, 1700px);
+        height: 100%;
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 1.5rem;
-        padding: 0 4vw;
-        border-bottom: 1px solid rgba(122, 151, 201, 0.18);
-        background: rgba(255, 255, 255, 0.72);
-        box-shadow: 0 12px 38px rgba(53, 84, 136, 0.05);
-        backdrop-filter: blur(24px);
-        -webkit-backdrop-filter: blur(24px);
+        margin: 0 auto;
+        padding: 0 clamp(2rem, 6vw, 7rem);
     }
 
     .auth-brand {
@@ -151,23 +166,30 @@
     .auth-header-action {
         display: flex;
         align-items: center;
-        gap: 1.25rem;
+        gap: 1rem;
+        padding: 0.38rem 0.42rem 0.38rem 1.15rem;
+        border: 1px solid rgba(124, 153, 203, 0.2);
+        border-radius: 999px;
         color: #53627b;
+        background: rgba(255, 255, 255, 0.52);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 10px 30px rgba(59, 91, 145, 0.07);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
         font-size: 0.92rem;
         font-weight: 650;
     }
 
     .auth-outline-button {
-        min-height: 3rem;
+        min-height: 2.65rem;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 0.75rem 1.7rem;
-        border: 1px solid rgba(18, 98, 243, 0.78);
-        border-radius: 0.75rem;
-        color: #0755e8;
-        background: rgba(255, 255, 255, 0.66);
-        box-shadow: 0 8px 24px rgba(18, 98, 243, 0.08);
+        padding: 0.62rem 1.35rem;
+        border: 1px solid rgba(18, 98, 243, 0.2);
+        border-radius: 999px;
+        color: white;
+        background: linear-gradient(180deg, #2c7cff, #0b5bed);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 9px 20px rgba(18, 98, 243, 0.2);
         font-weight: 800;
         text-decoration: none;
         transition: 180ms ease;
@@ -175,7 +197,7 @@
 
     .auth-outline-button:hover {
         color: white;
-        background: var(--auth-blue);
+        background: linear-gradient(180deg, #1d70f7, #064bd5);
         box-shadow: 0 12px 28px rgba(18, 98, 243, 0.22);
         transform: translateY(-1px);
     }
@@ -940,6 +962,9 @@
 
         .auth-header {
             height: 5rem;
+        }
+
+        .auth-header-inner {
             padding: 0 1.5rem;
         }
 
@@ -987,7 +1012,7 @@
     }
 
     @media (max-width: 640px) {
-        .auth-header {
+        .auth-header-inner {
             padding: 0 1rem;
         }
 
@@ -1003,6 +1028,10 @@
         .auth-brand-trail,
         .auth-header-action > span {
             display: none;
+        }
+
+        .auth-header-action {
+            padding: 0.28rem;
         }
 
         .auth-outline-button {
@@ -1285,24 +1314,26 @@
     </svg>
 
     <header class="auth-header">
-        <a class="auth-brand" href="{{ url_for('index') }}" aria-label="Esstok ana sayfasına git">
-            <span class="auth-brand-cube" aria-hidden="true">
-                <svg class="auth-icon"><use href="#auth-icon-cube"></use></svg>
-            </span>
-            <span class="auth-brand-name">esstok.com</span>
-            <span class="auth-brand-trail" aria-hidden="true">
-                <svg class="auth-icon"><use href="#auth-icon-chevron"></use></svg>
-                <svg class="auth-icon"><use href="#auth-icon-home"></use></svg>
-            </span>
-        </a>
+        <div class="auth-header-inner">
+            <a class="auth-brand" href="{{ url_for('index') }}" aria-label="Esstok ana sayfasına git">
+                <span class="auth-brand-cube" aria-hidden="true">
+                    <svg class="auth-icon"><use href="#auth-icon-cube"></use></svg>
+                </span>
+                <span class="auth-brand-name">esstok.com</span>
+                <span class="auth-brand-trail" aria-hidden="true">
+                    <svg class="auth-icon"><use href="#auth-icon-chevron"></use></svg>
+                    <svg class="auth-icon"><use href="#auth-icon-home"></use></svg>
+                </span>
+            </a>
 
-        <div class="auth-header-action">
-            <span>Hesabınız yok mu?</span>
-            {% if mode in ['forgot', 'reset'] %}
-            <a class="auth-outline-button" href="{{ url_for('kayit') }}">Yeni Kayıt</a>
-            {% else %}
-            <button class="auth-outline-button" type="button" data-auth-target="register">Yeni Kayıt</button>
-            {% endif %}
+            <div class="auth-header-action">
+                <span>Hesabınız yok mu?</span>
+                {% if mode in ['forgot', 'reset'] %}
+                <a class="auth-outline-button" href="{{ url_for('kayit') }}">Yeni Kayıt</a>
+                {% else %}
+                <button class="auth-outline-button" type="button" data-auth-target="register">Yeni Kayıt</button>
+                {% endif %}
+            </div>
         </div>
     </header>
 
