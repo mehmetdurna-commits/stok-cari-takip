@@ -1982,6 +1982,10 @@ def test_super_admin_workflow_test_runs_and_cleans_sandbox_data(client):
         assert result['summary']['total'] >= 5
         assert result['status'] in {'passed', 'warning', 'failed'}
         assert any(check['check'] == 'Stok dusen satis akisi' for check in result['checks'])
+        assert not any(
+            check['check'] == 'Robot calisma hatasi' and check['status'] == 'failed'
+            for check in result['checks']
+        )
         assert User.query.filter(User.email.like('test_robot_%')).count() == 0
         assert Organization.query.filter(Organization.name.like('TEST_ROBOT%')).count() == 0
         assert Urun.query.filter(Urun.urun_adi.like('TEST_ROBOT%')).count() == 0

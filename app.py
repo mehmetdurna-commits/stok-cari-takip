@@ -3276,6 +3276,7 @@ def run_platform_workflow_test():
             satis_fiyati=999,
             stok_miktari=5,
             user_id=outsider.id,
+            organization_id=outsider_organization.id,
         )
         db.session.add(outsider_product)
         db.session.commit()
