@@ -1,291 +1,1693 @@
 {% extends '_base.html' %}
 
 {% set auth_site = site_config() %}
-{% set platform_name = auth_site.get('platform_name', auth_site.get('name', 'StokCari')) %}
+{% set platform_name = auth_site.get('platform_name', auth_site.get('name', 'Esstok')) %}
+{% set mode = auth_mode|default('login') %}
+{% set selected_plan = selected_plan|default('demo') %}
+{% set selected_package = package_catalog[selected_plan] if package_catalog is defined and selected_plan in package_catalog else none %}
+{% set turnstile = turnstile_config() %}
+
 {% block title %}{{ platform_name }} - Güvenli Giriş{% endblock %}
 
 {% block head %}
 <style>
-    .auth-panel {
+    :root {
+        --auth-ink: #091a3d;
+        --auth-copy: #53627d;
+        --auth-blue: #1262f3;
+        --auth-blue-deep: #0648d9;
+        --auth-line: rgba(92, 126, 184, 0.18);
+        --auth-glass: rgba(255, 255, 255, 0.78);
+    }
+
+    body {
+        background: #f7faff !important;
+    }
+
+    .auth-stage,
+    .auth-stage * {
+        box-sizing: border-box;
+    }
+
+    .auth-stage {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        min-height: 100%;
+        overflow: hidden;
+        color: var(--auth-ink);
         background:
-            linear-gradient(135deg, rgba(4, 64, 174, 0.88), rgba(15, 23, 42, 0.78)),
-            url("https://images.unsplash.com/photo-1586528116311-ad8dd3c8310dauto=format&fit=crop&w=1400&q=80");
-        background-size: cover;
-        background-position: center;
+            radial-gradient(circle at 75% 44%, rgba(47, 119, 255, 0.13), transparent 24rem),
+            radial-gradient(circle at 12% 84%, rgba(139, 199, 255, 0.2), transparent 30rem),
+            linear-gradient(145deg, #fbfdff 0%, #f7faff 49%, #edf4ff 100%);
     }
-    .auth-card {
-        box-shadow: 0 24px 80px rgba(15, 23, 42, 0.14);
+
+    .auth-stage::before {
+        content: "";
+        position: absolute;
+        inset: 5.5rem 0 0;
+        pointer-events: none;
+        opacity: 0.36;
+        background-image:
+            linear-gradient(rgba(90, 124, 181, 0.09) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(90, 124, 181, 0.09) 1px, transparent 1px);
+        background-size: 72px 72px;
+        mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
     }
-    .auth-feature-card {
-        color: #fff !important;
-        background: rgba(255, 255, 255, 0.14);
-        border: 1px solid rgba(255, 255, 255, 0.22);
-        box-shadow: 0 14px 36px rgba(15, 23, 42, 0.16);
-        backdrop-filter: blur(10px);
+
+    .auth-symbols {
+        position: absolute;
+        width: 0;
+        height: 0;
+        overflow: hidden;
     }
-    .auth-feature-card * {
-        color: inherit !important;
+
+    .auth-icon {
+        width: 1.25rem;
+        height: 1.25rem;
+        display: block;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
     }
-    .auth-feature-card small {
-        color: rgba(255, 255, 255, 0.72) !important;
+
+    .auth-header {
+        position: relative;
+        z-index: 30;
+        height: 5.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.5rem;
+        padding: 0 4vw;
+        border-bottom: 1px solid rgba(122, 151, 201, 0.18);
+        background: rgba(255, 255, 255, 0.72);
+        box-shadow: 0 12px 38px rgba(53, 84, 136, 0.05);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
     }
-    .auth-pill {
-        color: rgba(255, 255, 255, 0.88) !important;
-        background: rgba(255, 255, 255, 0.12);
-        border: 1px solid rgba(255, 255, 255, 0.18);
+
+    .auth-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.8rem;
+        color: var(--auth-ink);
+        text-decoration: none;
     }
-    .auth-tab-active {
-        background: white;
-        color: #0440ae;
-        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
-    }
-    .dark .auth-tab-active {
-        background: #1e293b;
+
+    .auth-brand-cube {
+        position: relative;
+        width: 2.9rem;
+        height: 2.9rem;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(255, 255, 255, 0.95);
+        border-radius: 0.9rem;
         color: white;
+        background:
+            linear-gradient(145deg, rgba(117, 211, 255, 0.95), rgba(27, 105, 247, 0.96) 48%, rgba(10, 41, 157, 0.98));
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.75),
+            inset -7px -9px 14px rgba(0, 29, 122, 0.25),
+            0 12px 24px rgba(22, 98, 243, 0.24);
+        transform: rotate(30deg);
+    }
+
+    .auth-brand-cube::after {
+        content: "";
+        position: absolute;
+        inset: 0.4rem;
+        border: 1px solid rgba(255, 255, 255, 0.58);
+        border-radius: 0.55rem;
+    }
+
+    .auth-brand-cube .auth-icon {
+        width: 1.6rem;
+        height: 1.6rem;
+        transform: rotate(-30deg);
+        filter: drop-shadow(0 3px 5px rgba(0, 35, 123, 0.25));
+    }
+
+    .auth-brand-name {
+        font-size: clamp(1.35rem, 2vw, 1.72rem);
+        font-weight: 900;
+        letter-spacing: -0.045em;
+    }
+
+    .auth-brand-trail {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        color: #6c7c98;
+    }
+
+    .auth-brand-trail .auth-icon {
+        width: 1rem;
+        height: 1rem;
+    }
+
+    .auth-header-action {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        color: #53627b;
+        font-size: 0.92rem;
+        font-weight: 650;
+    }
+
+    .auth-outline-button {
+        min-height: 3rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem 1.7rem;
+        border: 1px solid rgba(18, 98, 243, 0.78);
+        border-radius: 0.75rem;
+        color: #0755e8;
+        background: rgba(255, 255, 255, 0.66);
+        box-shadow: 0 8px 24px rgba(18, 98, 243, 0.08);
+        font-weight: 800;
+        text-decoration: none;
+        transition: 180ms ease;
+    }
+
+    .auth-outline-button:hover {
+        color: white;
+        background: var(--auth-blue);
+        box-shadow: 0 12px 28px rgba(18, 98, 243, 0.22);
+        transform: translateY(-1px);
+    }
+
+    .auth-main {
+        position: relative;
+        z-index: 5;
+        width: min(100%, 1700px);
+        height: calc(100% - 5.5rem);
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(35rem, 0.86fr);
+        align-items: center;
+        gap: clamp(2rem, 5vw, 7rem);
+        margin: 0 auto;
+        padding: clamp(2rem, 4vw, 4.5rem) clamp(2rem, 6vw, 7rem);
+    }
+
+    .auth-visuals {
+        position: absolute;
+        inset: 5.5rem 0 0;
+        z-index: 1;
+        overflow: hidden;
+        pointer-events: none;
+    }
+
+    .auth-ribbon {
+        position: absolute;
+        left: -8%;
+        bottom: -8%;
+        width: 72%;
+        height: 88%;
+        opacity: 0.72;
+        filter: saturate(110%);
+    }
+
+    .auth-orbit {
+        position: absolute;
+        right: 2%;
+        top: 8%;
+        width: min(58vw, 920px);
+        height: min(78vh, 820px);
+        opacity: 0.82;
+    }
+
+    .auth-copy-block {
+        position: relative;
+        z-index: 4;
+        max-width: 47rem;
+        padding-bottom: 1rem;
+    }
+
+    .auth-eyebrow {
+        margin: 0 0 1.4rem;
+        color: #0b5ef4;
+        font-size: 0.83rem;
+        font-weight: 900;
+        letter-spacing: 0.26em;
+        text-transform: uppercase;
+    }
+
+    .auth-heading {
+        max-width: 45rem;
+        margin: 0;
+        color: var(--auth-ink);
+        font-size: clamp(3rem, 5.5vw, 5.8rem);
+        font-weight: 500;
+        letter-spacing: -0.068em;
+        line-height: 0.98;
+        text-wrap: balance;
+    }
+
+    .auth-description {
+        max-width: 41rem;
+        margin: 1.7rem 0 0;
+        color: #546680;
+        font-size: clamp(1rem, 1.45vw, 1.35rem);
+        font-weight: 500;
+        line-height: 1.58;
+    }
+
+    .auth-trust-bar {
+        width: fit-content;
+        max-width: 100%;
+        display: grid;
+        grid-template-columns: repeat(4, auto);
+        align-items: center;
+        margin-top: 3rem;
+        padding: 0.8rem 1rem;
+        border: 1px solid rgba(132, 163, 213, 0.28);
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.76);
+        box-shadow:
+            inset 0 1px 0 white,
+            0 18px 40px rgba(47, 83, 143, 0.1);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+    }
+
+    .auth-trust-item {
+        min-height: 2.2rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0 1rem;
+        border-right: 1px solid rgba(130, 155, 195, 0.22);
+        color: #40516d;
+        font-size: 0.78rem;
+        font-weight: 750;
+        white-space: nowrap;
+    }
+
+    .auth-trust-item:first-child {
+        padding-left: 0.35rem;
+    }
+
+    .auth-trust-item:last-child {
+        padding-right: 0.35rem;
+        border-right: 0;
+    }
+
+    .auth-trust-item .auth-icon {
+        width: 1.25rem;
+        height: 1.25rem;
+        color: #0d5ff2;
+    }
+
+    .auth-live-dot {
+        width: 0.72rem;
+        height: 0.72rem;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        background: #35c76f;
+        box-shadow: 0 0 0 5px rgba(53, 199, 111, 0.1);
+    }
+
+    .auth-cloudflare {
+        color: #f2842d !important;
+    }
+
+    .auth-card-region {
+        position: relative;
+        z-index: 8;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .auth-card-stack {
+        position: relative;
+        width: min(100%, 31rem);
+    }
+
+    .auth-card-stack::before {
+        content: "";
+        position: absolute;
+        inset: 3.5rem -3.7rem -2.7rem 2.8rem;
+        z-index: -3;
+        border-radius: 2.2rem;
+        background: rgba(25, 96, 239, 0.15);
+        filter: blur(44px);
+    }
+
+    .auth-teaser {
+        position: absolute;
+        z-index: 1;
+        top: 4.7rem;
+        left: calc(100% - 1.1rem);
+        width: 13rem;
+        min-height: 33rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1.4rem;
+        border: 1px solid rgba(122, 156, 214, 0.25);
+        border-radius: 1.8rem;
+        color: var(--auth-ink);
+        background:
+            linear-gradient(140deg, rgba(255, 255, 255, 0.9), rgba(236, 243, 255, 0.62)),
+            radial-gradient(circle at 50% 15%, rgba(77, 141, 255, 0.18), transparent 45%);
+        box-shadow:
+            inset 0 1px 0 white,
+            0 28px 58px rgba(45, 79, 137, 0.15);
+        text-align: center;
+        backdrop-filter: blur(28px);
+        -webkit-backdrop-filter: blur(28px);
+        cursor: pointer;
+        transition: 260ms ease;
+    }
+
+    .auth-teaser:hover {
+        transform: translateX(0.45rem);
+        border-color: rgba(18, 98, 243, 0.42);
+    }
+
+    .auth-teaser-icon {
+        width: 3.2rem;
+        height: 3.2rem;
+        display: grid;
+        place-items: center;
+        margin-bottom: 1.5rem;
+        border: 1px solid rgba(18, 98, 243, 0.14);
+        border-radius: 1.15rem;
+        color: var(--auth-blue);
+        background: rgba(255, 255, 255, 0.7);
+        box-shadow: inset 0 1px 0 white, 0 12px 26px rgba(18, 98, 243, 0.1);
+    }
+
+    .auth-teaser-icon .auth-icon {
+        width: 1.7rem;
+        height: 1.7rem;
+    }
+
+    .auth-teaser h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        line-height: 1.12;
+        font-weight: 900;
+        letter-spacing: -0.035em;
+    }
+
+    .auth-teaser p {
+        margin: 0.85rem 0 0;
+        color: #667792;
+        font-size: 0.84rem;
+        font-weight: 550;
+        line-height: 1.55;
+    }
+
+    .auth-teaser-arrow {
+        width: 2.9rem;
+        height: 2.9rem;
+        display: grid;
+        place-items: center;
+        margin-top: 2.8rem;
+        border: 1px solid rgba(130, 157, 204, 0.28);
+        border-radius: 999px;
+        color: #7485a1;
+        background: rgba(255, 255, 255, 0.56);
+        transition: 180ms ease;
+    }
+
+    .auth-teaser:hover .auth-teaser-arrow {
+        color: white;
+        background: var(--auth-blue);
+        transform: translateX(0.2rem);
+    }
+
+    .auth-card-shell {
+        position: relative;
+        z-index: 3;
+        overflow: hidden;
+        border: 1px solid rgba(101, 143, 211, 0.34);
+        border-radius: 2rem;
+        background:
+            linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(245, 249, 255, 0.84)),
+            radial-gradient(circle at 95% 0%, rgba(51, 127, 255, 0.14), transparent 42%);
+        box-shadow:
+            inset 0 1px 0 white,
+            inset 0 0 0 1px rgba(255, 255, 255, 0.38),
+            0 36px 80px rgba(38, 70, 126, 0.19),
+            0 8px 20px rgba(18, 98, 243, 0.08);
+        backdrop-filter: blur(30px);
+        -webkit-backdrop-filter: blur(30px);
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .auth-card-shell::-webkit-scrollbar {
+        display: none;
+        width: 0;
+        height: 0;
+    }
+
+    .auth-card-shell::before {
+        content: "";
+        position: absolute;
+        inset: 0.25rem;
+        pointer-events: none;
+        border: 1px solid rgba(255, 255, 255, 0.72);
+        border-radius: 1.75rem;
+    }
+
+    .auth-card-inner {
+        position: relative;
+        z-index: 2;
+        padding: 2rem 2.3rem 1.8rem;
+    }
+
+    .auth-segmented {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.35rem;
+        padding: 0.3rem;
+        border: 1px solid rgba(138, 162, 204, 0.16);
+        border-radius: 1rem;
+        background: rgba(240, 244, 251, 0.72);
+    }
+
+    .auth-tab {
+        min-height: 3.2rem;
+        border: 0;
+        border-radius: 0.78rem;
+        color: #65748e;
+        background: transparent;
+        font-size: 0.94rem;
+        font-weight: 800;
+        cursor: pointer;
+        transition: 180ms ease;
+    }
+
+    .auth-tab[aria-selected="true"] {
+        color: #0758ec;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow:
+            0 9px 18px rgba(44, 78, 134, 0.09),
+            0 2px 0 rgba(20, 99, 243, 0.9);
+    }
+
+    .auth-panel-view {
+        padding-top: 2rem;
+    }
+
+    .auth-panel-view[hidden] {
+        display: none !important;
+    }
+
+    .auth-card-intro {
+        margin-bottom: 1.65rem;
+        text-align: center;
+    }
+
+    .auth-card-intro h1,
+    .auth-card-intro h2 {
+        margin: 0;
+        color: var(--auth-ink);
+        font-size: clamp(1.8rem, 3vw, 2.2rem);
+        font-weight: 900;
+        letter-spacing: -0.05em;
+    }
+
+    .auth-card-intro p {
+        margin: 0.45rem 0 0;
+        color: #697891;
+        font-size: 0.91rem;
+        font-weight: 550;
+    }
+
+    .auth-flashes {
+        position: relative;
+        z-index: 10;
+        margin-bottom: 1.2rem;
+    }
+
+    .auth-flashes > * {
+        border-radius: 0.85rem !important;
+        box-shadow: none !important;
+    }
+
+    .auth-form {
+        display: grid;
+        gap: 1.05rem;
+    }
+
+    .auth-form-field {
+        display: grid;
+        gap: 0.48rem;
+    }
+
+    .auth-label-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .auth-form label,
+    .auth-field-label {
+        color: #263652;
+        font-size: 0.83rem;
+        font-weight: 800;
+    }
+
+    .auth-field-wrap {
+        position: relative;
+    }
+
+    .auth-field-icon {
+        position: absolute;
+        z-index: 2;
+        left: 0.9rem;
+        top: 50%;
+        color: #8291aa;
+        transform: translateY(-50%);
+        pointer-events: none;
+    }
+
+    .auth-field-icon .auth-icon {
+        width: 1.15rem;
+        height: 1.15rem;
+    }
+
+    .auth-input {
+        width: 100%;
+        min-height: 3.35rem;
+        padding: 0.78rem 1rem;
+        border: 1px solid rgba(123, 149, 192, 0.34);
+        border-radius: 0.74rem;
+        color: var(--auth-ink);
+        background: rgba(255, 255, 255, 0.68);
+        box-shadow: inset 0 1px 2px rgba(42, 67, 109, 0.035);
+        font-size: 0.92rem;
+        font-weight: 600;
+        outline: none;
+        transition: 180ms ease;
+    }
+
+    .auth-input.has-leading-icon {
+        padding-left: 2.8rem;
+    }
+
+    .auth-input.has-trailing-button {
+        padding-right: 3rem;
+    }
+
+    .auth-input::placeholder {
+        color: #99a6bb;
+    }
+
+    .auth-input:hover {
+        border-color: rgba(64, 118, 211, 0.46);
+    }
+
+    .auth-input:focus {
+        border-color: var(--auth-blue);
+        background: white;
+        box-shadow: 0 0 0 4px rgba(18, 98, 243, 0.1);
+    }
+
+    .auth-password-toggle {
+        position: absolute;
+        z-index: 3;
+        right: 0.65rem;
+        top: 50%;
+        width: 2.25rem;
+        height: 2.25rem;
+        display: grid;
+        place-items: center;
+        border: 0;
+        border-radius: 0.65rem;
+        color: #7d8ba4;
+        background: transparent;
+        cursor: pointer;
+        transform: translateY(-50%);
+        transition: 160ms ease;
+    }
+
+    .auth-password-toggle:hover {
+        color: var(--auth-blue);
+        background: rgba(18, 98, 243, 0.07);
+    }
+
+    .auth-link {
+        color: #075bec;
+        font-size: 0.8rem;
+        font-weight: 800;
+        text-decoration: none;
+    }
+
+    .auth-link:hover {
+        text-decoration: underline;
+        text-underline-offset: 0.18rem;
+    }
+
+    .auth-check {
+        width: fit-content;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.65rem;
+        color: #44536e !important;
+        cursor: pointer;
+    }
+
+    .auth-check input {
+        width: 1.05rem;
+        height: 1.05rem;
+        margin: 0;
+        border: 1px solid #9dabc0;
+        border-radius: 0.25rem;
+        accent-color: var(--auth-blue);
+    }
+
+    .auth-turnstile {
+        overflow: hidden;
+        display: grid;
+        gap: 0.55rem;
+        justify-items: center;
+        padding: 0.7rem;
+        border: 1px solid rgba(18, 98, 243, 0.2);
+        border-radius: 0.9rem;
+        background: linear-gradient(145deg, rgba(248, 251, 255, 0.94), rgba(232, 241, 255, 0.72));
+        box-shadow: inset 0 1px 0 white;
+    }
+
+    .auth-turnstile-label {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        color: #50617d;
+        font-size: 0.7rem;
+        font-weight: 850;
+        letter-spacing: 0.04em;
+    }
+
+    .auth-turnstile-label .auth-icon {
+        width: 0.95rem;
+        height: 0.95rem;
+        color: #0d5ff2;
+    }
+
+    .auth-primary-button {
+        width: 100%;
+        min-height: 3.65rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.8rem;
+        padding: 0.82rem 1.1rem;
+        border: 1px solid rgba(13, 86, 226, 0.65);
+        border-radius: 0.78rem;
+        color: white;
+        background: linear-gradient(180deg, #2779ff, #0757eb);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.34),
+            0 13px 26px rgba(7, 87, 235, 0.23);
+        font-size: 0.98rem;
+        font-weight: 900;
+        cursor: pointer;
+        transition: 180ms ease;
+    }
+
+    .auth-primary-button:hover {
+        background: linear-gradient(180deg, #1d70f7, #054bd3);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.34),
+            0 16px 32px rgba(7, 87, 235, 0.29);
+        transform: translateY(-1px);
+    }
+
+    .auth-primary-button:disabled {
+        cursor: wait;
+        opacity: 0.74;
+        transform: none;
+    }
+
+    .auth-button-spinner {
+        width: 1.1rem;
+        height: 1.1rem;
+        display: none;
+        border: 2px solid rgba(255, 255, 255, 0.4);
+        border-top-color: white;
+        border-radius: 999px;
+        animation: auth-spin 700ms linear infinite;
+    }
+
+    .auth-primary-button.is-loading .auth-button-spinner {
+        display: block;
+    }
+
+    .auth-primary-button.is-loading .auth-button-icon {
+        display: none;
+    }
+
+    .auth-inline-switch {
+        margin: 1.25rem 0 0;
+        color: #65738b;
+        font-size: 0.84rem;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .auth-security {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        margin-top: 1.6rem;
+        color: #77859c;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    .auth-security::before,
+    .auth-security::after {
+        content: "";
+        height: 1px;
+        flex: 1;
+        background: rgba(129, 153, 193, 0.24);
+    }
+
+    .auth-security-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.42rem;
+        white-space: nowrap;
+    }
+
+    .auth-security .auth-icon {
+        width: 0.95rem;
+        height: 0.95rem;
+    }
+
+    .auth-plan-note {
+        padding: 0.85rem 1rem;
+        border: 1px solid rgba(18, 98, 243, 0.18);
+        border-radius: 0.85rem;
+        color: #244674;
+        background: rgba(229, 240, 255, 0.66);
+        font-size: 0.78rem;
+        line-height: 1.5;
+    }
+
+    .auth-plan-note strong {
+        display: block;
+        color: #0b4cc4;
+        font-size: 0.82rem;
+    }
+
+    .auth-register-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .auth-register-grid .auth-form-field.is-wide {
+        grid-column: 1 / -1;
+    }
+
+    .auth-special-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        margin-top: 1rem;
+        color: #63728a;
+        font-size: 0.82rem;
+        font-weight: 750;
+        text-decoration: none;
+    }
+
+    .auth-special-back:hover {
+        color: var(--auth-blue);
+    }
+
+    .auth-crystal {
+        position: absolute;
+        z-index: 4;
+        width: 5.4rem;
+        height: 5.4rem;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(255, 255, 255, 0.86);
+        border-radius: 1.65rem;
+        color: #1262f3;
+        background:
+            linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(184, 216, 255, 0.36)),
+            radial-gradient(circle at 28% 20%, white, transparent 48%);
+        box-shadow:
+            inset 0 1px 0 white,
+            inset -10px -12px 20px rgba(60, 118, 220, 0.09),
+            0 18px 38px rgba(41, 79, 145, 0.16);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        transform: rotate(12deg);
+        animation: auth-float 6s ease-in-out infinite;
+    }
+
+    .auth-crystal .auth-icon {
+        width: 2.1rem;
+        height: 2.1rem;
+        filter: drop-shadow(0 4px 6px rgba(18, 98, 243, 0.18));
+    }
+
+    .auth-crystal-stock {
+        top: 14%;
+        right: 50%;
+    }
+
+    .auth-crystal-user {
+        right: 42%;
+        bottom: 14%;
+        animation-delay: -2.1s;
+    }
+
+    .auth-crystal-receipt {
+        right: 15%;
+        bottom: 5%;
+        animation-delay: -4s;
+    }
+
+    @keyframes auth-float {
+        0%, 100% { transform: translateY(0) rotate(12deg); }
+        50% { transform: translateY(-0.65rem) rotate(8deg); }
+    }
+
+    @keyframes auth-spin {
+        to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 1320px) {
+        .auth-main {
+            grid-template-columns: minmax(0, 0.92fr) minmax(31rem, 0.78fr);
+            gap: 3rem;
+            padding-left: 4rem;
+            padding-right: 4rem;
+        }
+
+        .auth-heading {
+            font-size: clamp(3rem, 5.2vw, 4.8rem);
+        }
+
+        .auth-teaser {
+            left: calc(100% - 3.5rem);
+            width: 11rem;
+        }
+
+        .auth-card-stack {
+            transform: translateX(-2rem);
+        }
+
+        .auth-trust-bar {
+            grid-template-columns: repeat(2, auto);
+        }
+
+        .auth-trust-item:nth-child(2) {
+            border-right: 0;
+        }
+
+        .auth-trust-item:nth-child(n+3) {
+            margin-top: 0.45rem;
+        }
+    }
+
+    @media (max-width: 1023px) {
+        .auth-stage {
+            height: auto;
+            min-height: 100%;
+            overflow: auto;
+        }
+
+        .auth-main {
+            height: auto;
+            min-height: calc(100vh - 5rem);
+            min-height: calc(100dvh - 5rem);
+            grid-template-columns: 1fr;
+            gap: 2.5rem;
+            padding: 3rem 1.5rem 4rem;
+        }
+
+        .auth-header {
+            height: 5rem;
+            padding: 0 1.5rem;
+        }
+
+        .auth-copy-block {
+            max-width: 44rem;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .auth-heading {
+            margin: 0 auto;
+            font-size: clamp(2.8rem, 9vw, 4.7rem);
+        }
+
+        .auth-description {
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .auth-trust-bar {
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .auth-card-region {
+            min-height: auto;
+        }
+
+        .auth-card-stack {
+            width: min(100%, 34rem);
+            transform: none;
+        }
+
+        .auth-teaser,
+        .auth-crystal,
+        .auth-orbit {
+            display: none;
+        }
+
+        .auth-ribbon {
+            width: 120%;
+            height: 55%;
+            opacity: 0.45;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .auth-header {
+            padding: 0 1rem;
+        }
+
+        .auth-brand-name {
+            font-size: 1.28rem;
+        }
+
+        .auth-brand-cube {
+            width: 2.5rem;
+            height: 2.5rem;
+        }
+
+        .auth-brand-trail,
+        .auth-header-action > span {
+            display: none;
+        }
+
+        .auth-outline-button {
+            min-height: 2.65rem;
+            padding: 0.62rem 1rem;
+            font-size: 0.78rem;
+        }
+
+        .auth-main {
+            gap: 2rem;
+            padding: 2.2rem 1rem 2.5rem;
+        }
+
+        .auth-eyebrow {
+            margin-bottom: 1rem;
+            font-size: 0.7rem;
+            letter-spacing: 0.19em;
+        }
+
+        .auth-heading {
+            font-size: clamp(2.45rem, 12vw, 3.35rem);
+        }
+
+        .auth-description {
+            margin-top: 1.25rem;
+            font-size: 0.95rem;
+        }
+
+        .auth-trust-bar {
+            width: 100%;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            margin-top: 2rem;
+            padding: 0.7rem;
+        }
+
+        .auth-trust-item {
+            min-width: 0;
+            padding: 0.4rem 0.5rem;
+            border-right: 0;
+            font-size: 0.68rem;
+            white-space: normal;
+        }
+
+        .auth-trust-item:nth-child(n+3) {
+            margin-top: 0;
+        }
+
+        .auth-card-inner {
+            padding: 1.15rem 1rem 1.25rem;
+        }
+
+        .auth-card-shell {
+            border-radius: 1.45rem;
+        }
+
+        .auth-card-shell::before {
+            border-radius: 1.25rem;
+        }
+
+        .auth-panel-view {
+            padding-top: 1.45rem;
+        }
+
+        .auth-register-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .auth-register-grid .auth-form-field.is-wide {
+            grid-column: auto;
+        }
+
+        .auth-turnstile {
+            justify-content: flex-start;
+            overflow-x: auto;
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .auth-card-shell {
+            max-height: calc(100vh - 7.5rem);
+            max-height: calc(100dvh - 7.5rem);
+            overflow-y: auto;
+        }
+    }
+
+    @media (min-width: 1024px) and (max-height: 850px) {
+        .auth-header {
+            height: 4.5rem;
+        }
+
+        .auth-stage::before,
+        .auth-visuals {
+            top: 4.5rem;
+        }
+
+        .auth-main {
+            height: calc(100% - 4.5rem);
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+
+        .auth-card-shell {
+            max-height: calc(100vh - 6.5rem);
+            max-height: calc(100dvh - 6.5rem);
+        }
+
+        .auth-card-inner {
+            padding-top: 1.2rem;
+            padding-bottom: 1.15rem;
+        }
+
+        .auth-panel-view {
+            padding-top: 1rem;
+        }
+
+        .auth-card-intro {
+            margin-bottom: 0.9rem;
+        }
+
+        .auth-card-intro h1,
+        .auth-card-intro h2 {
+            font-size: 1.72rem;
+        }
+
+        .auth-form {
+            gap: 0.72rem;
+        }
+
+        .auth-form-field {
+            gap: 0.3rem;
+        }
+
+        .auth-input {
+            min-height: 3rem;
+            padding-top: 0.62rem;
+            padding-bottom: 0.62rem;
+        }
+
+        .auth-primary-button {
+            min-height: 3.2rem;
+        }
+
+        .auth-inline-switch {
+            margin-top: 0.8rem;
+        }
+
+        .auth-security {
+            margin-top: 0.9rem;
+        }
+
+        .auth-turnstile {
+            padding: 0.45rem;
+            gap: 0.3rem;
+        }
+
+        .auth-turnstile .cf-turnstile {
+            min-height: 65px;
+            transform: scale(0.9);
+            transform-origin: center;
+            margin: -3px 0;
+        }
+
+        .auth-trust-bar {
+            margin-top: 1.7rem;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .auth-crystal,
+        .auth-button-spinner {
+            animation: none;
+        }
+
+        .auth-stage *,
+        .auth-stage *::before,
+        .auth-stage *::after {
+            scroll-behavior: auto !important;
+            transition-duration: 0.01ms !important;
+        }
     }
 </style>
 {% endblock %}
 
-{% set mode = auth_mode|default('login') %}
-
 {% block content %}
-<div class="min-h-screen bg-slate-50 dark:bg-slate-950">
-    <div class="min-h-screen grid lg:grid-cols-[1.05fr_0.95fr]">
-        <section class="auth-panel hidden lg:flex relative overflow-hidden">
-            <div class="relative z-10 flex flex-col justify-between w-full p-12 xl:p-16 text-white">
-                <div class="flex items-center gap-3">
-                    <div class="size-11 bg-white rounded-xl flex items-center justify-center text-primary-600">
-                        <span class="material-symbols-outlined text-2xl">inventory_2</span>
-                    </div>
-                    <div>
-                        <p class="text-2xl font-black tracking-tight">{{ platform_name }}</p>
-                        <p class="text-sm text-white/70">SaaS işletme yönetimi</p>
-                    </div>
-                </div>
+<div class="auth-stage" data-initial-auth-mode="{{ mode }}" data-active-auth-mode="{{ mode if mode in ['login', 'register'] else 'login' }}">
+    <svg class="auth-symbols" aria-hidden="true">
+        <symbol id="auth-icon-cube" viewBox="0 0 24 24">
+            <path d="m12 3 7.5 4.2v9.6L12 21l-7.5-4.2V7.2L12 3Z"></path>
+            <path d="m4.8 7.4 7.2 4.1 7.2-4.1M12 11.5V21"></path>
+        </symbol>
+        <symbol id="auth-icon-home" viewBox="0 0 24 24">
+            <path d="m3.5 10.5 8.5-7 8.5 7"></path>
+            <path d="M5.5 9.3V21h13V9.3M9.5 21v-6h5v6"></path>
+        </symbol>
+        <symbol id="auth-icon-chevron" viewBox="0 0 24 24">
+            <path d="m9 5 7 7-7 7"></path>
+        </symbol>
+        <symbol id="auth-icon-arrow" viewBox="0 0 24 24">
+            <path d="M4 12h15M14 6l6 6-6 6"></path>
+        </symbol>
+        <symbol id="auth-icon-mail" viewBox="0 0 24 24">
+            <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+            <path d="m4 7 8 6 8-6"></path>
+        </symbol>
+        <symbol id="auth-icon-lock" viewBox="0 0 24 24">
+            <rect x="5" y="10" width="14" height="11" rx="2"></rect>
+            <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"></path>
+        </symbol>
+        <symbol id="auth-icon-eye" viewBox="0 0 24 24">
+            <path d="M2.5 12s3.3-5.5 9.5-5.5 9.5 5.5 9.5 5.5-3.3 5.5-9.5 5.5S2.5 12 2.5 12Z"></path>
+            <circle cx="12" cy="12" r="2.5"></circle>
+        </symbol>
+        <symbol id="auth-icon-eye-off" viewBox="0 0 24 24">
+            <path d="m3 3 18 18M10.6 6.6c.5-.1.9-.1 1.4-.1 6.2 0 9.5 5.5 9.5 5.5a17.1 17.1 0 0 1-2.2 2.8M6.2 7.7A17.4 17.4 0 0 0 2.5 12s3.3 5.5 9.5 5.5c1.5 0 2.8-.3 3.9-.8M9.9 9.9a3 3 0 0 0 4.2 4.2"></path>
+        </symbol>
+        <symbol id="auth-icon-shield" viewBox="0 0 24 24">
+            <path d="M12 3 5 6v5c0 4.8 2.8 8.3 7 10 4.2-1.7 7-5.2 7-10V6l-7-3Z"></path>
+            <path d="m9 12 2 2 4-5"></path>
+        </symbol>
+        <symbol id="auth-icon-cloud" viewBox="0 0 24 24">
+            <path d="M7 19h10a4 4 0 0 0 .6-7.9A6 6 0 0 0 6.2 9.2 4.9 4.9 0 0 0 7 19Z"></path>
+        </symbol>
+        <symbol id="auth-icon-cloudflare" viewBox="0 0 24 24">
+            <path d="M7.2 17.5h11.5a2.8 2.8 0 0 0 .4-5.5 4.4 4.4 0 0 0-8.2-1.5 3.8 3.8 0 0 0-6.7 2.3 2.5 2.5 0 0 0 3 4.7Z"></path>
+            <path d="M4.2 17.5H2.5"></path>
+        </symbol>
+        <symbol id="auth-icon-user" viewBox="0 0 24 24">
+            <circle cx="12" cy="8" r="4"></circle>
+            <path d="M4.5 21a7.5 7.5 0 0 1 15 0"></path>
+        </symbol>
+        <symbol id="auth-icon-stock" viewBox="0 0 24 24">
+            <path d="M4 8.5 12 4l8 4.5-8 4.5-8-4.5Z"></path>
+            <path d="m4 12 8 4.5 8-4.5M4 15.5l8 4.5 8-4.5"></path>
+        </symbol>
+        <symbol id="auth-icon-receipt" viewBox="0 0 24 24">
+            <path d="M6 3h12v18l-2-1.5L14 21l-2-1.5L10 21l-2-1.5L6 21V3Z"></path>
+            <path d="M9 8h6M9 12h6M9 16h4"></path>
+        </symbol>
+    </svg>
 
-                <div class="max-w-xl">
-                    <p class="text-sm font-bold uppercase tracking-[0.18em] text-white/70 mb-4">Stok, cari, POS, personel ve ön muhasebe</p>
-                    <h1 class="text-5xl font-black leading-tight mb-6">İşletmenizin günlük operasyonlarını tek panelden yönetin.</h1>
-                    <p class="text-lg text-white/78 leading-relaxed">Satış, stok, cari, teklif, iade, personel ve nakit akışlarını firma bazlı veri izolasyonuyla güvenle takip edin.</p>
-                    <div class="mt-7 flex flex-wrap gap-2">
-                        <span class="auth-pill rounded-full px-3 py-1 text-xs font-bold">Sayfalama tercihleri</span>
-                        <span class="auth-pill rounded-full px-3 py-1 text-xs font-bold">Demo veri araçları</span>
-                        <span class="auth-pill rounded-full px-3 py-1 text-xs font-bold">Yedekleme</span>
-                        <span class="auth-pill rounded-full px-3 py-1 text-xs font-bold">Güvenlik denetimi</span>
-                    </div>
-                </div>
+    <header class="auth-header">
+        <a class="auth-brand" href="{{ url_for('index') }}" aria-label="Esstok ana sayfasına git">
+            <span class="auth-brand-cube" aria-hidden="true">
+                <svg class="auth-icon"><use href="#auth-icon-cube"></use></svg>
+            </span>
+            <span class="auth-brand-name">esstok.com</span>
+            <span class="auth-brand-trail" aria-hidden="true">
+                <svg class="auth-icon"><use href="#auth-icon-chevron"></use></svg>
+                <svg class="auth-icon"><use href="#auth-icon-home"></use></svg>
+            </span>
+        </a>
 
-                <div class="grid grid-cols-3 gap-4 max-w-xl">
-                    <div class="auth-feature-card rounded-xl p-4">
-                        <p class="text-2xl font-black">POS</p>
-                        <small class="block text-xs mt-1">Hızlı satış</small>
-                    </div>
-                    <div class="auth-feature-card rounded-xl p-4">
-                        <p class="text-2xl font-black">CRM</p>
-                        <small class="block text-xs mt-1">Cari takip</small>
-                    </div>
-                    <div class="auth-feature-card rounded-xl p-4">
-                        <p class="text-2xl font-black">SaaS</p>
-                        <small class="block text-xs mt-1">Veri izolasyonu</small>
-                    </div>
-                </div>
-            </div>
-        </section>
+        <div class="auth-header-action">
+            <span>Hesabınız yok mu?</span>
+            {% if mode in ['forgot', 'reset'] %}
+            <a class="auth-outline-button" href="{{ url_for('kayit') }}">Yeni Kayıt</a>
+            {% else %}
+            <button class="auth-outline-button" type="button" data-auth-target="register">Yeni Kayıt</button>
+            {% endif %}
+        </div>
+    </header>
 
-        <section class="flex items-center justify-center px-4 py-8 sm:px-8">
-            <div class="auth-card w-full max-w-[460px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8">
-                <div class="lg:hidden flex items-center justify-center gap-3 mb-8">
-                    <div class="size-10 bg-primary-600 rounded-xl flex items-center justify-center text-white">
-                        <span class="material-symbols-outlined">inventory_2</span>
-                    </div>
-                    <span class="text-2xl font-black text-slate-900 dark:text-white">{{ platform_name }}</span>
-                </div>
+    <div class="auth-visuals" aria-hidden="true">
+        <svg class="auth-ribbon" viewBox="0 0 1100 760" preserveAspectRatio="none">
+            <defs>
+                <linearGradient id="auth-wave-a" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#d8ecff" stop-opacity="0"></stop>
+                    <stop offset=".34" stop-color="#a9d3ff" stop-opacity=".54"></stop>
+                    <stop offset=".72" stop-color="#e8f5ff" stop-opacity=".24"></stop>
+                    <stop offset="1" stop-color="#ffffff" stop-opacity="0"></stop>
+                </linearGradient>
+                <linearGradient id="auth-wave-b" x1="0" y1=".2" x2="1" y2=".8">
+                    <stop offset="0" stop-color="#ffffff" stop-opacity=".1"></stop>
+                    <stop offset=".48" stop-color="#63aaff" stop-opacity=".32"></stop>
+                    <stop offset="1" stop-color="#ddebff" stop-opacity="0"></stop>
+                </linearGradient>
+                <filter id="auth-wave-blur">
+                    <feGaussianBlur stdDeviation="12"></feGaussianBlur>
+                </filter>
+            </defs>
+            <path d="M-80 690C170 445 260 185 565 186c214 0 307 158 595 4v480c-272-92-450 20-682 40-243 20-389-18-558-20Z" fill="url(#auth-wave-a)"></path>
+            <path d="M-20 720C224 522 263 310 526 261c225-42 359 93 641 44" fill="none" stroke="url(#auth-wave-b)" stroke-width="72" filter="url(#auth-wave-blur)"></path>
+            <path d="M-40 705C187 562 283 348 525 314c199-27 356 80 618 36" fill="none" stroke="#ffffff" stroke-opacity=".58" stroke-width="3"></path>
+            <path d="M-30 735C225 598 329 442 560 408c199-29 355 35 554 30" fill="none" stroke="#7ab5ff" stroke-opacity=".22" stroke-width="1.5"></path>
+        </svg>
 
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                <div class="mb-5 space-y-2">
-                    {% for category, message in messages %}
-                    <div class="p-3 rounded-lg text-sm font-medium {% if category == 'success' %}bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300{% elif category == 'error' %}bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300{% else %}bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300{% endif %}">
-                        {{ message }}
-                    </div>
-                    {% endfor %}
-                </div>
-                {% endif %}
-                {% endwith %}
+        <svg class="auth-orbit" viewBox="0 0 900 800">
+            <defs>
+                <linearGradient id="auth-orbit-line" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#2b77f7" stop-opacity=".12"></stop>
+                    <stop offset=".52" stop-color="#2b77f7" stop-opacity=".54"></stop>
+                    <stop offset="1" stop-color="#e7a84d" stop-opacity=".36"></stop>
+                </linearGradient>
+            </defs>
+            <ellipse cx="425" cy="386" rx="340" ry="272" fill="none" stroke="url(#auth-orbit-line)" stroke-width="1.3" transform="rotate(-8 425 386)"></ellipse>
+            <ellipse cx="446" cy="390" rx="266" ry="356" fill="none" stroke="url(#auth-orbit-line)" stroke-width="1.1" transform="rotate(38 446 390)"></ellipse>
+            <circle cx="118" cy="266" r="5" fill="#1162f3" stroke="#dcecff" stroke-width="5"></circle>
+            <circle cx="758" cy="284" r="4.5" fill="#1262f3" stroke="#dcecff" stroke-width="4"></circle>
+            <circle cx="207" cy="616" r="4" fill="#1262f3" stroke="#dcecff" stroke-width="4"></circle>
+            <circle cx="704" cy="642" r="3.5" fill="#e0a44d" stroke="#fff5df" stroke-width="4"></circle>
+            <circle cx="555" cy="90" r="3.5" fill="#e0a44d" stroke="#fff5df" stroke-width="4"></circle>
+        </svg>
 
-                {% if mode == 'forgot' %}
-                <div class="mb-7">
-                    <h2 class="text-2xl font-black text-slate-900 dark:text-white">Şifrenizi sıfırlayın</h2>
-                    <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">E-posta adresinizi girin; hesabınız varsa sıfırlama bağlantısı hazırlanır.</p>
-                </div>
-                <form method="POST" action="{{ url_for('sifremi_unuttum') }}" class="space-y-5">
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">E-posta</label>
-                        <div class="relative">
-                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">mail</span>
-                            <input name="email" type="email" required autocomplete="email" class="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="ornek@firma.com">
-                        </div>
-                    </div>
-                    <button type="submit" class="w-full min-h-12 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2">
-                        Bağlantı oluştur
-                        <span class="material-symbols-outlined text-[20px]">send</span>
-                    </button>
-                    <a href="{{ url_for('giris') }}" class="block text-center text-sm font-semibold text-primary-600 hover:underline">Giriş ekranına dön</a>
-                </form>
-
-                {% elif mode == 'reset' %}
-                <div class="mb-7">
-                    <h2 class="text-2xl font-black text-slate-900 dark:text-white">Yeni şifre belirleyin</h2>
-                    <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Güçlü bir şifre seçin. En az 8 karakter önerilir.</p>
-                </div>
-                <form method="POST" action="{{ url_for('sifre_sifirla', token=reset_token) }}" class="space-y-5">
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Yeni şifre</label>
-                        <div class="relative">
-                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">lock_reset</span>
-                            <input id="reset-password" name="password" type="password" required minlength="8" autocomplete="new-password" class="password-field w-full pl-10 pr-12 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="En az 8 karakter">
-                            <button class="toggle-password absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" type="button" aria-label="Şifreyi göster">
-                                <span class="material-symbols-outlined text-[20px]">visibility</span>
-                            </button>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Yeni şifre tekrar</label>
-                        <input name="confirm_password" type="password" required minlength="8" autocomplete="new-password" class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="Şifrenizi tekrar girin">
-                    </div>
-                    <button type="submit" class="w-full min-h-12 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2">
-                        Şifreyi güncelle
-                        <span class="material-symbols-outlined text-[20px]">check_circle</span>
-                    </button>
-                </form>
-
-                {% else %}
-                <div class="mb-7">
-                    <h2 class="text-2xl font-black text-slate-900 dark:text-white">Güvenli giriş</h2>
-                    <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Firma hesabınıza erişmek için bilgilerinizi girin.</p>
-                </div>
-
-                <div class="grid grid-cols-2 gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-7">
-                    <button type="button" data-auth-tab="login" class="auth-tab auth-tab-active py-2.5 rounded-lg text-sm font-bold transition-all">Giriş</button>
-                    <button type="button" data-auth-tab="register" class="auth-tab py-2.5 rounded-lg text-sm font-bold text-slate-500 transition-all">Yeni kayıt</button>
-                </div>
-
-                <form id="login-form" method="POST" action="{{ url_for('giris') }}" class="auth-form space-y-5">
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">E-posta</label>
-                        <div class="relative">
-                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">mail</span>
-                            <input name="email" type="email" required autocomplete="email" class="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="ornek@firma.com">
-                        </div>
-                    </div>
-                    <div>
-                        <div class="flex items-center justify-between mb-2">
-                            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300">Şifre</label>
-                            <a href="{{ url_for('sifremi_unuttum') }}" class="text-xs font-bold text-primary-600 hover:underline">Şifremi unuttum</a>
-                        </div>
-                        <div class="relative">
-                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">lock</span>
-                            <input name="password" type="password" required autocomplete="current-password" class="password-field w-full pl-10 pr-12 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="Şifreniz">
-                            <button class="toggle-password absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" type="button" aria-label="Şifreyi göster">
-                                <span class="material-symbols-outlined text-[20px]">visibility</span>
-                            </button>
-                        </div>
-                    </div>
-                    <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                        <input name="remember" type="checkbox" class="rounded text-primary-600 focus:ring-primary-600 border-slate-300 dark:border-slate-700">
-                        Beni hatırla
-                    </label>
-                    {% set turnstile = turnstile_config() %}
-                    {% if turnstile.enabled %}
-                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
-                        <div class="cf-turnstile" data-sitekey="{{ turnstile.site_key }}" data-theme="auto"></div>
-                    </div>
-                    {% endif %}
-                    <button type="submit" class="w-full min-h-12 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2">
-                        Giriş Yap
-                        <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
-                    </button>
-                </form>
-
-                <form id="register-form" method="POST" action="{{ url_for('kayit') }}" class="auth-form hidden space-y-4">
-                    {% set selected_plan = selected_plan|default('demo') %}
-                    {% set selected_package = package_catalog[selected_plan] if package_catalog is defined and selected_plan in package_catalog else none %}
-                    <input type="hidden" name="requested_plan" value="{{ selected_plan }}">
-                    {% if selected_package and selected_plan != 'demo' %}
-                    <div class="rounded-2xl border border-primary-200 bg-primary-50 p-4 text-sm text-primary-900 dark:border-primary-900/50 dark:bg-primary-950/30 dark:text-primary-100">
-                        <p class="font-black">{{ selected_package.label }} paket talebiyle kayıt açılıyor.</p>
-                        <p class="mt-1 text-xs leading-5">Hesabınız demo olarak oluşturulur; satın alma talebi destek merkezine düşer ve paket ödeme sonrası aktif edilir.</p>
-                    </div>
-                    {% endif %}
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Firma adı</label>
-                        <input name="firma_adi" type="text" required autocomplete="organization" class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="ABC Ticaret">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Yetkili adı</label>
-                        <input name="yetkili_adi" type="text" autocomplete="name" class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="Ad Soyad">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">E-posta</label>
-                        <input name="email" type="email" required autocomplete="email" class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="ornek@firma.com">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Telefon</label>
-                        <input name="telefon" type="tel" autocomplete="tel" class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="0 5xx xxx xx xx">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Şifre</label>
-                        <div class="relative">
-                            <input name="password" type="password" required minlength="8" autocomplete="new-password" class="password-field w-full px-4 pr-12 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="En az 8 karakter">
-                            <button class="toggle-password absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" type="button" aria-label="Şifreyi göster">
-                                <span class="material-symbols-outlined text-[20px]">visibility</span>
-                            </button>
-                        </div>
-                    </div>
-                    <button type="submit" class="w-full min-h-12 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2">
-                        Firma hesabı oluştur
-                        <span class="material-symbols-outlined text-[20px]">person_add</span>
-                    </button>
-                </form>
-                {% endif %}
-
-                <p class="mt-8 text-center text-xs text-slate-400">© 2026 {{ platform_name }}. Güvenli SaaS işletme yönetimi.</p>
-            </div>
-        </section>
+        <span class="auth-crystal auth-crystal-stock">
+            <svg class="auth-icon"><use href="#auth-icon-stock"></use></svg>
+        </span>
+        <span class="auth-crystal auth-crystal-user">
+            <svg class="auth-icon"><use href="#auth-icon-user"></use></svg>
+        </span>
+        <span class="auth-crystal auth-crystal-receipt">
+            <svg class="auth-icon"><use href="#auth-icon-receipt"></use></svg>
+        </span>
     </div>
+
+    <main class="auth-main">
+        <section class="auth-copy-block" aria-labelledby="auth-page-heading">
+            <p class="auth-eyebrow">İşletmenizin kontrol merkezi</p>
+            <h1 id="auth-page-heading" class="auth-heading">İşinize kaldığınız yerden devam edin.</h1>
+            <p class="auth-description">Stok, satış, cari ve finansal hareketleriniz tek bir güvenli çalışma alanında.</p>
+
+            <div class="auth-trust-bar" aria-label="Platform güven bilgileri">
+                <span class="auth-trust-item">
+                    <span class="auth-live-dot" aria-hidden="true"></span>
+                    Sistemler aktif
+                </span>
+                <span class="auth-trust-item">
+                    <svg class="auth-icon" aria-hidden="true"><use href="#auth-icon-shield"></use></svg>
+                    Güvenli bağlantı
+                </span>
+                <span class="auth-trust-item">
+                    <svg class="auth-icon" aria-hidden="true"><use href="#auth-icon-cloud"></use></svg>
+                    Veriler güncel
+                </span>
+                <span class="auth-trust-item">
+                    <svg class="auth-icon auth-cloudflare" aria-hidden="true"><use href="#auth-icon-cloudflare"></use></svg>
+                    Cloudflare ile korunuyor
+                </span>
+            </div>
+        </section>
+
+        <section class="auth-card-region" aria-label="Hesap işlemleri">
+            <div class="auth-card-stack" id="auth-card-stack">
+                {% if mode not in ['forgot', 'reset'] %}
+                <button class="auth-teaser" type="button" data-auth-teaser data-auth-target="{{ 'login' if mode == 'register' else 'register' }}" aria-label="{{ 'Giriş panelini aç' if mode == 'register' else 'Yeni kayıt panelini aç' }}">
+                    <span class="auth-teaser-icon">
+                        <svg class="auth-icon"><use href="#auth-icon-cube"></use></svg>
+                    </span>
+                    <h3 data-teaser-title>{{ 'Tekrar hoş geldiniz' if mode == 'register' else 'Yeni başlangıç' }}</h3>
+                    <p data-teaser-copy>{{ 'Mevcut hesabınızla güvenle devam edin.' if mode == 'register' else 'İşletmenizi birkaç adımda oluşturun.' }}</p>
+                    <span class="auth-teaser-arrow" aria-hidden="true">
+                        <svg class="auth-icon"><use href="#auth-icon-chevron"></use></svg>
+                    </span>
+                </button>
+                {% endif %}
+
+                <div class="auth-card-shell">
+                    <div class="auth-card-inner">
+                        <div class="auth-flashes" aria-live="polite">
+                            {% include '_flash_messages.html' %}
+                        </div>
+
+                        {% if mode == 'forgot' %}
+                        <div class="auth-panel-view">
+                            <div class="auth-card-intro">
+                                <h1>Şifrenizi yenileyin</h1>
+                                <p>Hesabınıza bağlı e-posta adresini yazın.</p>
+                            </div>
+                            <form method="POST" action="{{ url_for('sifremi_unuttum') }}" class="auth-form" data-auth-submit-form>
+                                <div class="auth-form-field">
+                                    <label for="forgot-email">E-posta adresi</label>
+                                    <div class="auth-field-wrap">
+                                        <span class="auth-field-icon">
+                                            <svg class="auth-icon"><use href="#auth-icon-mail"></use></svg>
+                                        </span>
+                                        <input id="forgot-email" name="email" type="email" required autocomplete="email" class="auth-input has-leading-icon" placeholder="ornek@firma.com">
+                                    </div>
+                                </div>
+                                <button type="submit" class="auth-primary-button" data-loading-label="Bağlantı hazırlanıyor">
+                                    <span class="auth-button-label">Sıfırlama bağlantısı gönder</span>
+                                    <svg class="auth-icon auth-button-icon"><use href="#auth-icon-arrow"></use></svg>
+                                    <span class="auth-button-spinner" aria-hidden="true"></span>
+                                </button>
+                            </form>
+                            <a class="auth-special-back" href="{{ url_for('giris') }}">
+                                <svg class="auth-icon" style="transform:rotate(180deg)"><use href="#auth-icon-arrow"></use></svg>
+                                Giriş ekranına dön
+                            </a>
+                            <div class="auth-security">
+                                <span class="auth-security-label">
+                                    <svg class="auth-icon"><use href="#auth-icon-lock"></use></svg>
+                                    Güvenli parola yenileme
+                                </span>
+                            </div>
+                        </div>
+                        {% elif mode == 'reset' %}
+                        <div class="auth-panel-view">
+                            <div class="auth-card-intro">
+                                <h1>Yeni şifrenizi belirleyin</h1>
+                                <p>Güçlü ve yalnızca bu hesapta kullandığınız bir şifre seçin.</p>
+                            </div>
+                            <form method="POST" action="{{ url_for('sifre_sifirla', token=reset_token) }}" class="auth-form" data-auth-submit-form>
+                                <div class="auth-form-field">
+                                    <label for="reset-password">Yeni şifre</label>
+                                    <div class="auth-field-wrap">
+                                        <span class="auth-field-icon">
+                                            <svg class="auth-icon"><use href="#auth-icon-lock"></use></svg>
+                                        </span>
+                                        <input id="reset-password" name="password" type="password" required minlength="8" autocomplete="new-password" class="auth-input has-leading-icon has-trailing-button password-field" placeholder="En az 8 karakter">
+                                        <button class="auth-password-toggle toggle-password" type="button" aria-label="Şifreyi göster" aria-pressed="false">
+                                            <svg class="auth-icon password-visibility-icon"><use href="#auth-icon-eye"></use></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="auth-form-field">
+                                    <label for="reset-password-confirm">Yeni şifre tekrarı</label>
+                                    <div class="auth-field-wrap">
+                                        <span class="auth-field-icon">
+                                            <svg class="auth-icon"><use href="#auth-icon-lock"></use></svg>
+                                        </span>
+                                        <input id="reset-password-confirm" name="confirm_password" type="password" required minlength="8" autocomplete="new-password" class="auth-input has-leading-icon has-trailing-button password-field" placeholder="Şifrenizi tekrar yazın">
+                                        <button class="auth-password-toggle toggle-password" type="button" aria-label="Şifreyi göster" aria-pressed="false">
+                                            <svg class="auth-icon password-visibility-icon"><use href="#auth-icon-eye"></use></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <button type="submit" class="auth-primary-button" data-loading-label="Şifre güncelleniyor">
+                                    <span class="auth-button-label">Şifreyi güncelle</span>
+                                    <svg class="auth-icon auth-button-icon"><use href="#auth-icon-arrow"></use></svg>
+                                    <span class="auth-button-spinner" aria-hidden="true"></span>
+                                </button>
+                            </form>
+                            <div class="auth-security">
+                                <span class="auth-security-label">
+                                    <svg class="auth-icon"><use href="#auth-icon-lock"></use></svg>
+                                    Şifrelenmiş güvenli oturum
+                                </span>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="auth-segmented" role="tablist" aria-label="Hesap işlemi seçin">
+                            <button id="auth-login-tab" class="auth-tab" type="button" role="tab" aria-controls="auth-login-panel" aria-selected="{{ 'false' if mode == 'register' else 'true' }}" tabindex="{{ '-1' if mode == 'register' else '0' }}" data-auth-target="login">Giriş</button>
+                            <button id="auth-register-tab" class="auth-tab" type="button" role="tab" aria-controls="auth-register-panel" aria-selected="{{ 'true' if mode == 'register' else 'false' }}" tabindex="{{ '0' if mode == 'register' else '-1' }}" data-auth-target="register">Yeni Kayıt</button>
+                        </div>
+
+                        <div id="auth-login-panel" class="auth-panel-view" role="tabpanel" aria-labelledby="auth-login-tab" {% if mode == 'register' %}hidden aria-hidden="true"{% else %}aria-hidden="false"{% endif %}>
+                            <div class="auth-card-intro">
+                                <h1>Hoş geldiniz</h1>
+                                <p>esstok.com hesabınıza giriş yapın.</p>
+                            </div>
+                            <form id="login-form" method="POST" action="{{ url_for('giris') }}" class="auth-form" data-auth-submit-form>
+                                <div class="auth-form-field">
+                                    <label for="login-email">E-posta adresi</label>
+                                    <div class="auth-field-wrap">
+                                        <span class="auth-field-icon">
+                                            <svg class="auth-icon"><use href="#auth-icon-mail"></use></svg>
+                                        </span>
+                                        <input id="login-email" name="email" type="email" required autocomplete="email" class="auth-input has-leading-icon" placeholder="ornek@firma.com">
+                                    </div>
+                                </div>
+
+                                <div class="auth-form-field">
+                                    <div class="auth-label-row">
+                                        <label for="login-password">Şifre</label>
+                                        <a class="auth-link" href="{{ url_for('sifremi_unuttum') }}">Şifremi unuttum</a>
+                                    </div>
+                                    <div class="auth-field-wrap">
+                                        <span class="auth-field-icon">
+                                            <svg class="auth-icon"><use href="#auth-icon-lock"></use></svg>
+                                        </span>
+                                        <input id="login-password" name="password" type="password" required autocomplete="current-password" class="auth-input has-leading-icon has-trailing-button password-field" placeholder="Şifreniz">
+                                        <button class="auth-password-toggle toggle-password" type="button" aria-label="Şifreyi göster" aria-pressed="false">
+                                            <svg class="auth-icon password-visibility-icon"><use href="#auth-icon-eye"></use></svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <label class="auth-check">
+                                    <input name="remember" type="checkbox">
+                                    Beni hatırla
+                                </label>
+
+                                {% if turnstile.enabled %}
+                                <div class="auth-turnstile">
+                                    <div class="auth-turnstile-label">
+                                        <svg class="auth-icon" aria-hidden="true"><use href="#auth-icon-shield"></use></svg>
+                                        Cloudflare güvenlik doğrulaması
+                                    </div>
+                                    <div class="cf-turnstile" data-sitekey="{{ turnstile.site_key }}" data-theme="light"></div>
+                                </div>
+                                {% endif %}
+
+                                <button type="submit" class="auth-primary-button" data-loading-label="Giriş yapılıyor">
+                                    <span class="auth-button-label">Giriş Yap</span>
+                                    <svg class="auth-icon auth-button-icon"><use href="#auth-icon-arrow"></use></svg>
+                                    <span class="auth-button-spinner" aria-hidden="true"></span>
+                                </button>
+                            </form>
+
+                            <p class="auth-inline-switch">
+                                Hesabınız yok mu?
+                                <button type="button" class="auth-link" data-auth-target="register">Yeni kayıt oluştur</button>
+                            </p>
+                            <div class="auth-security">
+                                <span class="auth-security-label">
+                                    <svg class="auth-icon"><use href="#auth-icon-lock"></use></svg>
+                                    Güvenli oturum
+                                </span>
+                            </div>
+                        </div>
+
+                        <div id="auth-register-panel" class="auth-panel-view" role="tabpanel" aria-labelledby="auth-register-tab" {% if mode != 'register' %}hidden aria-hidden="true"{% else %}aria-hidden="false"{% endif %}>
+                            <div class="auth-card-intro">
+                                <h2>İşletmenizi oluşturun</h2>
+                                <p>Demo hesabınız birkaç adımda kullanıma hazır.</p>
+                            </div>
+
+                            <form id="register-form" method="POST" action="{{ url_for('kayit') }}" class="auth-form" data-auth-submit-form>
+                                <input type="hidden" name="requested_plan" value="{{ selected_plan }}">
+                                {% if selected_package and selected_plan != 'demo' %}
+                                <div class="auth-plan-note">
+                                    <strong>{{ selected_package.label }} paket talebi</strong>
+                                    Hesabınız demo olarak açılır; paket talebiniz ödeme ve aktivasyon için destek merkezine iletilir.
+                                </div>
+                                {% endif %}
+
+                                <div class="auth-register-grid">
+                                    <div class="auth-form-field is-wide">
+                                        <label for="register-company">Firma adı</label>
+                                        <input id="register-company" name="firma_adi" type="text" required autocomplete="organization" class="auth-input" placeholder="ABC Ticaret">
+                                    </div>
+                                    <div class="auth-form-field">
+                                        <label for="register-name">Yetkili adı</label>
+                                        <input id="register-name" name="yetkili_adi" type="text" autocomplete="name" class="auth-input" placeholder="Ad Soyad">
+                                    </div>
+                                    <div class="auth-form-field">
+                                        <label for="register-phone">Telefon</label>
+                                        <input id="register-phone" name="telefon" type="tel" autocomplete="tel" class="auth-input" placeholder="0 5xx xxx xx xx">
+                                    </div>
+                                    <div class="auth-form-field is-wide">
+                                        <label for="register-email">E-posta adresi</label>
+                                        <div class="auth-field-wrap">
+                                            <span class="auth-field-icon">
+                                                <svg class="auth-icon"><use href="#auth-icon-mail"></use></svg>
+                                            </span>
+                                            <input id="register-email" name="email" type="email" required autocomplete="email" class="auth-input has-leading-icon" placeholder="ornek@firma.com">
+                                        </div>
+                                    </div>
+                                    <div class="auth-form-field is-wide">
+                                        <label for="register-password">Şifre</label>
+                                        <div class="auth-field-wrap">
+                                            <span class="auth-field-icon">
+                                                <svg class="auth-icon"><use href="#auth-icon-lock"></use></svg>
+                                            </span>
+                                            <input id="register-password" name="password" type="password" required minlength="8" autocomplete="new-password" class="auth-input has-leading-icon has-trailing-button password-field" placeholder="En az 8 karakter">
+                                            <button class="auth-password-toggle toggle-password" type="button" aria-label="Şifreyi göster" aria-pressed="false">
+                                                <svg class="auth-icon password-visibility-icon"><use href="#auth-icon-eye"></use></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="auth-primary-button" data-loading-label="Hesap oluşturuluyor">
+                                    <span class="auth-button-label">Firma hesabı oluştur</span>
+                                    <svg class="auth-icon auth-button-icon"><use href="#auth-icon-arrow"></use></svg>
+                                    <span class="auth-button-spinner" aria-hidden="true"></span>
+                                </button>
+                            </form>
+
+                            <p class="auth-inline-switch">
+                                Zaten hesabınız var mı?
+                                <button type="button" class="auth-link" data-auth-target="login">Giriş yapın</button>
+                            </p>
+                            <div class="auth-security">
+                                <span class="auth-security-label">
+                                    <svg class="auth-icon"><use href="#auth-icon-shield"></use></svg>
+                                    Firma verileri birbirinden izole edilir
+                                </span>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
 </div>
 {% endblock %}
 
 {% block scripts %}
-{% if turnstile_config().enabled %}
+{% if turnstile.enabled %}
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 {% endif %}
 <script>
-document.querySelectorAll('[data-auth-tab]').forEach((button) => {
-    button.addEventListener('click', () => {
-        const target = button.dataset.authTab;
-        document.querySelectorAll('.auth-tab').forEach((tab) => {
-            tab.classList.remove('auth-tab-active');
-            tab.classList.add('text-slate-500');
-        });
-        button.classList.add('auth-tab-active');
-        button.classList.remove('text-slate-500');
-        document.getElementById('login-form').classList.toggle('hidden', target !== 'login');
-        document.getElementById('register-form').classList.toggle('hidden', target !== 'register');
-    });
-});
+(function () {
+    'use strict';
 
-document.querySelectorAll('.toggle-password').forEach((button) => {
-    button.addEventListener('click', () => {
-        const wrapper = button.closest('.relative');
-        const input = wrapper ? wrapper.querySelector('.password-field') : null;
-        const icon = button.querySelector('.material-symbols-outlined');
-        if (!input) return;
-        const isPassword = input.type === 'password';
-        input.type = isPassword ? 'text' : 'password';
-        if (icon) icon.textContent = isPassword ? 'visibility_off' : 'visibility';
-        button.setAttribute('aria-label', isPassword ? 'Şifreyi gizle' : 'Şifreyi göster');
+    var stage = document.querySelector('.auth-stage');
+    var loginPanel = document.getElementById('auth-login-panel');
+    var registerPanel = document.getElementById('auth-register-panel');
+    var teaser = document.querySelector('[data-auth-teaser]');
+    var teaserTitle = document.querySelector('[data-teaser-title]');
+    var teaserCopy = document.querySelector('[data-teaser-copy]');
+
+    function setPanelInert(panel, isInactive) {
+        if (!panel) return;
+        panel.hidden = isInactive;
+        panel.setAttribute('aria-hidden', isInactive ? 'true' : 'false');
+        if ('inert' in panel) {
+            panel.inert = isInactive;
+        }
+    }
+
+    function setAuthPanel(target, focusPanel) {
+        if (!loginPanel || !registerPanel) return;
+        var selected = target === 'register' ? 'register' : 'login';
+        var loginActive = selected === 'login';
+
+        setPanelInert(loginPanel, !loginActive);
+        setPanelInert(registerPanel, loginActive);
+        stage.dataset.activeAuthMode = selected;
+
+        document.querySelectorAll('.auth-tab').forEach(function (tab) {
+            var isActive = tab.dataset.authTarget === selected;
+            tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            tab.tabIndex = isActive ? 0 : -1;
+        });
+
+        if (teaser) {
+            teaser.dataset.authTarget = loginActive ? 'register' : 'login';
+            teaser.setAttribute('aria-label', loginActive ? 'Yeni kayıt panelini aç' : 'Giriş panelini aç');
+        }
+        if (teaserTitle) teaserTitle.textContent = loginActive ? 'Yeni başlangıç' : 'Tekrar hoş geldiniz';
+        if (teaserCopy) teaserCopy.textContent = loginActive
+            ? 'İşletmenizi birkaç adımda oluşturun.'
+            : 'Mevcut hesabınızla güvenle devam edin.';
+
+        if (focusPanel) {
+            var panel = loginActive ? loginPanel : registerPanel;
+            var firstInput = panel.querySelector('input:not([type="hidden"])');
+            if (firstInput) window.setTimeout(function () { firstInput.focus(); }, 40);
+        }
+    }
+
+    document.querySelectorAll('[data-auth-target]').forEach(function (control) {
+        control.addEventListener('click', function () {
+            setAuthPanel(control.dataset.authTarget, true);
+        });
     });
-});
+
+    document.querySelectorAll('.auth-tab').forEach(function (tab) {
+        tab.addEventListener('keydown', function (event) {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+            event.preventDefault();
+            setAuthPanel(tab.dataset.authTarget === 'login' ? 'register' : 'login', true);
+        });
+    });
+
+    document.querySelectorAll('.toggle-password').forEach(function (button) {
+        button.addEventListener('click', function () {
+            var wrapper = button.closest('.auth-field-wrap');
+            var input = wrapper ? wrapper.querySelector('.password-field') : null;
+            var iconUse = button.querySelector('use');
+            if (!input) return;
+
+            var reveal = input.type === 'password';
+            input.type = reveal ? 'text' : 'password';
+            button.setAttribute('aria-label', reveal ? 'Şifreyi gizle' : 'Şifreyi göster');
+            button.setAttribute('aria-pressed', reveal ? 'true' : 'false');
+            if (iconUse) iconUse.setAttribute('href', reveal ? '#auth-icon-eye-off' : '#auth-icon-eye');
+        });
+    });
+
+    document.querySelectorAll('[data-auth-submit-form]').forEach(function (form) {
+        form.addEventListener('submit', function () {
+            var button = form.querySelector('.auth-primary-button');
+            if (!button || button.disabled) return;
+            var label = button.querySelector('.auth-button-label');
+            button.disabled = true;
+            button.classList.add('is-loading');
+            button.setAttribute('aria-busy', 'true');
+            if (label) label.textContent = button.dataset.loadingLabel || 'İşleniyor';
+        });
+    });
+
+    if (loginPanel && registerPanel) {
+        setAuthPanel(stage.dataset.initialAuthMode === 'register' ? 'register' : 'login', false);
+    }
+})();
 </script>
 {% endblock %}

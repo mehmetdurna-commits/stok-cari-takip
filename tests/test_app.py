@@ -885,15 +885,79 @@ def test_login_page_renders_professional_auth_actions(client):
     response = client.get('/giris')
 
     assert response.status_code == 200
-    assert b'Giri' in response.data
-    assert b'Sifremi' in response.data or 'Şifremi'.encode('utf-8') in response.data
-    assert b'toggle-password' in response.data
-    assert b'Yeni kay' in response.data
-    assert b'auth-feature-card' in response.data
-    assert "H\u0131zl\u0131 sat\u0131\u015f".encode('utf-8') in response.data
-    assert "Cari takip".encode('utf-8') in response.data
-    assert "Veri izolasyonu".encode('utf-8') in response.data
-    assert "personel ve \u00f6n muhasebe".encode('utf-8') in response.data
+    text = response.get_data(as_text=True)
+    assert 'Giriş Yap' in text
+    assert 'Şifremi unuttum' in text
+    assert 'toggle-password' in text
+    assert 'Yeni Kayıt' in text
+    assert 'auth-card-stack' in text
+    assert 'data-auth-target="register"' in text
+    assert 'İşinize kaldığınız yerden devam edin.' in text
+    assert 'Sistemler aktif' in text
+    assert 'Güvenli bağlantı' in text
+    assert 'Cloudflare ile korunuyor' in text
+    assert 'action="/giris"' in text
+    assert 'action="/kayit"' in text
+
+
+def test_registration_page_opens_registration_panel_without_javascript(client):
+    with client.session_transaction() as sess:
+        sess.clear()
+
+    response = client.get('/kayit?paket=standart')
+
+    assert response.status_code == 200
+    text = response.get_data(as_text=True)
+    assert 'data-initial-auth-mode="register"' in text
+    assert 'id="auth-login-panel"' in text
+    assert 'id="auth-register-panel"' in text
+    assert 'id="auth-register-panel" class="auth-panel-view" role="tabpanel" aria-labelledby="auth-register-tab" aria-hidden="false"' in text
+    assert 'name="requested_plan" value="standart"' in text
+    assert 'Standart paket talebi' in text
+
+
+def test_plain_registration_url_opens_login_panel_first(client):
+    with client.session_transaction() as sess:
+        sess.clear()
+
+    response = client.get('/kayit')
+
+    assert response.status_code == 200
+    text = response.get_data(as_text=True)
+    assert 'data-initial-auth-mode="login"' in text
+    assert 'id="auth-login-panel" class="auth-panel-view" role="tabpanel" aria-labelledby="auth-login-tab" aria-hidden="false"' in text
+    assert 'id="auth-register-panel"' in text
+
+
+def test_auth_forgot_mode_keeps_secure_form(client):
+    with client.session_transaction() as sess:
+        sess.clear()
+
+    response = client.get('/sifremi-unuttum')
+
+    assert response.status_code == 200
+    text = response.get_data(as_text=True)
+    assert 'action="/sifremi-unuttum"' in text
+    assert 'Şifrenizi yenileyin' in text
+    assert 'Giriş ekranına dön' in text
+
+
+def test_login_page_renders_cloudflare_turnstile_when_enabled(client, monkeypatch):
+    with client.session_transaction() as sess:
+        sess.clear()
+
+    monkeypatch.setitem(app.config, 'TURNSTILE_ENABLED', True)
+    monkeypatch.setitem(app.config, 'TURNSTILE_SITE_KEY', 'test-site-key')
+    monkeypatch.setitem(app.config, 'TURNSTILE_SECRET_KEY', 'test-secret-key')
+
+    response = client.get('/giris')
+
+    assert response.status_code == 200
+    text = response.get_data(as_text=True)
+    assert 'Cloudflare güvenlik doğrulaması' in text
+    assert 'class="cf-turnstile"' in text
+    assert 'data-sitekey="test-site-key"' in text
+    assert 'https://challenges.cloudflare.com/turnstile/v0/api.js' in text
 
 
 def test_platform_identity_and_seo_defaults_are_dynamic(client):

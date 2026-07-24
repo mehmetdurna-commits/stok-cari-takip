@@ -7403,7 +7403,7 @@ def api_personel_detay(personel_id):
 
 @app.route('/giris-kayit')
 def giris_kayit():
-    return render_template('firma_giris_ve_kayit_ekrani.html')
+    return render_template('firma_giris_ve_kayit_ekrani.html', auth_mode='login')
 
 
 @app.route('/kayit', methods=['GET', 'POST'])
@@ -7414,7 +7414,13 @@ def kayit():
     requested_plan = normalize_plan(request.values.get('paket') or request.values.get('requested_plan') or 'demo')
 
     if request.method == 'GET':
-        return render_template('firma_giris_ve_kayit_ekrani.html', selected_plan=requested_plan, package_catalog=PLAN_CATALOG)
+        initial_auth_mode = 'register' if request.args.get('paket') or request.args.get('odeme') else 'login'
+        return render_template(
+            'firma_giris_ve_kayit_ekrani.html',
+            auth_mode=initial_auth_mode,
+            selected_plan=requested_plan,
+            package_catalog=PLAN_CATALOG,
+        )
 
     if not platform_setting_bool('registrations_enabled', True):
         flash('Yeni firma kayitlari su anda kapali.', 'error')
@@ -7501,7 +7507,7 @@ def giris():
         return redirect(url_for('dashboard'))
 
     if request.method == 'GET':
-        return render_template('firma_giris_ve_kayit_ekrani.html')
+        return render_template('firma_giris_ve_kayit_ekrani.html', auth_mode='login')
 
     email = (request.form.get('email') or '').strip().lower()
     password = request.form.get('password') or ''
