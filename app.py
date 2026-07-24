@@ -3002,12 +3002,12 @@ def cleanup_platform_workflow_sandbox(user_id=None, organization_id=None, user_i
         sale_ids = [sale.id for sale in Satis.query.filter_by(user_id=uid).all()]
         quote_ids = [quote.id for quote in Teklif.query.filter_by(user_id=uid).all()]
         return_ids = [return_record.id for return_record in Iade.query.filter_by(user_id=uid).all()]
+        if return_ids:
+            IadeKalem.query.filter(IadeKalem.iade_id.in_(return_ids)).delete(synchronize_session=False)
         if sale_ids:
             SatisKalemi.query.filter(SatisKalemi.satis_id.in_(sale_ids)).delete(synchronize_session=False)
         if quote_ids:
             TeklifKalemi.query.filter(TeklifKalemi.teklif_id.in_(quote_ids)).delete(synchronize_session=False)
-        if return_ids:
-            IadeKalem.query.filter(IadeKalem.iade_id.in_(return_ids)).delete(synchronize_session=False)
 
         CariHareket.query.filter_by(user_id=uid).delete(synchronize_session=False)
         StokHareket.query.filter_by(user_id=uid).delete(synchronize_session=False)
