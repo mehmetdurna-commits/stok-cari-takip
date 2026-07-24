@@ -900,6 +900,18 @@ def test_login_page_renders_professional_auth_actions(client):
     assert 'action="/kayit"' in text
 
 
+def test_login_and_registration_pages_are_not_indexed(client):
+    with client.session_transaction() as sess:
+        sess.clear()
+
+    for path in ('/giris', '/kayit'):
+        response = client.get(path)
+
+        assert response.status_code == 200
+        assert '<meta name="robots" content="noindex, follow">' in response.get_data(as_text=True)
+        assert response.headers.get('X-Robots-Tag') == 'noindex, follow'
+
+
 def test_registration_page_opens_registration_panel_without_javascript(client):
     with client.session_transaction() as sess:
         sess.clear()

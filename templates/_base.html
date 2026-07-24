@@ -10,7 +10,8 @@
     {% set canonical_base = (_site.get('url') or request.host_url.rstrip('/')) %}
     {% set canonical_url = canonical_base ~ request.path %}
     {% set og_image = (_site.get('og_image') or (canonical_base ~ '/static/og.svg')) %}
-    <meta name="robots" content="{{ 'index, follow' if _site.get('seo_public_mode') else 'noindex, nofollow' }}">
+    {% set auth_noindex = request.endpoint in ['giris', 'kayit'] %}
+    <meta name="robots" content="{{ 'noindex, follow' if auth_noindex else ('index, follow' if _site.get('seo_public_mode') else 'noindex, nofollow') }}">
     <link rel="canonical" href="{{ canonical_url }}">
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
     <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">

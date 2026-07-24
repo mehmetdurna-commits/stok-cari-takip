@@ -5035,7 +5035,9 @@ def add_operational_headers(response):
         response.headers.setdefault('Cache-Control', 'no-store, max-age=0')
 
     try:
-        if request.endpoint not in {'static', 'health_check'} and not site_config().get('seo_public_mode'):
+        if request.endpoint in {'giris', 'kayit'}:
+            response.headers['X-Robots-Tag'] = 'noindex, follow'
+        elif request.endpoint not in {'static', 'health_check'} and not site_config().get('seo_public_mode'):
             response.headers.setdefault('X-Robots-Tag', 'noindex, nofollow')
     except Exception:
         pass
