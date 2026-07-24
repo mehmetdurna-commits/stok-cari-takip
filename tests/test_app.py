@@ -3469,7 +3469,10 @@ def test_nakit_yonetimi_uses_plain_business_labels(client):
         owner = User.query.filter_by(email='test@example.com').first()
         ensure_default_accounts_for_user(owner.id)
         kasa = Account.query.filter_by(user_id=owner.id, name='Nakit Kasa').first()
+        banka = Account.query.filter_by(user_id=owner.id, name='Banka Hesabi').first()
         assert kasa is not None
+        assert banka is not None
+        kasa.opening_balance = 25
         db.session.add_all([
             CashTransaction(
                 user_id=owner.id,
@@ -3489,19 +3492,41 @@ def test_nakit_yonetimi_uses_plain_business_labels(client):
                 aciklama='Test gider',
                 referans_tip='manual',
             ),
+            CashTransaction(
+                user_id=owner.id,
+                account_id=kasa.id,
+                islem_tipi='cikis',
+                tutar=30,
+                odeme_turu='Transfer',
+                aciklama='Banka aktarımı',
+                referans_tip='transfer',
+            ),
+            CashTransaction(
+                user_id=owner.id,
+                account_id=banka.id,
+                islem_tipi='giris',
+                tutar=30,
+                odeme_turu='Transfer',
+                aciklama='Kasa aktarımı',
+                referans_tip='transfer',
+            ),
         ])
         db.session.commit()
 
     response = client.get('/nakit')
 
     assert response.status_code == 200
-    assert 'Kasaya Giren'.encode('utf-8') in response.data
-    assert 'Kasadan Çıkan'.encode('utf-8') in response.data
-    assert 'Kasa Neti'.encode('utf-8') in response.data
+    assert 'Toplam Varlık'.encode('utf-8') in response.data
+    assert 'Gerçek Para Girişi'.encode('utf-8') in response.data
+    assert 'Gerçek Para Çıkışı'.encode('utf-8') in response.data
     assert 'Para Girişi'.encode('utf-8') in response.data
     assert 'Para Çıkışı'.encode('utf-8') in response.data
+    assert 'Hesap Transferi'.encode('utf-8') in response.data
+    assert 'Nakit Kasa'.encode('utf-8') in response.data
+    assert 'Banka Hesabi'.encode('utf-8') in response.data
+    assert '₺135,00'.encode('utf-8') in response.data
     assert '+₺150,00'.encode('utf-8') in response.data
-    assert '-₺40,00'.encode('utf-8') in response.data
+    assert '−₺40,00'.encode('utf-8') in response.data
 
 
 def test_nakit_yonetimi_summary_uses_all_transactions_not_only_visible_rows(client):
@@ -3527,6 +3552,48 @@ def test_nakit_yonetimi_summary_uses_all_transactions_not_only_visible_rows(clie
 
     assert response.status_code == 200
     assert '₺205,00'.encode('utf-8') in response.data
+
+
+def test_nakit_yonetimi_filters_movements_without_changing_data(client):
+    with app.app_context():
+        owner = User.query.filter_by(email='test@example.com').first()
+        ensure_default_accounts_for_user(owner.id)
+        kasa = Account.query.filter_by(user_id=owner.id, name='Nakit Kasa').first()
+        banka = Account.query.filter_by(user_id=owner.id, name='Banka Hesabi').first()
+        db.session.add_all([
+            CashTransaction(
+                user_id=owner.id,
+                account_id=kasa.id,
+                islem_tipi='giris',
+                tutar=175,
+                odeme_turu='Nakit',
+                aciklama='Aranan tahsilat',
+                referans_tip='manual',
+            ),
+            CashTransaction(
+                user_id=owner.id,
+                account_id=banka.id,
+                islem_tipi='cikis',
+                tutar=65,
+                odeme_turu='Banka',
+                aciklama='Gizli gider',
+                referans_tip='manual',
+            ),
+        ])
+        db.session.commit()
+        kasa_id = kasa.id
+
+    response = client.get(
+        f'/nakit?account_id={kasa_id}&direction=giris&reference_type=manual&q=Aranan'
+    )
+
+    assert response.status_code == 200
+    assert 'Aranan tahsilat'.encode('utf-8') in response.data
+    assert 'Gizli gider'.encode('utf-8') not in response.data
+    assert '+₺175,00'.encode('utf-8') in response.data
+    assert b'name="account_id"' in response.data
+    assert b'name="direction"' in response.data
+    assert b'name="reference_type"' in response.data
 
 
 def test_onmuhasebe_hesap_detay_allows_manual_tx_and_transfer(client):

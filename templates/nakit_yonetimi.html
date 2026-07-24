@@ -1,88 +1,322 @@
 {% extends '_base.html' %}
-{% block title %}Nakit Yönetimi - {{ site_config().get('platform_name', site_config().get('name', 'Esstok')) }}{% endblock %}
+{% block title %}Para Hareketleri - {{ site_config().get('platform_name', site_config().get('name', 'Esstok')) }}{% endblock %}
 {% set active_page = 'nakit_yonetimi' %}
+
 {% block top_bar %}
-<div class="flex items-center gap-4">
-    <span class="material-symbols-outlined text-emerald-600 font-bold">account_balance_wallet</span>
-    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Nakit Yönetimi</h1>
+<div class="flex items-center gap-3">
+    <span class="flex size-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/50">
+        <span class="material-symbols-outlined" aria-hidden="true">account_balance_wallet</span>
+    </span>
+    <div>
+        <h1 class="text-lg font-black text-slate-950 dark:text-white sm:text-xl">Para Hareketleri</h1>
+        <p class="hidden text-xs font-medium text-slate-500 dark:text-slate-400 sm:block">Kasa, banka ve POS akışını tek merkezden izleyin.</p>
+    </div>
 </div>
 {% endblock %}
+
 {% block content %}
-<div class="max-w-6xl mx-auto space-y-6">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-            <p class="text-sm text-slate-500 dark:text-slate-400">Kasaya Giren</p>
-            <p class="text-3xl font-bold text-emerald-600">₺{{ (total_giris or 0)|tr_number }}</p>
+<div class="mx-auto max-w-[1600px] space-y-5 pb-8">
+    <section class="relative overflow-hidden rounded-[2rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-sky-50 px-5 py-6 shadow-sm dark:border-emerald-950/70 dark:from-emerald-950/35 dark:via-slate-900 dark:to-sky-950/30 sm:px-7 sm:py-7">
+        <div class="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full bg-emerald-200/30 blur-3xl dark:bg-emerald-700/10"></div>
+        <div class="pointer-events-none absolute -bottom-24 left-1/3 size-52 rounded-full bg-sky-200/30 blur-3xl dark:bg-sky-700/10"></div>
+        <div class="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div class="max-w-3xl">
+                <span class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-3 py-1.5 text-xs font-black uppercase tracking-[0.16em] text-emerald-700 shadow-sm backdrop-blur dark:border-emerald-900 dark:bg-slate-900/70 dark:text-emerald-300">
+                    <span class="relative flex size-2">
+                        <span class="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60"></span>
+                        <span class="relative inline-flex size-2 rounded-full bg-emerald-500"></span>
+                    </span>
+                    Canlı finans görünümü
+                </span>
+                <h2 class="mt-4 text-3xl font-black tracking-tight text-slate-950 dark:text-white sm:text-4xl">Paranız nerede, bir bakışta görün.</h2>
+                <p class="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-600 dark:text-slate-300 sm:text-base">
+                    Satış, tahsilat, ödeme ve hesap transferlerinden oluşan para akışını sade bir dille takip edin.
+                </p>
+            </div>
+            <div class="flex items-center gap-3 rounded-2xl border border-white/80 bg-white/75 px-4 py-3 shadow-sm backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/70">
+                <span class="flex size-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                    <span class="material-symbols-outlined" aria-hidden="true">{{ 'filter_alt' if selected_account else 'domain' }}</span>
+                </span>
+                <div>
+                    <p class="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">İzlenen kapsam</p>
+                    <p class="mt-0.5 text-sm font-black text-slate-900 dark:text-white">{{ selected_account.name if selected_account else 'Tüm para hesapları' }}</p>
+                </div>
+            </div>
         </div>
-        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-            <p class="text-sm text-slate-500 dark:text-slate-400">Kasadan Çıkan</p>
-            <p class="text-3xl font-bold text-red-600">₺{{ (total_cikis or 0)|tr_number }}</p>
-        </div>
-        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-            <p class="text-sm text-slate-500 dark:text-slate-400">Kasa Neti</p>
-            <p class="text-3xl font-bold text-slate-900 dark:text-white">₺{{ (bakiye or 0)|tr_number }}</p>
-        </div>
-    </div>
+    </section>
 
-    <form method="get" class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div class="flex-1">
-            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">Hesap</label>
-            <select name="account_id" class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-900 dark:text-white">
-                <option value="" {% if not selected_account_id %}selected{% endif %}>Tüm hesaplar</option>
-                {% for account in accounts %}
-                <option value="{{ account.id }}" {% if selected_account_id == (account.id|string) %}selected{% endif %}>{{ account.name }} ({{ account_type_labels.get(account.type, account.type) }})</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="flex items-center gap-2">
-            <button type="submit" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900">
-                Filtrele
-            </button>
-            <a href="{{ url_for('nakit_yonetimi') }}" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
-                Sıfırla
-            </a>
-        </div>
-    </form>
+    <section class="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <article class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+            <div class="flex items-start justify-between gap-3">
+                <span class="flex size-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300">
+                    <span class="material-symbols-outlined" aria-hidden="true">account_balance</span>
+                </span>
+                <span class="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">Güncel</span>
+            </div>
+            <p class="mt-4 text-xs font-black uppercase tracking-[0.12em] text-slate-400">Toplam Varlık</p>
+            <p class="mt-1 text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl">₺{{ total_assets|tr_number }}</p>
+            <p class="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">Açılış bakiyeleri dahil mevcut durum</p>
+        </article>
 
-    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-        <div class="p-6 border-b border-slate-200 dark:border-slate-800">
-            <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Son Nakit İşlemleri</h2>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Kasaya, bankaya ve POS hesabına giren çıkan son para hareketlerini takip edin.</p>
+        <article class="rounded-3xl border border-emerald-100 bg-emerald-50/60 p-4 shadow-sm dark:border-emerald-950/60 dark:bg-emerald-950/20 sm:p-5">
+            <div class="flex items-start justify-between gap-3">
+                <span class="flex size-11 items-center justify-center rounded-2xl bg-white text-emerald-600 shadow-sm dark:bg-slate-900 dark:text-emerald-300">
+                    <span class="material-symbols-outlined" aria-hidden="true">south_west</span>
+                </span>
+                <span class="text-xs font-black text-emerald-700 dark:text-emerald-300">+ Giriş</span>
+            </div>
+            <p class="mt-4 text-xs font-black uppercase tracking-[0.12em] text-emerald-700/70 dark:text-emerald-300/70">Gerçek Para Girişi</p>
+            <p class="mt-1 text-2xl font-black tracking-tight text-emerald-700 dark:text-emerald-300 sm:text-3xl">₺{{ total_giris|tr_number }}</p>
+            <p class="mt-2 text-xs font-medium text-emerald-800/60 dark:text-emerald-200/60">İç transferler bu tutara dahil edilmez</p>
+        </article>
+
+        <article class="rounded-3xl border border-rose-100 bg-rose-50/60 p-4 shadow-sm dark:border-rose-950/60 dark:bg-rose-950/20 sm:p-5">
+            <div class="flex items-start justify-between gap-3">
+                <span class="flex size-11 items-center justify-center rounded-2xl bg-white text-rose-600 shadow-sm dark:bg-slate-900 dark:text-rose-300">
+                    <span class="material-symbols-outlined" aria-hidden="true">north_east</span>
+                </span>
+                <span class="text-xs font-black text-rose-700 dark:text-rose-300">− Çıkış</span>
+            </div>
+            <p class="mt-4 text-xs font-black uppercase tracking-[0.12em] text-rose-700/70 dark:text-rose-300/70">Gerçek Para Çıkışı</p>
+            <p class="mt-1 text-2xl font-black tracking-tight text-rose-700 dark:text-rose-300 sm:text-3xl">₺{{ total_cikis|tr_number }}</p>
+            <p class="mt-2 text-xs font-medium text-rose-800/60 dark:text-rose-200/60">Ödeme ve gider hareketlerinin toplamı</p>
+        </article>
+
+        <article class="rounded-3xl border border-violet-100 bg-violet-50/60 p-4 shadow-sm dark:border-violet-950/60 dark:bg-violet-950/20 sm:p-5">
+            <div class="flex items-start justify-between gap-3">
+                <span class="flex size-11 items-center justify-center rounded-2xl bg-white text-violet-600 shadow-sm dark:bg-slate-900 dark:text-violet-300">
+                    <span class="material-symbols-outlined" aria-hidden="true">credit_card_clock</span>
+                </span>
+                <span class="rounded-full bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-violet-700 shadow-sm dark:bg-slate-900 dark:text-violet-300">POS</span>
+            </div>
+            <p class="mt-4 text-xs font-black uppercase tracking-[0.12em] text-violet-700/70 dark:text-violet-300/70">POS'ta Bekleyen</p>
+            <p class="mt-1 text-2xl font-black tracking-tight text-violet-700 dark:text-violet-300 sm:text-3xl">₺{{ pos_pending|tr_number }}</p>
+            <p class="mt-2 text-xs font-medium text-violet-800/60 dark:text-violet-200/60">Henüz banka hesabına aktarılmayan tutar</p>
+        </article>
+    </section>
+
+    {% if account_summaries %}
+    <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+                <p class="text-xs font-black uppercase tracking-[0.14em] text-primary-600 dark:text-primary-300">Hesap görünümü</p>
+                <h3 class="mt-1 text-xl font-black text-slate-950 dark:text-white">Paranın hesaplara dağılımı</h3>
+            </div>
+            <p class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ account_summaries|length }} aktif hesap izleniyor</p>
         </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-left">
-                <thead class="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+        <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {% for summary in account_summaries %}
+            {% set account = summary.account %}
+            <article class="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-950/35">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex min-w-0 items-center gap-3">
+                        <span class="flex size-10 shrink-0 items-center justify-center rounded-xl
+                            {% if account.type == 'cash' %}bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300
+                            {% elif account.type == 'bank' %}bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300
+                            {% else %}bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300{% endif %}">
+                            <span class="material-symbols-outlined text-xl" aria-hidden="true">{{ 'payments' if account.type == 'cash' else ('account_balance' if account.type == 'bank' else 'credit_card') }}</span>
+                        </span>
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-black text-slate-900 dark:text-white">{{ account.name }}</p>
+                            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">{{ summary.type_label }} · {{ account.currency }}</p>
+                        </div>
+                    </div>
+                    <p class="shrink-0 text-base font-black {{ 'text-rose-600 dark:text-rose-300' if summary.balance < 0 else 'text-slate-950 dark:text-white' }}">₺{{ summary.balance|tr_number }}</p>
+                </div>
+                <div class="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                    <div class="h-full rounded-full transition-all
+                        {% if account.type == 'cash' %}bg-emerald-500
+                        {% elif account.type == 'bank' %}bg-blue-500
+                        {% else %}bg-violet-500{% endif %}"
+                        style="width: {{ summary.percent }}%"></div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <form method="get" class="border-b border-slate-200 p-4 dark:border-slate-800 sm:p-5">
+            <div class="flex flex-col gap-3 xl:flex-row xl:items-end">
+                <div class="min-w-0 flex-1">
+                    <label for="cash-search" class="mb-1.5 block text-[11px] font-black uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Hareket ara</label>
+                    <div class="relative">
+                        <span class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xl text-slate-400" aria-hidden="true">search</span>
+                        <input id="cash-search" name="q" value="{{ search_term }}" placeholder="Açıklama, cari, hesap veya ödeme türü" class="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-primary-400 focus:bg-white focus:ring-4 focus:ring-primary-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:border-primary-600 dark:focus:bg-slate-900 dark:focus:ring-primary-950">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:flex xl:items-end">
+                    <div>
+                        <label for="cash-account" class="mb-1.5 block text-[11px] font-black uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Hesap</label>
+                        <select id="cash-account" name="account_id" class="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-primary-400 focus:ring-4 focus:ring-primary-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-primary-600 dark:focus:ring-primary-950 xl:w-44">
+                            <option value="">Tüm hesaplar</option>
+                            {% for account in accounts %}
+                            <option value="{{ account.id }}" {{ 'selected' if selected_account_id == (account.id|string) else '' }}>{{ account.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="cash-direction" class="mb-1.5 block text-[11px] font-black uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Yön</label>
+                        <select id="cash-direction" name="direction" class="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-primary-400 focus:ring-4 focus:ring-primary-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-primary-600 dark:focus:ring-primary-950 xl:w-36">
+                            <option value="">Tümü</option>
+                            <option value="giris" {{ 'selected' if direction == 'giris' else '' }}>Para Girişi</option>
+                            <option value="cikis" {{ 'selected' if direction == 'cikis' else '' }}>Para Çıkışı</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="cash-reference" class="mb-1.5 block text-[11px] font-black uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Kaynak</label>
+                        <select id="cash-reference" name="reference_type" class="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-primary-400 focus:ring-4 focus:ring-primary-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-primary-600 dark:focus:ring-primary-950 xl:w-44">
+                            <option value="">Tüm kaynaklar</option>
+                            {% for source in available_reference_types %}
+                            <option value="{{ source.value }}" {{ 'selected' if reference_type == source.value else '' }}>{{ source.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="cash-from" class="mb-1.5 block text-[11px] font-black uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Başlangıç</label>
+                        <input id="cash-from" type="date" name="from" value="{{ date_from }}" class="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-primary-400 focus:ring-4 focus:ring-primary-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-primary-600 dark:focus:ring-primary-950 xl:w-36">
+                    </div>
+                    <div>
+                        <label for="cash-to" class="mb-1.5 block text-[11px] font-black uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Bitiş</label>
+                        <input id="cash-to" type="date" name="to" value="{{ date_to }}" class="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-primary-400 focus:ring-4 focus:ring-primary-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-primary-600 dark:focus:ring-primary-950 xl:w-36">
+                    </div>
+                    <div class="col-span-2 flex gap-2 sm:col-span-1">
+                        <button type="submit" class="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-black text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+                            <span class="material-symbols-outlined text-lg" aria-hidden="true">filter_alt</span>
+                            Uygula
+                        </button>
+                        <a href="{{ url_for('nakit_yonetimi') }}" class="inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white" aria-label="Filtreleri temizle" title="Filtreleri temizle">
+                            <span class="material-symbols-outlined text-lg" aria-hidden="true">restart_alt</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <div class="flex flex-col gap-2 border-b border-slate-200 px-5 py-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h3 class="text-lg font-black text-slate-950 dark:text-white">Hareket akışı</h3>
+                <p class="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">En yeni kayıtlar üstte gösterilir; bu ekran yalnızca izleme amaçlıdır.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-600 dark:bg-slate-800 dark:text-slate-300">{{ pagination.total }} hareket</span>
+                <span class="rounded-full px-3 py-1.5 text-xs font-black {{ 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' if net_flow >= 0 else 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300' }}">
+                    Net akış {{ '+' if net_flow > 0 else '' }}₺{{ net_flow|tr_number }}
+                </span>
+            </div>
+        </div>
+
+        <div class="hidden overflow-x-auto md:block">
+            <table class="w-full min-w-[980px] text-left">
+                <thead class="bg-slate-50/80 text-[11px] font-black uppercase tracking-[0.1em] text-slate-500 dark:bg-slate-950/40 dark:text-slate-400">
                     <tr>
-                        <th class="px-4 py-3 text-sm font-semibold">Tarih</th>
-                        <th class="px-4 py-3 text-sm font-semibold">Yön</th>
-                        <th class="px-4 py-3 text-sm font-semibold">Cari</th>
-                        <th class="px-4 py-3 text-sm font-semibold">Ödeme</th>
-                        <th class="px-4 py-3 text-sm font-semibold">Açıklama</th>
-                        <th class="px-4 py-3 text-right text-sm font-semibold">Tutar</th>
+                        <th class="px-5 py-3.5">Tarih</th>
+                        <th class="px-4 py-3.5">Hesap</th>
+                        <th class="px-4 py-3.5">İşlem Kaynağı</th>
+                        <th class="px-4 py-3.5">Cari</th>
+                        <th class="px-4 py-3.5">Açıklama</th>
+                        <th class="px-4 py-3.5">Ödeme</th>
+                        <th class="px-5 py-3.5 text-right">Tutar</th>
                     </tr>
                 </thead>
-                <tbody class="border-t border-slate-200 dark:border-slate-700">
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                     {% for transaction in transactions %}
-                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                        <td class="px-4 py-4 text-sm text-slate-500 dark:text-slate-400">{{ transaction.tarih|datetime_tr }}</td>
-                        <td class="px-4 py-4 text-sm font-medium">
-                            <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold {{ 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300' if transaction.islem_tipi == 'giris' else 'bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-300' }}">
-                                {{ 'Para Girişi' if transaction.islem_tipi == 'giris' else 'Para Çıkışı' }}
+                    {% set source = cash_reference_presentation(transaction.referans_tip) %}
+                    <tr class="group transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/45">
+                        <td class="whitespace-nowrap px-5 py-4">
+                            <p class="text-sm font-black text-slate-800 dark:text-slate-100">{{ transaction.tarih|date_tr }}</p>
+                            <p class="mt-0.5 text-xs font-medium text-slate-400">{{ transaction.tarih|time_tr }}</p>
+                        </td>
+                        <td class="px-4 py-4">
+                            <div class="flex items-center gap-2.5">
+                                <span class="flex size-9 shrink-0 items-center justify-center rounded-xl
+                                    {% if transaction.account and transaction.account.type == 'cash' %}bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300
+                                    {% elif transaction.account and transaction.account.type == 'bank' %}bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300
+                                    {% else %}bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-300{% endif %}">
+                                    <span class="material-symbols-outlined text-lg" aria-hidden="true">{{ 'payments' if transaction.account and transaction.account.type == 'cash' else ('account_balance' if transaction.account and transaction.account.type == 'bank' else 'credit_card') }}</span>
+                                </span>
+                                <div>
+                                    <p class="max-w-40 truncate text-sm font-black text-slate-800 dark:text-slate-100">{{ transaction.account.name if transaction.account else 'Hesap belirtilmemiş' }}</p>
+                                    <p class="text-xs font-medium text-slate-400">{{ account_type_labels.get(transaction.account.type, 'Diğer') if transaction.account else 'Eski kayıt' }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4">
+                            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-black
+                                {% if source.tone == 'emerald' %}bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300
+                                {% elif source.tone == 'rose' %}bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300
+                                {% elif source.tone == 'amber' %}bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300
+                                {% elif source.tone == 'violet' %}bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300
+                                {% elif source.tone == 'cyan' %}bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300
+                                {% else %}bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300{% endif %}">
+                                <span class="material-symbols-outlined text-[15px]" aria-hidden="true">{{ source.icon }}</span>
+                                {{ source.label }}
                             </span>
                         </td>
-                        <td class="px-4 py-4 text-sm text-slate-700 dark:text-slate-200">{{ transaction.cari.unvan if transaction.cari else '-' }}</td>
-                        <td class="px-4 py-4 text-sm text-slate-700 dark:text-slate-200">{{ transaction.odeme_turu or '-' }}</td>
-                        <td class="px-4 py-4 text-sm text-slate-500 dark:text-slate-400">{{ transaction.aciklama or '-' }}</td>
-                        <td class="px-4 py-4 text-right text-sm font-semibold {{ 'text-emerald-600' if transaction.islem_tipi == 'giris' else 'text-red-600' }}">{{ '+' if transaction.islem_tipi == 'giris' else '-' }}₺{{ (transaction.tutar)|tr_number }}</td>
+                        <td class="px-4 py-4 text-sm font-bold text-slate-700 dark:text-slate-200">{{ transaction.cari.unvan if transaction.cari else '—' }}</td>
+                        <td class="max-w-xs px-4 py-4">
+                            <p class="line-clamp-2 text-sm font-medium leading-5 text-slate-600 dark:text-slate-300">{{ transaction.aciklama or 'Açıklama bulunmuyor' }}</p>
+                        </td>
+                        <td class="px-4 py-4 text-sm font-bold text-slate-500 dark:text-slate-400">{{ transaction.odeme_turu or '—' }}</td>
+                        <td class="whitespace-nowrap px-5 py-4 text-right">
+                            <p class="text-base font-black {{ 'text-emerald-600 dark:text-emerald-300' if transaction.islem_tipi == 'giris' else 'text-rose-600 dark:text-rose-300' }}">{{ '+' if transaction.islem_tipi == 'giris' else '−' }}₺{{ transaction.tutar|tr_number }}</p>
+                            <p class="mt-0.5 text-[10px] font-black uppercase tracking-wider text-slate-400">{{ 'Para Girişi' if transaction.islem_tipi == 'giris' else 'Para Çıkışı' }}</p>
+                        </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" class="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">Henüz nakit işlemi kaydedilmedi.</td>
+                        <td colspan="7" class="px-5 py-16 text-center">
+                            <span class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800">
+                                <span class="material-symbols-outlined text-3xl" aria-hidden="true">search_off</span>
+                            </span>
+                            <p class="mt-4 text-sm font-black text-slate-800 dark:text-slate-100">Bu filtrelere uygun hareket bulunamadı.</p>
+                            <p class="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">Filtreleri temizleyerek tüm hareketleri görüntüleyebilirsiniz.</p>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
+
+        <div class="divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
+            {% for transaction in transactions %}
+            {% set source = cash_reference_presentation(transaction.referans_tip) %}
+            <article class="p-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex min-w-0 items-center gap-3">
+                        <span class="flex size-10 shrink-0 items-center justify-center rounded-xl {{ 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300' if transaction.islem_tipi == 'giris' else 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300' }}">
+                            <span class="material-symbols-outlined" aria-hidden="true">{{ 'south_west' if transaction.islem_tipi == 'giris' else 'north_east' }}</span>
+                        </span>
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-black text-slate-900 dark:text-white">{{ transaction.account.name if transaction.account else 'Hesap belirtilmemiş' }}</p>
+                            <p class="mt-0.5 text-xs font-medium text-slate-400">{{ transaction.tarih|datetime_tr }}</p>
+                        </div>
+                    </div>
+                    <p class="shrink-0 text-base font-black {{ 'text-emerald-600 dark:text-emerald-300' if transaction.islem_tipi == 'giris' else 'text-rose-600 dark:text-rose-300' }}">{{ '+' if transaction.islem_tipi == 'giris' else '−' }}₺{{ transaction.tutar|tr_number }}</p>
+                </div>
+                <div class="mt-3 flex flex-wrap items-center gap-2">
+                    <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                        <span class="material-symbols-outlined text-sm" aria-hidden="true">{{ source.icon }}</span>
+                        {{ source.label }}
+                    </span>
+                    {% if transaction.cari %}
+                    <span class="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-black text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">{{ transaction.cari.unvan }}</span>
+                    {% endif %}
+                </div>
+                <p class="mt-3 text-sm font-medium leading-5 text-slate-600 dark:text-slate-300">{{ transaction.aciklama or 'Açıklama bulunmuyor' }}</p>
+            </article>
+            {% else %}
+            <div class="px-5 py-14 text-center">
+                <span class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800">
+                    <span class="material-symbols-outlined text-3xl" aria-hidden="true">search_off</span>
+                </span>
+                <p class="mt-4 text-sm font-black text-slate-800 dark:text-slate-100">Bu filtrelere uygun hareket bulunamadı.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% include '_pagination.html' %}
+    </section>
 </div>
 {% endblock %}

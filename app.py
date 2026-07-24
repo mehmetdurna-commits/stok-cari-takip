@@ -8802,41 +8802,170 @@ def pos_satis():
         return jsonify({'success': False, 'message': f'Satış işlemi başarısız: {str(e)}'})
 
 
+CASH_REFERENCE_PRESENTATION = {
+    'satis': {'label': 'Satış', 'icon': 'point_of_sale', 'tone': 'emerald'},
+    'satis_iptal': {'label': 'Satış İptali', 'icon': 'cancel', 'tone': 'rose'},
+    'cari_tahsilat': {'label': 'Müşteri Tahsilatı', 'icon': 'payments', 'tone': 'emerald'},
+    'assistant_tahsilat': {'label': 'Asistan Tahsilatı', 'icon': 'smart_toy', 'tone': 'cyan'},
+    'cari_odeme': {'label': 'Tedarikçi Ödemesi', 'icon': 'outbound', 'tone': 'rose'},
+    'iade': {'label': 'İade', 'icon': 'assignment_return', 'tone': 'amber'},
+    'transfer': {'label': 'Hesap Transferi', 'icon': 'swap_horiz', 'tone': 'violet'},
+    'manual': {'label': 'Manuel Hareket', 'icon': 'edit_note', 'tone': 'slate'},
+    'assistant': {'label': 'Asistan Hareketi', 'icon': 'smart_toy', 'tone': 'cyan'},
+    'personel_avans': {'label': 'Personel Avansı', 'icon': 'person', 'tone': 'amber'},
+    'personel_prim': {'label': 'Personel Primi', 'icon': 'workspace_premium', 'tone': 'amber'},
+    'maas_odeme': {'label': 'Maaş Ödemesi', 'icon': 'badge', 'tone': 'rose'},
+    'reconciliation': {'label': 'Kasa Sayım Farkı', 'icon': 'fact_check', 'tone': 'violet'},
+}
+
+
+def cash_reference_presentation(reference_type):
+    key = (reference_type or 'other').strip().lower()
+    return CASH_REFERENCE_PRESENTATION.get(
+        key,
+        {'label': 'Diğer Hareket', 'icon': 'receipt_long', 'tone': 'slate'},
+    )
+
+
 @app.route('/nakit')
 @login_required
 def nakit_yonetimi():
-    # ensure defaults for current user (so UI can show accounts immediately)
     ensure_default_accounts_for_user(current_user.id)
 
-    selected_account_id = request.args.get('account_id', '').strip()
-    account_id = int(selected_account_id) if selected_account_id.isdigit() else None
-
-    accounts = tenant_query(Account).filter(Account.active.is_(True)).order_by(Account.type, Account.name).all()
+    accounts = (
+        tenant_query(Account)
+        .filter(Account.active.is_(True))
+        .order_by(Account.type, Account.name)
+        .all()
+    )
     account_type_labels = {
         'cash': 'Kasa',
         'bank': 'Banka',
         'pos': 'POS',
     }
 
+    selected_account_id = (request.args.get('account_id') or '').strip()
+    selected_account = next(
+        (account for account in accounts if str(account.id) == selected_account_id),
+        None,
+    )
+    account_id = selected_account.id if selected_account else None
+    direction = (request.args.get('direction') or '').strip().lower()
+    reference_type = (request.args.get('reference_type') or '').strip().lower()
+    search_term = (request.args.get('q') or '').strip()
+    date_from_raw = (request.args.get('from') or '').strip()
+    date_to_raw = (request.args.get('to') or '').strip()
+
     tx_query = tenant_query(CashTransaction)
     if account_id:
         tx_query = tx_query.filter(CashTransaction.account_id == account_id)
-    totals = tx_query.with_entities(
-        func.sum(case((CashTransaction.islem_tipi == 'giris', CashTransaction.tutar), else_=0.0)),
-        func.sum(case((CashTransaction.islem_tipi == 'cikis', CashTransaction.tutar), else_=0.0)),
+    if direction in {'giris', 'cikis'}:
+        tx_query = tx_query.filter(CashTransaction.islem_tipi == direction)
+    else:
+        direction = ''
+    if reference_type:
+        tx_query = tx_query.filter(CashTransaction.referans_tip == reference_type)
+    if search_term:
+        search_pattern = f'%{search_term}%'
+        tx_query = (
+            tx_query.outerjoin(Cari, CashTransaction.cari_id == Cari.id)
+            .outerjoin(Account, CashTransaction.account_id == Account.id)
+            .filter(or_(
+                CashTransaction.aciklama.ilike(search_pattern),
+                CashTransaction.odeme_turu.ilike(search_pattern),
+                Cari.unvan.ilike(search_pattern),
+                Account.name.ilike(search_pattern),
+            ))
+        )
+    if date_from_raw:
+        try:
+            date_from, _ = local_day_bounds(date_from_raw)
+            tx_query = tx_query.filter(CashTransaction.tarih >= date_from)
+        except ValueError:
+            date_from_raw = ''
+    if date_to_raw:
+        try:
+            _, date_to = local_day_bounds(date_to_raw)
+            tx_query = tx_query.filter(CashTransaction.tarih < date_to)
+        except ValueError:
+            date_to_raw = ''
+
+    operational_query = tx_query.filter(or_(
+        CashTransaction.referans_tip.is_(None),
+        CashTransaction.referans_tip != 'transfer',
+    ))
+    totals = operational_query.with_entities(
+        func.sum(case((CashTransaction.islem_tipi == 'giris', CashTransaction.tutar), else_=0)),
+        func.sum(case((CashTransaction.islem_tipi == 'cikis', CashTransaction.tutar), else_=0)),
     ).one()
-    total_giris = float(totals[0] or 0.0)
-    total_cikis = float(totals[1] or 0.0)
-    bakiye = total_giris - total_cikis
-    transactions = tx_query.order_by(CashTransaction.tarih.desc()).limit(200).all()
-    return render_template('nakit_yonetimi.html',
-                           transactions=transactions,
-                           total_giris=total_giris,
-                           total_cikis=total_cikis,
-                           bakiye=bakiye,
-                           accounts=accounts,
-                           account_type_labels=account_type_labels,
-                           selected_account_id=str(account_id) if account_id else '')
+    total_giris = money_value(totals[0])
+    total_cikis = money_value(totals[1])
+    net_flow = money_value(total_giris - total_cikis)
+
+    visible_accounts = [selected_account] if selected_account else accounts
+    account_summaries = []
+    total_assets = Decimal('0')
+    pos_pending = Decimal('0')
+    for account in visible_accounts:
+        balance = account_current_balance(account)
+        total_assets += balance
+        if account.type == 'pos':
+            pos_pending += balance
+        account_summaries.append({
+            'account': account,
+            'type_label': account_type_labels.get(account.type, account.type),
+            'balance': balance,
+        })
+    total_assets = money_value(total_assets)
+    pos_pending = money_value(pos_pending)
+    max_account_balance = max(
+        (abs(summary['balance']) for summary in account_summaries),
+        default=Decimal('0'),
+    )
+    for summary in account_summaries:
+        summary['percent'] = (
+            min(float(abs(summary['balance']) / max_account_balance * 100), 100.0)
+            if max_account_balance > 0 else 0
+        )
+
+    available_reference_types = [
+        {
+            'value': value,
+            **presentation,
+        }
+        for value, presentation in CASH_REFERENCE_PRESENTATION.items()
+    ]
+    pagination = tx_query.order_by(
+        CashTransaction.tarih.desc(),
+        CashTransaction.id.desc(),
+    ).paginate(
+        page=request.args.get('page', 1, type=int),
+        per_page=current_items_per_page(),
+        error_out=False,
+    )
+
+    return render_template(
+        'nakit_yonetimi.html',
+        transactions=pagination.items,
+        pagination=pagination,
+        total_giris=total_giris,
+        total_cikis=total_cikis,
+        net_flow=net_flow,
+        total_assets=total_assets,
+        pos_pending=pos_pending,
+        accounts=accounts,
+        account_summaries=account_summaries,
+        account_type_labels=account_type_labels,
+        selected_account_id=str(account_id) if account_id else '',
+        selected_account=selected_account,
+        direction=direction,
+        reference_type=reference_type,
+        available_reference_types=available_reference_types,
+        search_term=search_term,
+        date_from=date_from_raw,
+        date_to=date_to_raw,
+        cash_reference_presentation=cash_reference_presentation,
+    )
 
 # ?n Muhasebe (Hesaplar)
 
